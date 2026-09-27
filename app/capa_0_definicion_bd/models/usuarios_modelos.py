@@ -1,4 +1,5 @@
 from sqlalchemy import Column, Integer, String, Table, ForeignKey
+from sqlalchemy.orm import relationship
 from app.capa_0_definicion_bd.base_datos_sqlalchemy import Base
 
 class Usuario(Base):
@@ -10,3 +11,8 @@ class Usuario(Base):
     id_avatar = Column(Integer, nullable=False)
     contraseña = Column(String, nullable=False)
     nombre_club = Column(String, nullable=False)
+
+    comportamientos = relationship(
+        "Comportamiento",
+        back_populates="usuario"
+    )

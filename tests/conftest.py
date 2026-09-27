@@ -1,6 +1,6 @@
 import pytest
 
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, event
 from sqlalchemy.orm import sessionmaker
 
 from app.capa_0_definicion_bd.base_datos_sqlalchemy import Base
@@ -8,6 +8,12 @@ from app.capa_0_definicion_bd.base_datos_sqlalchemy import Base
 
 DATABASE_URL = "sqlite:///:memory:"
 engine_test = create_engine(DATABASE_URL)
+
+@event.listens_for(engine_test, "connect")
+def enable_foreign_keys(dbapi_connection, connection_record):
+    dbapi_connection.execute("PRAGMA foreign_keys=ON")
+
+
 TestingSessionLocal = sessionmaker(bind=engine_test)
 
 
