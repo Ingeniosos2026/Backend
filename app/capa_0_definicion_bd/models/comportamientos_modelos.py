@@ -1,6 +1,6 @@
 from app.capa_0_definicion_bd.models.usuarios_modelos import Usuario
 from sqlalchemy import ForeignKey, String, Text, Column, Integer
-from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy.orm import relationship
 
 from app.capa_0_definicion_bd.base_datos_sqlalchemy import Base
 

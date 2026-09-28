@@ -16,3 +16,7 @@ class Usuario(Base):
         "Comportamiento",
         back_populates="usuario"
     )
+    ligas = relationship(
+        "Liga",
+        back_populates="usuario"
+    )
