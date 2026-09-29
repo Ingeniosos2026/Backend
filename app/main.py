@@ -3,12 +3,17 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.capa_0_definicion_bd.base_datos_sqlalchemy import Base, engine
 from app.capa_0_definicion_bd.models.usuarios_modelos import Usuario
+from app.capa_0_definicion_bd.models.comportamientos_modelos import Comportamiento
+from app.capa_0_definicion_bd.models.liga_modelos import Liga
+from app.capa_3_api.api import api_router
 
 app = FastAPI()
 
 origins = [
     "http://localhost:5173"
 ]
+
+app.include_router(api_router)
 
 app.add_middleware(
     CORSMiddleware,
