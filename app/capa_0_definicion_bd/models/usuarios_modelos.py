@@ -20,3 +20,8 @@ class Usuario(Base):
         "Liga",
         back_populates="usuario"
     )
+
+    jugadores = relationship(
+        "Jugador", 
+        back_populates="usuario", 
+    )
