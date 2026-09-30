@@ -61,3 +61,80 @@ def test_crear_usuario_email_registrado(client):
     assert segunda_respuesta.status_code == 409
 
     assert segunda_respuesta.json() == {"error": "USUARIO_YA_EXISTE", "mensaje": "Ya existe un usuario con esos datos"}
+
+def test_login_usuario_correcto(client):
+
+    datos = {
+        "email": "pepito@gmail.com",
+        "nombre": "Pepito",
+        "avatar": 1,
+        "contraseña": "asd123",
+        "club": "Boca"
+    }
+
+    crear_respuesta = client.post("/usuario", json=datos)
+
+    assert crear_respuesta.status_code == 201
+
+    usuario_id = crear_respuesta.json()["id"]
+
+    response = client.put(
+        "/usuario/login",
+        json={
+            "email": datos["email"],
+            "contraseña": datos["contraseña"]
+        }
+    )
+
+    assert response.status_code == 200
+
+    datos_respuesta = response.json()
+
+    assert datos_respuesta["mensaje"] == "Login exitoso"
+    assert datos_respuesta["id"] == usuario_id
+
+def test_login_usuario_contraseña_incorrecta(client):
+
+    datos = {
+        "email": "pepito@gmail.com",
+        "nombre": "Pepito",
+        "avatar": 1,
+        "contraseña": "asd123",
+        "club": "Boca"
+    }
+
+    crear_respuesta = client.post("/usuario", json=datos)
+
+    assert crear_respuesta.status_code == 201
+
+    response = client.put(
+        "/usuario/login",
+        json={
+            "email": datos["email"],
+            "contraseña": "contraseña-incorrecta"
+        }
+    )
+
+    assert response.status_code == 401
+
+    assert response.json() == {
+        "error": "CREDENCIALES_INVALIDAS",
+        "mensaje": "El email o la contraseña son incorrectos"
+    }
+
+def test_login_usuario_email_inexistente(client):
+
+    response = client.put(
+        "/usuario/login",
+        json={
+            "email": "inexistente@gmail.com",
+            "contraseña": "asd123"
+        }
+    )
+
+    assert response.status_code == 401
+
+    assert response.json() == {
+        "error": "CREDENCIALES_INVALIDAS",
+        "mensaje": "El email o la contraseña son incorrectos"
+    }

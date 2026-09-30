@@ -6,6 +6,7 @@ from app.capa_0_definicion_bd.models.usuarios_modelos import Usuario as UsuarioM
 from .errores import *
 from .resultados import *
 
+password_hash = PasswordHash.recommended()
 
 class _RepoUsuariosProtocol(Protocol):
     def crear (self, usuario: UsuarioModelo) -> UsuarioModelo: ...
@@ -41,7 +42,6 @@ class Servicios:
         if self.usuarios.obtener_por_email(email) is not None:
             raise EmailRegistrado
         
-        password_hash = PasswordHash.recommended()
 
         hash_contraseña = password_hash.hash(contraseña)
 
@@ -56,3 +56,13 @@ class Servicios:
         usuario = self.usuarios.crear(nuevo_usuario)
 
         return CrearUsuarioResultado(usuario=usuario)
+
+    def login_usuario(self, email: str, contraseña: str) -> UsuarioModelo:
+        usuario = self.usuarios.obtener_por_email(email)
+        if usuario is None:
+            raise CredencialesInvalidas
+        
+        if not password_hash.verify(contraseña, usuario.contraseña):
+            raise CredencialesInvalidas
+        
+        return usuario
