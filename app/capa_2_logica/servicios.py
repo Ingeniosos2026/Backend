@@ -26,8 +26,17 @@ class Servicios:
     
     def crear_usuario(self, email: str, nombre: str, id_avatar: int, contraseña: str, nombre_club: str) -> CrearUsuarioResultado:
         
+        if not nombre.strip():
+            raise DatosInvalidos
+
+        if not contraseña.strip():
+            raise DatosInvalidos
+
+        if not nombre_club.strip():
+            raise DatosInvalidos
+
         if not self.email_valido(email):
-            raise EmailInvalido
+            raise DatosInvalidos
         
         if self.usuarios.obtener_por_email(email) is not None:
             raise EmailRegistrado

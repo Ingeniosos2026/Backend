@@ -8,12 +8,12 @@ from app.capa_2_logica.servicios import Servicios
 from app.capa_2_logica.resultados import *
 
 
-def test_crear_usuario_email_invalido():
+def test_crear_usuario_datos_invalidos():
 
     repositorio = Mock()
     servicio = Servicios(usuarios=repositorio)
 
-    with pytest.raises(EmailInvalido):
+    with pytest.raises(DatosInvalidos):
         servicio.crear_usuario(
             email="leandro@gmail.com.ar",
             nombre="Leandro",
@@ -25,6 +25,57 @@ def test_crear_usuario_email_invalido():
     repositorio.obtener_por_email.assert_not_called()
     repositorio.crear.assert_not_called()
 
+
+def test_crear_usuario_nombre_vacio():
+
+    repositorio = Mock()
+    servicio = Servicios(usuarios=repositorio)
+
+    with pytest.raises(DatosInvalidos):
+        servicio.crear_usuario(
+            email="leandro@gmail.com",
+            nombre="",
+            id_avatar=1,
+            contraseña="123456",
+            nombre_club="Talleres"
+        )
+
+    repositorio.obtener_por_email.assert_not_called()
+    repositorio.crear.assert_not_called()
+
+def test_crear_usuario_contraseña_vacia():
+
+    repositorio = Mock()
+    servicio = Servicios(usuarios=repositorio)
+
+    with pytest.raises(DatosInvalidos):
+        servicio.crear_usuario(
+            email="leandro@gmail.com",
+            nombre="Leandro",
+            id_avatar=1,
+            contraseña="",
+            nombre_club="Talleres"
+        )
+
+    repositorio.obtener_por_email.assert_not_called()
+    repositorio.crear.assert_not_called()
+
+def test_crear_usuario_club_vacio():
+
+    repositorio = Mock()
+    servicio = Servicios(usuarios=repositorio)
+
+    with pytest.raises(DatosInvalidos):
+        servicio.crear_usuario(
+            email="leandro@gmail.com",
+            nombre="Leandro",
+            id_avatar=1,
+            contraseña="123456",
+            nombre_club=""
+        )
+
+    repositorio.obtener_por_email.assert_not_called()
+    repositorio.crear.assert_not_called()
 
 def test_crear_usuario_email_registrado():
 

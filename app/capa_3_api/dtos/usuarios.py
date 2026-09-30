@@ -2,8 +2,8 @@ from pydantic import BaseModel
 
 
 class CrearUsuario(BaseModel):
-    email: str
     nombre: str
-    id_avatar: int
+    email: str
     contraseña: str
-    nombre_club: str
+    avatar: int
+    club: str
