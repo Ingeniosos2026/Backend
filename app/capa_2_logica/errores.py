@@ -7,3 +7,6 @@ class EmailRegistrado(Exception):
 
 class DatosInvalidos(Exception):
     pass
+
+class CredencialesInvalidas(Exception):
+    pass

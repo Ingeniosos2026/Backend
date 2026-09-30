@@ -41,3 +41,22 @@ def crear_usuario(datos: CrearUsuario, servicio: Servicios = Depends(obtener_ser
     
     except Exception:
         return JSONResponse(status_code=500, content={"error": "ERROR_INTERNO", "mensaje": "Ocurrió un error interno del servidor"})
+
+@usuario_router.put("/usuario/login", status_code=status.HTTP_200_OK)
+def login_usuario(datos: LoginUsuario, servicio: Servicios = Depends(obtener_servicio)):
+    try:
+        usuario = servicio.login_usuario(
+            email=datos.email,
+            contraseña=datos.contraseña
+        )
+
+        return {
+            "mensaje": "Login exitoso",
+            "id": usuario.id_usuario
+        }
+
+    except CredencialesInvalidas:
+        return JSONResponse(status_code=401, content={"error": "CREDENCIALES_INVALIDAS", "mensaje": "El email o la contraseña son incorrectos"})
+    
+    except Exception:
+        return JSONResponse(status_code=500, content={"error": "ERROR_INTERNO", "mensaje": "Ocurrió un error interno del servidor"})
