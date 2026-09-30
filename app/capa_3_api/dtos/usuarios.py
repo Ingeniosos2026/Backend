@@ -7,3 +7,7 @@ class CrearUsuario(BaseModel):
     contraseña: str
     avatar: int
     club: str
+
+class LoginUsuario(BaseModel):
+    email: str
+    contraseña: str

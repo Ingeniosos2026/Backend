@@ -4,7 +4,7 @@ import pytest
 
 from app.capa_0_definicion_bd.models.usuarios_modelos import Usuario
 from app.capa_2_logica.errores import *
-from app.capa_2_logica.servicios import Servicios
+from app.capa_2_logica.servicios import Servicios, password_hash
 from app.capa_2_logica.resultados import *
 
 
@@ -144,3 +144,67 @@ def test_crear_usuario_correctamente():
 
     repositorio.obtener_por_email.assert_called_once_with("leandro@gmail.com")
     repositorio.crear.assert_called_once()
+
+def test_login_usuario_correctamente():
+    contraseña = "asd123"
+
+    repositorio = Mock()
+    usuario = Usuario(
+        id_usuario=1,
+        email="pepito@gmail.com",
+        nombre="Pepitocabj",
+        id_avatar=1,
+        contraseña=password_hash.hash(contraseña),
+        nombre_club="boca"
+    )
+
+    repositorio.obtener_por_email.return_value = usuario
+
+    servicio = Servicios(usuarios=repositorio)
+
+    resultado = servicio.login_usuario(
+        email="pepito@gmail.com",
+        contraseña=contraseña
+    )
+
+    assert resultado == usuario
+
+    repositorio.obtener_por_email.assert_called_once_with("pepito@gmail.com")
+
+def test_login_contraseña_incorrecta():
+
+    repositorio = Mock()
+    usuario = Usuario(
+        id_usuario=1,
+        email="pepito@gmail.com",
+        nombre="Pepitocabj",
+        id_avatar=1,
+        contraseña=password_hash.hash("asd123"),
+        nombre_club="boca"
+    )
+
+    repositorio.obtener_por_email.return_value = usuario
+
+    servicio = Servicios(usuarios=repositorio)
+
+    with pytest.raises(CredencialesInvalidas):
+        servicio.login_usuario(
+            email="pepito@gmail.com",
+            contraseña= "contraseña_incorrecta"
+        )
+
+def test_login_usuario_inexistente():
+    repositorio = Mock()
+    repositorio.obtener_por_email.return_value = None
+
+    servicio = Servicios(usuarios=repositorio)
+
+    with pytest.raises(CredencialesInvalidas):
+        servicio.login_usuario(
+            email="inexistente@gmail.com",
+            contraseña="asd123"
+        )
+
+    repositorio.obtener_por_email.assert_called_once_with(
+        "inexistente@gmail.com"
+    )
