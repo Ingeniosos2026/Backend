@@ -3,6 +3,8 @@ from typing import Protocol
 from pwdlib import PasswordHash
 
 from app.capa_0_definicion_bd.models.usuarios_modelos import Usuario as UsuarioModelo
+from app.capa_0_definicion_bd.models.jugadores_modelos import Jugador as JugadorModelo
+from sqlalchemy.exc import IntegrityError
 from .errores import *
 from .resultados import *
 
@@ -12,13 +14,16 @@ class _RepoUsuariosProtocol(Protocol):
     def crear (self, usuario: UsuarioModelo) -> UsuarioModelo: ...
     def obtener_por_email(self, email: str) -> UsuarioModelo | None: ...
 
+class _RepoJugadoresProtocol(Protocol):
+    def crear(self, jugador: JugadorModelo) -> JugadorModelo: ...
+
 
 class Servicios:
     """" Servicios que implementan la logica del juego """
 
-
-    def __init__(self, usuarios: _RepoUsuariosProtocol):
+    def __init__(self, usuarios: _RepoUsuariosProtocol, jugadores: _RepoJugadoresProtocol = None):
         self.usuarios = usuarios
+        self.jugadores = jugadores
 
     
     def email_valido(self, email: str) -> bool:
@@ -66,3 +71,28 @@ class Servicios:
             raise CredencialesInvalidas
         
         return usuario
+    
+    def crear_jugador(self, usuario_id: int, nombre: str, power: int, agility: int, control: int, speed: int, strength: int) -> CrearJugadorResultado:
+        stats = [power, agility, control, speed, strength]
+        
+        if any(s < 20 or s > 100 for s in stats):
+            raise DatosInvalidos()
+        
+        if sum(stats) != 300:
+            raise DatosInvalidos()
+
+        nuevo_jugador = JugadorModelo(
+            id_usuario=usuario_id,
+            nombre_jugador=nombre,
+            poder=power,
+            agilidad=agility,
+            control=control,
+            velocidad=speed,
+            fuerza=strength
+        )
+        
+        try:
+            jugador = self.jugadores.crear(nuevo_jugador)
+            return CrearJugadorResultado(jugador=jugador)
+        except IntegrityError:
+            raise DatosInvalidos() # so el usuario_id no existe en la bd, se dispara el error
