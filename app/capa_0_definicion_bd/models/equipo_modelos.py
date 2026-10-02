@@ -32,3 +32,8 @@ class Equipo(Base):
         back_populates="equipo_2"
     )
 
+    jugadores_amistosos = relationship(
+        "Jugador",
+        secondary="equipo_jugadores",
+        back_populates="equipos_amistosos"
+    )

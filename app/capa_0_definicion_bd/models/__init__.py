@@ -1,0 +1,1 @@
+from app.capa_0_definicion_bd.models.equipos_jugadores_modelos import EquipoJugador

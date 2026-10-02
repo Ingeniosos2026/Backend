@@ -13,3 +13,12 @@ class CredencialesInvalidas(Exception):
 
 class ComportamientoNoEncontrado(Exception):
     pass
+
+class EquipoNoEncontrado(Exception):
+    pass
+
+class UsuarioNoEncontrado(Exception):
+    pass
+
+class JugadorNoEncontrado(Exception):
+    pass
