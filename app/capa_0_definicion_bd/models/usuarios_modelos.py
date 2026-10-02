@@ -30,3 +30,15 @@ class Usuario(Base):
         "Equipo",
         back_populates="usuario"
     )
+
+    partido_1 = relationship(
+        "Partido",
+        foreign_keys="[Partido.id_usuario_1]",
+        back_populates="usuario_1"
+    )
+
+    partido_2 = relationship(
+        "Partido",
+        foreign_keys="[Partido.id_usuario_2]",
+        back_populates="usuario_2"
+    )
