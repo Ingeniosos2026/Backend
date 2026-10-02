@@ -19,3 +19,16 @@ class Equipo(Base):
         "Jugador",
         back_populates="equipo"
     )
+
+    partido_1 = relationship(
+        "Partido",
+        foreign_keys="[Partido.id_equipo_1]",
+        back_populates="equipo_1"
+    )
+
+    partido_2 = relationship(
+        "Partido",
+        foreign_keys="[Partido.id_equipo_2]",
+        back_populates="equipo_2"
+    )
+

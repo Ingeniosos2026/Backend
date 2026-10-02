@@ -8,6 +8,13 @@ from fastapi.testclient import TestClient
 from app.capa_0_definicion_bd.base_datos_sqlalchemy import Base, get_db
 from app.main import app
 
+from app.capa_0_definicion_bd.models.usuarios_modelos import Usuario
+from app.capa_0_definicion_bd.models.comportamientos_modelos import Comportamiento
+from app.capa_0_definicion_bd.models.jugadores_modelos import Jugador
+from app.capa_0_definicion_bd.models.equipo_modelos import Equipo
+from app.capa_0_definicion_bd.models.liga_modelos import Liga
+from app.capa_0_definicion_bd.models.partidos_modelos import Partido
+
 DATABASE_URL = "sqlite:///:memory:"
 engine_test = create_engine(DATABASE_URL, connect_args={"check_same_thread": False}, poolclass=StaticPool)
 
