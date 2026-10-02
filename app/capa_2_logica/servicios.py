@@ -4,6 +4,7 @@ from pwdlib import PasswordHash
 
 from app.capa_0_definicion_bd.models.usuarios_modelos import Usuario as UsuarioModelo
 from app.capa_0_definicion_bd.models.jugadores_modelos import Jugador as JugadorModelo
+from app.capa_0_definicion_bd.models.comportamientos_modelos import Comportamiento as ComportamientoModelo
 from sqlalchemy.exc import IntegrityError
 from .errores import *
 from .resultados import *
@@ -17,13 +18,16 @@ class _RepoUsuariosProtocol(Protocol):
 class _RepoJugadoresProtocol(Protocol):
     def crear(self, jugador: JugadorModelo) -> JugadorModelo: ...
 
+class _RepoComportamientosProtocol(Protocol):
+    def obtener_comportamiento_por_id_y_usuario(self, comp_id: int, usuario_id: int) -> ComportamientoModelo | None: ...
 
 class Servicios:
     """" Servicios que implementan la logica del juego """
 
-    def __init__(self, usuarios: _RepoUsuariosProtocol, jugadores: _RepoJugadoresProtocol = None):
+    def __init__(self, usuarios: _RepoUsuariosProtocol, jugadores: _RepoJugadoresProtocol = None, comportamientos: _RepoComportamientosProtocol = None ):
         self.usuarios = usuarios
         self.jugadores = jugadores
+        self.comportamientos = comportamientos
 
     
     def email_valido(self, email: str) -> bool:
@@ -96,3 +100,11 @@ class Servicios:
             return CrearJugadorResultado(jugador=jugador)
         except IntegrityError:
             raise DatosInvalidos() # so el usuario_id no existe en la bd, se dispara el error
+
+    def obtener_comportamiento(self, usuario_id: int, comp_id: int) -> ObtenerComportamientoResultado:
+        comportamiento = self.comportamientos.obtener_comportamiento_por_id_y_usuario(comp_id, usuario_id)
+        
+        if comportamiento is None:
+            raise ComportamientoNoEncontrado()
+            
+        return ObtenerComportamientoResultado(comportamiento=comportamiento)
