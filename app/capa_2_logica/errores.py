@@ -10,3 +10,6 @@ class DatosInvalidos(Exception):
 
 class CredencialesInvalidas(Exception):
     pass
+
+class ComportamientoNoEncontrado(Exception):
+    pass
