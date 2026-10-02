@@ -8,7 +8,7 @@ class EquipoRepositorio:
 
     def crear(self, equipo: EquipoModelo) -> EquipoModelo:
         self.db.add(equipo)
-        self.db.commit()
+        self.db.flush()
         self.db.refresh(equipo)
         return equipo
 
@@ -22,6 +22,6 @@ class EquipoRepositorio:
     def agregar_jugador(self, equipo: EquipoModelo, jugador: JugadorModelo) -> EquipoModelo:
         equipo.jugadores_amistosos.append(jugador)
         jugador.id_equipo = equipo.id_equipo
-        self.db.commit()
+        self.db.flush()
         self.db.refresh(equipo)
         return equipo

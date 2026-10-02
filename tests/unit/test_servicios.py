@@ -5,7 +5,7 @@ import pytest
 from app.capa_0_definicion_bd.models.usuarios_modelos import Usuario
 from app.capa_0_definicion_bd.models.jugadores_modelos import Jugador
 from app.capa_0_definicion_bd.models.equipo_modelos import Equipo
-from app.capa_0_definicion_bd.models.partidos_modelos import Partido, TipoPartido, EstadoPartido
+from app.capa_0_definicion_bd.models.partidos_modelos import Partido, TipoPartido, EstadoPartido, Formacion
 from app.capa_2_logica.errores import *
 from app.capa_2_logica.servicios import Servicios, password_hash
 from app.capa_2_logica.resultados import *
@@ -221,8 +221,27 @@ def test_crear_amistoso_correctamente():
         id_equipo=1,
         id_usuario=1
     )
+    jugadores = [
+        Jugador(
+            id_jugador=id_jugador,
+            id_usuario=1,
+            nombre_jugador=f"Jugador {id_jugador}",
+            poder=60,
+            agilidad=60,
+            control=60,
+            velocidad=60,
+            fuerza=60,
+        )
+        for id_jugador in range(1, 7)
+    ]
+    jugadores_por_id = {jugador.id_jugador: jugador for jugador in jugadores}
 
+    repo_usuarios.obtener_por_id.return_value = Usuario(id_usuario=1)
+    repo_equipos.crear.return_value = equipo
     repo_equipos.obtener_por_id.return_value = equipo
+    repo_equipos.agregar_jugador.side_effect = agregar_jugador
+    repo_jugadores = Mock()
+    repo_jugadores.obtener_por_id.side_effect = jugadores_por_id.get
 
     partido_nuevo = Partido(
         id_partido=1,
@@ -231,60 +250,100 @@ def test_crear_amistoso_correctamente():
         id_equipo_1=1,
         id_equipo_2=None,
         duracion=5,
+        formacion=Formacion.FORMACION_1,
         tipo=TipoPartido.AMISTOSO,
         estado=EstadoPartido.DISPONIBLE
     )
 
     repo_partidos.crear.return_value = partido_nuevo
 
-    servicio = Servicios(usuarios=repo_usuarios, equipos=repo_equipos, partidos=repo_partidos)
-    resultado = servicio.crear_amistoso(usuario_id=1, id_equipo=1, duracion=5)
+    servicio = Servicios(usuarios=repo_usuarios, equipos=repo_equipos, jugadores=repo_jugadores, partidos=repo_partidos)
+    resultado = servicio.crear_amistoso(
+        usuario_id=1,
+        jugadores_id=list(jugadores_por_id),
+        duracion=5,
+        formacion=Formacion.FORMACION_1,
+    )
 
     assert resultado.partido == partido_nuevo
     assert partido_nuevo.id_usuario_1 == 1
     assert partido_nuevo.id_equipo_1 == 1
     assert partido_nuevo.duracion == 5
+    assert partido_nuevo.formacion == Formacion.FORMACION_1
     assert partido_nuevo.id_usuario_2 is None
     assert partido_nuevo.id_equipo_2 is None
     assert partido_nuevo.tipo == TipoPartido.AMISTOSO
     assert partido_nuevo.estado == EstadoPartido.DISPONIBLE
+    assert equipo.jugadores_amistosos == jugadores
 
-    repo_equipos.obtener_por_id.assert_called_once_with(1)
+    repo_usuarios.obtener_por_id.assert_called_once_with(1)
+    repo_equipos.crear.assert_called_once()
+    assert repo_equipos.agregar_jugador.call_count == 6
     repo_partidos.crear.assert_called_once()
 
-def test_crear_amistoso_sin_equipo():
+def test_crear_amistoso_jugador_no_encontrado():
     repo_equipos = Mock()
     repo_partidos = Mock()
     repo_usuarios = Mock()
+    repo_jugadores = Mock()
+    repo_usuarios.obtener_por_id.return_value = Usuario(id_usuario=1)
+    repo_jugadores.obtener_por_id.return_value = None
 
-    repo_equipos.obtener_por_id.return_value = None
+    servicio = Servicios(usuarios=repo_usuarios, equipos=repo_equipos, jugadores=repo_jugadores, partidos=repo_partidos)
 
-    servicio = Servicios(usuarios=repo_usuarios, equipos=repo_equipos, partidos=repo_partidos)
+    with pytest.raises(JugadorNoEncontrado):
+        servicio.crear_amistoso(
+            usuario_id=1,
+            jugadores_id=[1, 2, 3, 4, 5, 6],
+            duracion=5,
+            formacion=Formacion.FORMACION_1,
+        )
 
-    with pytest.raises(EquipoNoEncontrado):
-        servicio.crear_amistoso(usuario_id=1, id_equipo=1, duracion=5)
-
-    repo_equipos.obtener_por_id.assert_called_once_with(1)
+    repo_equipos.crear.assert_not_called()
     repo_partidos.crear.assert_not_called()
 
 def test_crear_amistoso_duracion_invalida():
     repo_equipos = Mock()
     repo_partidos = Mock()
     repo_usuarios = Mock()
+    repo_jugadores = Mock()
 
-    equipo = Equipo(
-        id_equipo=1,
-        id_usuario=1
-    )
-
-    repo_equipos.obtener_por_id.return_value = equipo
-
-    servicio = Servicios(usuarios=repo_usuarios, equipos=repo_equipos, partidos=repo_partidos)
+    servicio = Servicios( usuarios=repo_usuarios, equipos=repo_equipos, jugadores=repo_jugadores, partidos=repo_partidos)
 
     with pytest.raises(DatosInvalidos):
-        servicio.crear_amistoso(usuario_id=1, id_equipo=1, duracion=0)
+        servicio.crear_amistoso(
+            usuario_id=1,
+            jugadores_id=[],
+            duracion=0,
+            formacion=Formacion.FORMACION_1,
+        )
 
-    repo_equipos.obtener_por_id.assert_not_called()
+    repo_equipos.crear.assert_not_called()
+    repo_jugadores.obtener_por_id.assert_not_called()
+    repo_partidos.crear.assert_not_called()
+
+def test_crear_amistoso_formacion_invalida():
+    repo_equipos = Mock()
+    repo_partidos = Mock()
+    repo_usuarios = Mock()
+    repo_jugadores = Mock()
+    servicio = Servicios(
+        usuarios=repo_usuarios,
+        equipos=repo_equipos,
+        jugadores=repo_jugadores,
+        partidos=repo_partidos,
+    )
+
+    with pytest.raises(DatosInvalidos):
+        servicio.crear_amistoso(
+            usuario_id=1,
+            jugadores_id=[1, 2, 3, 4, 5, 6],
+            duracion=5,
+            formacion=5,
+        )
+
+    repo_jugadores.obtener_por_id.assert_not_called()
+    repo_equipos.crear.assert_not_called()
     repo_partidos.crear.assert_not_called()
 
 def agregar_jugador(equipo, jugador):

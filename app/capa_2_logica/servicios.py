@@ -6,7 +6,7 @@ from app.capa_0_definicion_bd.models.usuarios_modelos import Usuario as UsuarioM
 from app.capa_0_definicion_bd.models.jugadores_modelos import Jugador as JugadorModelo
 from app.capa_0_definicion_bd.models.comportamientos_modelos import Comportamiento as ComportamientoModelo
 from app.capa_0_definicion_bd.models.equipo_modelos import Equipo as EquipoModelo
-from app.capa_0_definicion_bd.models.partidos_modelos import Partido as PartidoModelo, TipoPartido, EstadoPartido
+from app.capa_0_definicion_bd.models.partidos_modelos import Partido as PartidoModelo, TipoPartido, EstadoPartido, Formacion
 from sqlalchemy.exc import IntegrityError
 from .errores import *
 from .resultados import *
@@ -122,23 +122,46 @@ class Servicios:
             
         return ObtenerComportamientoResultado(comportamiento=comportamiento)
 
-    def crear_amistoso(self, usuario_id: int, id_equipo: int, duracion: int) -> CrearPartidoResultado:
+    def crear_amistoso(self, usuario_id: int, duracion: int, jugadores_id: list[int], formacion: int) -> CrearPartidoResultado:
         if duracion <= 0:
             raise DatosInvalidos()
 
-        equipo = self.equipos.obtener_por_id(id_equipo)
-        if equipo is None:
-            raise EquipoNoEncontrado()
+        try:
+            formacion = Formacion(formacion)
+        except (TypeError, ValueError) as error:
+            raise DatosInvalidos() from error
 
-        if equipo.id_usuario != usuario_id:
-            raise EquipoNoEncontrado()
+        if len(jugadores_id) != 6:
+            raise DatosInvalidos()
+
+        if len(set(jugadores_id)) != 6:
+            raise DatosInvalidos()
+
+        jugadores = []
+        for id_jugador in jugadores_id:
+            jugador = self.jugadores.obtener_por_id(id_jugador)
+            if jugador is None or jugador.id_usuario != usuario_id:
+                raise JugadorNoEncontrado()
+            jugadores.append(jugador)
+
+        resultado_equipo = self.crear_equipo(usuario_id=usuario_id)
+        equipo = resultado_equipo.equipo
+
+        for jugador in jugadores:
+            resultado_equipo = self.agregar_jugador_a_equipo(
+                usuario_id=usuario_id,
+                id_equipo=equipo.id_equipo,
+                id_jugador=jugador.id_jugador,
+            )
+            equipo = resultado_equipo.equipo
 
         nuevo_partido = PartidoModelo(
             id_usuario_1=usuario_id,
             id_usuario_2=None,
-            id_equipo_1=id_equipo,
+            id_equipo_1=equipo.id_equipo,
             id_equipo_2=None,
             duracion_partido=duracion,
+            formacion=formacion,
             tipo_partido=TipoPartido.AMISTOSO,
             estado_partido=EstadoPartido.DISPONIBLE
         )

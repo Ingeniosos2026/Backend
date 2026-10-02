@@ -7,6 +7,6 @@ class PartidoRepositorio:
 
     def crear(self, partido: PartidoModelo) -> PartidoModelo:
         self.db.add(partido)
-        self.db.commit()
+        self.db.flush()
         self.db.refresh(partido)
         return partido
