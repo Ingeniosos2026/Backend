@@ -24,7 +24,7 @@ def comportamiento2(primitivas):
 comportamiento_pasar_compañero = """
 def comportamiento3(primitivas):
     compañeros = primitivas.direccionCompañeros()
-    compañero = compañero compañeros[0]
+    compañero = compañeros[0]
     
     if primitivas.pelotaCerca():
         primitivas.patear(compañero)
@@ -32,3 +32,9 @@ def comportamiento3(primitivas):
     else:
         primitivas.correr(primitivas.direccionPelota())
 """
+
+COMPORTAMIENTOS_PREDETERMINADOS = (
+    ("Defender", comportamiento_defender),
+    ("Atacar", comportamiento_atacar),
+    ("Pasar compañero", comportamiento_pasar_compañero),
+)

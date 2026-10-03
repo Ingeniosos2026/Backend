@@ -1,5 +1,8 @@
 
-def test_crear_usuario(client):
+from app.capa_0_definicion_bd.models.comportamientos_modelos import Comportamiento
+
+
+def test_crear_usuario(client, db_test):
 
     response = client.post("/usuario",
         json={
@@ -23,6 +26,16 @@ def test_crear_usuario(client):
     assert datos["club"] == "Talleres"
 
     assert "contraseña" not in datos
+    comportamientos = (
+        db_test.query(Comportamiento)
+        .filter(Comportamiento.id_usuario == datos["id"])
+        .all()
+    )
+    assert {comportamiento.nombre for comportamiento in comportamientos} == {
+        "Defender",
+        "Atacar",
+        "Pasar compañero",
+    }
 
 
 def test_crear_usuario_email_invalido(client):
