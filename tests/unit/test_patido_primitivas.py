@@ -13,6 +13,7 @@ def crear_estado_partido():
     jugador_1 = JugadorEstado(
         id_jugador=1,
         id_equipo=10,
+        id_usuario=1,
         posicion=Coordenada(49, 25),
         control=50,
         agilidad=60,
@@ -23,6 +24,7 @@ def crear_estado_partido():
     jugador_2 = JugadorEstado(
         id_jugador=2,
         id_equipo=10,
+        id_usuario=1,
         posicion=Coordenada(30, 25),
         control=60,
         agilidad=50,
@@ -33,6 +35,7 @@ def crear_estado_partido():
     jugador_3 = JugadorEstado(
         id_jugador=3,
         id_equipo=20,
+        id_usuario=2,
         posicion=Coordenada(80, 25),
         control=70,
         agilidad=40,
@@ -49,6 +52,7 @@ def crear_estado_partido():
         id_equipo_derecho=20,
         cancha=cancha,
         jugadores={(1, 1): jugador_1, (1, 2): jugador_2, (2, 3): jugador_3},
+        comportamientos={},
         pelota=pelota)
 
 
