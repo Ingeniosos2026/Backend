@@ -13,7 +13,10 @@ def crear_amistoso(usuario_id: int, datos: CrearAmistoso, servicio: Servicios = 
     try:
         resultado = servicio.crear_amistoso(
             usuario_id=usuario_id,
-            jugadores_id=datos.jugadores,
+            jugadores_comportamientos=[
+                (asignacion.id_jugador, asignacion.id_comportamiento)
+                for asignacion in datos.jugadores
+            ],
             duracion=datos.duracion,
             formacion=datos.formacion,
         )
@@ -44,6 +47,11 @@ def crear_amistoso(usuario_id: int, datos: CrearAmistoso, servicio: Servicios = 
         return JSONResponse(
             status_code=404, 
             content={"error": "JUGADOR_NO_ENCONTRADO", "mensaje": "El jugador no existe o no pertenece al usuario"}
+        )
+    except ComportamientoNoEncontrado:
+        return JSONResponse(
+            status_code=404,
+            content={"error": "COMPORTAMIENTO_NO_ENCONTRADO", "mensaje": "El jugador no tiene un comportamiento válido"}
         )
     except Exception:
         return JSONResponse(

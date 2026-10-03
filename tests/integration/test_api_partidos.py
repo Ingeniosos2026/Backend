@@ -1,5 +1,6 @@
 from app.capa_0_definicion_bd.models.jugadores_modelos import Jugador
 from app.capa_0_definicion_bd.models.equipo_modelos import Equipo
+from app.capa_0_definicion_bd.models.comportamientos_modelos import Comportamiento
 
 # helper
 def crear_jugadores_test(db_test, usuario_id, cantidad=6):
@@ -34,9 +35,21 @@ def test_crear_amistoso(client, db_test):
     assert usuario.status_code == 201
     usuario_id = usuario.json()['id']
     jugadores = crear_jugadores_test(db_test, usuario_id)
+    comportamiento = (
+        db_test.query(Comportamiento)
+        .filter(Comportamiento.id_usuario == usuario_id)
+        .first()
+    )
+    assert comportamiento is not None
 
     response = client.post(f"/partido/{usuario_id}", json={
-        "jugadores": [jugador.id_jugador for jugador in jugadores],
+        "jugadores": [
+            {
+                "id_jugador": jugador.id_jugador,
+                "id_comportamiento": comportamiento.id,
+            }
+            for jugador in jugadores
+        ],
         "duracion": 5,
         "formacion": 1,
     })
@@ -52,6 +65,10 @@ def test_crear_amistoso(client, db_test):
     equipo = db_test.get(Equipo, datos["id_equipo_1"])
     assert equipo.id_usuario == usuario_id
     assert len(equipo.jugadores_amistosos) == 6
+    assert all(
+        jugador.id_comportamiento == comportamiento.id
+        for jugador in equipo.jugadores_amistosos
+    )
 
 def test_crear_amistoso_jugador_no_existente(client):
     usuario = client.post("/usuario", json={
@@ -65,7 +82,10 @@ def test_crear_amistoso_jugador_no_existente(client):
     usuario_id = usuario.json()['id']
 
     response = client.post(f"/partido/{usuario_id}", json={
-        "jugadores": [999, 1000, 1001, 1002, 1003, 1004],
+        "jugadores": [
+            {"id_jugador": id_jugador, "id_comportamiento": 1}
+            for id_jugador in [999, 1000, 1001, 1002, 1003, 1004]
+        ],
         "duracion": 5,
         "formacion": 1,
     })
@@ -87,7 +107,10 @@ def test_crear_amistoso_duracion_invalida(client):
     usuario_id = usuario.json()['id']
 
     response = client.post(f"/partido/{usuario_id}", json={
-        "jugadores": [1, 2, 3, 4, 5, 6],
+        "jugadores": [
+            {"id_jugador": id_jugador, "id_comportamiento": 1}
+            for id_jugador in [1, 2, 3, 4, 5, 6]
+        ],
         "duracion": 0,
         "formacion": 1,
     })
@@ -108,9 +131,39 @@ def test_crear_amistoso_formacion_invalida(client):
     usuario_id = usuario.json()["id"]
 
     response = client.post(f"/partido/{usuario_id}", json={
-        "jugadores": [1, 2, 3, 4, 5, 6],
+        "jugadores": [
+            {"id_jugador": id_jugador, "id_comportamiento": 1}
+            for id_jugador in [1, 2, 3, 4, 5, 6]
+        ],
         "duracion": 5,
         "formacion": 5,
     })
 
     assert response.status_code == 422
+
+def test_crear_amistoso_comportamiento_inexistente(client, db_test):
+    usuario = client.post("/usuario", json={
+        "email": "pepito@gmail.com",
+        "nombre": "Pepito",
+        "avatar": 1,
+        "contraseña": "asd123",
+        "club": "Boca"
+    })
+    usuario_id = usuario.json()["id"]
+
+    jugadores = crear_jugadores_test(db_test, usuario_id)
+
+    response = client.post(f"/partido/{usuario_id}", json={
+        "jugadores": [
+            {"id_jugador": jugador.id_jugador, "id_comportamiento": 999}
+            for jugador in jugadores
+        ],
+        "duracion": 5,
+        "formacion": 1,
+    })
+
+    assert response.status_code == 404
+    assert response.json() == {
+        "error": "COMPORTAMIENTO_NO_ENCONTRADO",
+        "mensaje": "El jugador no tiene un comportamiento válido"
+    }

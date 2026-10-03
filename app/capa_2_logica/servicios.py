@@ -7,6 +7,7 @@ from app.capa_0_definicion_bd.models.jugadores_modelos import Jugador as Jugador
 from app.capa_0_definicion_bd.models.comportamientos_modelos import Comportamiento as ComportamientoModelo
 from app.capa_0_definicion_bd.models.equipo_modelos import Equipo as EquipoModelo
 from app.capa_0_definicion_bd.models.partidos_modelos import Partido as PartidoModelo, TipoPartido, EstadoPartido, Formacion
+from app.partido.comportamientos import COMPORTAMIENTOS_PREDETERMINADOS
 from sqlalchemy.exc import IntegrityError
 from .errores import *
 from .resultados import *
@@ -74,6 +75,10 @@ class Servicios:
             contraseña=hash_contraseña,
             nombre_club=nombre_club
         )
+        nuevo_usuario.comportamientos = [
+            ComportamientoModelo(nombre=nombre_comportamiento, codigo=codigo)
+            for nombre_comportamiento, codigo in COMPORTAMIENTOS_PREDETERMINADOS
+        ]
 
         usuario = self.usuarios.crear(nuevo_usuario)
 
@@ -122,7 +127,7 @@ class Servicios:
             
         return ObtenerComportamientoResultado(comportamiento=comportamiento)
 
-    def crear_amistoso(self, usuario_id: int, duracion: int, jugadores_id: list[int], formacion: int) -> CrearPartidoResultado:
+    def crear_amistoso(self, usuario_id: int, duracion: int, jugadores_comportamientos: list[tuple[int, int]], formacion: int) -> CrearPartidoResultado:
         if duracion <= 0:
             raise DatosInvalidos()
 
@@ -131,27 +136,35 @@ class Servicios:
         except (TypeError, ValueError) as error:
             raise DatosInvalidos() from error
 
-        if len(jugadores_id) != 6:
+        if len(jugadores_comportamientos) != 6:
             raise DatosInvalidos()
 
-        if len(set(jugadores_id)) != 6:
+        ids_jugadores = [id_jugador for id_jugador, _ in jugadores_comportamientos]
+        if len(set(ids_jugadores)) != 6:
             raise DatosInvalidos()
 
         jugadores = []
-        for id_jugador in jugadores_id:
+        for id_jugador, id_comportamiento in jugadores_comportamientos:
             jugador = self.jugadores.obtener_por_id(id_jugador)
             if jugador is None or jugador.id_usuario != usuario_id:
                 raise JugadorNoEncontrado()
-            jugadores.append(jugador)
+            comportamiento = self.comportamientos.obtener_comportamiento_por_id_y_usuario(
+                id_comportamiento,
+                usuario_id,
+            )
+            if comportamiento is None:
+                raise ComportamientoNoEncontrado()
+            jugadores.append((jugador, id_comportamiento))
 
         resultado_equipo = self.crear_equipo(usuario_id=usuario_id)
         equipo = resultado_equipo.equipo
 
-        for jugador in jugadores:
+        for jugador, id_comportamiento in jugadores:
             resultado_equipo = self.agregar_jugador_a_equipo(
                 usuario_id=usuario_id,
                 id_equipo=equipo.id_equipo,
                 id_jugador=jugador.id_jugador,
+                id_comportamiento=id_comportamiento,
             )
             equipo = resultado_equipo.equipo
 
@@ -180,7 +193,7 @@ class Servicios:
         equipo = self.equipos.crear(nuevo_equipo)
         return CrearEquipoResultado(equipo=equipo)
 
-    def agregar_jugador_a_equipo(self, usuario_id: int, id_equipo: int, id_jugador: int) -> CrearEquipoResultado:
+    def agregar_jugador_a_equipo(self, usuario_id: int, id_equipo: int, id_jugador: int, id_comportamiento: int) -> CrearEquipoResultado:
         equipo = self.equipos.obtener_por_id(id_equipo)
         if equipo is None:
             raise EquipoNoEncontrado()
@@ -188,8 +201,16 @@ class Servicios:
             raise UsuarioNoEncontrado()
 
         jugador = self.jugadores.obtener_por_id(id_jugador)
-        if jugador is None:
+        if jugador is None or jugador.id_usuario != usuario_id:
             raise JugadorNoEncontrado()
+
+        comportamiento = self.comportamientos.obtener_comportamiento_por_id_y_usuario(
+            id_comportamiento,
+            usuario_id,
+        )
+        if comportamiento is None:
+            raise ComportamientoNoEncontrado()
+        jugador.comportamiento = comportamiento
 
         equipo_actualizado = self.equipos.agregar_jugador(equipo, jugador)
         return CrearEquipoResultado(equipo=equipo_actualizado)
