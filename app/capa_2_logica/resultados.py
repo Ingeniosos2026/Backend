@@ -24,6 +24,7 @@ class ObtenerComportamientoResultado:
 class ListarComportamientosResultado:
     comportamientos: List[ComportamientoModelo]
 
+@dataclass(slots=True)
 class CrearPartidoResultado:
     partido: PartidoModelo
 
