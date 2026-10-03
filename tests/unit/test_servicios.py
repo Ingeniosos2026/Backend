@@ -3,6 +3,7 @@ from unittest.mock import Mock
 import pytest
 
 from app.capa_0_definicion_bd.models.usuarios_modelos import Usuario
+from app.capa_0_definicion_bd.models.comportamientos_modelos import Comportamiento as ComportamientoModelo
 from app.capa_2_logica.errores import *
 from app.capa_2_logica.servicios import Servicios, password_hash
 from app.capa_2_logica.resultados import *
@@ -208,3 +209,42 @@ def test_login_usuario_inexistente():
     repositorio.obtener_por_email.assert_called_once_with(
         "inexistente@gmail.com"
     )
+
+def test_listar_comportamientos_exitoso():
+    repositorio_comportamiento = Mock()
+    repositorio_usuarios = Mock()
+
+    comportamiento_1 = ComportamientoModelo(
+        id_usuario=1,
+        nombre="Defender",
+        codigo="codigo defender")
+
+    comportamiento_2 = ComportamientoModelo(
+        id_usuario=1,
+        nombre="Atacar",
+        codigo="codigo atacar")
+
+    comportamiento_3 = ComportamientoModelo(
+        id_usuario=1,
+        nombre="Pasar",
+        codigo="codigo pasar")
+
+    repositorio_comportamiento.obtener_comportamientos_usuario.return_value = [comportamiento_1, comportamiento_2, comportamiento_3]
+
+    servicio = Servicios(usuarios=repositorio_usuarios, comportamientos = repositorio_comportamiento)
+
+    resultado = servicio.listar_comportamientos(1)
+
+    assert resultado.comportamientos == [comportamiento_1, comportamiento_2, comportamiento_3]
+
+def test_listar_comportamientos_sin_comportamientos():
+    repositorio_comportamiento = Mock()
+    repositorio_usuarios = Mock()
+
+    repositorio_comportamiento.obtener_comportamientos_usuario.return_value = []
+    servicio = Servicios(usuarios=repositorio_usuarios, comportamientos = repositorio_comportamiento)
+    
+    with pytest.raises(ComportamientosNoEncontrados):
+        resultado = servicio.listar_comportamientos(1)
+    
+    repositorio_comportamiento.obtener_comportamientos_usuario.assert_called_once_with(1)

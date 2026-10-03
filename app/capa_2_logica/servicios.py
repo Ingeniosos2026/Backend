@@ -20,6 +20,7 @@ class _RepoJugadoresProtocol(Protocol):
 
 class _RepoComportamientosProtocol(Protocol):
     def obtener_comportamiento_por_id_y_usuario(self, comp_id: int, usuario_id: int) -> ComportamientoModelo | None: ...
+    def obtener_comportamientos_usuario(self, usuario_id: int) -> List[ComportamientoModelo]: ...
 
 class Servicios:
     """" Servicios que implementan la logica del juego """
@@ -108,3 +109,11 @@ class Servicios:
             raise ComportamientoNoEncontrado()
             
         return ObtenerComportamientoResultado(comportamiento=comportamiento)
+    
+    def listar_comportamientos(self, usuario_id: int) -> ListarComportamientosResultado:
+        comportamientos = self.comportamientos.obtener_comportamientos_usuario(usuario_id)
+        
+        if not comportamientos:
+            raise ComportamientosNoEncontrados()
+            
+        return ListarComportamientosResultado(comportamientos=comportamientos)

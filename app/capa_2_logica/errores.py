@@ -13,3 +13,6 @@ class CredencialesInvalidas(Exception):
 
 class ComportamientoNoEncontrado(Exception):
     pass
+
+class ComportamientosNoEncontrados(Exception):
+    pass
