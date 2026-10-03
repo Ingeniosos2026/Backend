@@ -24,7 +24,7 @@ def comportamiento2(primitivas):
 comportamiento_pasar_compañero = """
 def comportamiento3(primitivas):
     compañeros = primitivas.direccionCompañeros()
-    compañero = compañero compañeros[0]
+    compañero = compañeros[0]
     
     if primitivas.pelotaCerca():
         primitivas.patear(compañero)

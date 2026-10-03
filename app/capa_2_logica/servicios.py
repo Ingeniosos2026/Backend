@@ -25,6 +25,7 @@ class _RepoJugadoresProtocol(Protocol):
 
 class _RepoComportamientosProtocol(Protocol):
     def obtener_comportamiento_por_id_y_usuario(self, comp_id: int, usuario_id: int) -> ComportamientoModelo | None: ...
+    def obtener_comportamientos_usuario(self, usuario_id: int) -> List[ComportamientoModelo]: ...
 
 class _RepoPartidosProtocol(Protocol):
     def crear(self, partido: PartidoModelo) -> PartidoModelo: ...
@@ -127,6 +128,16 @@ class Servicios:
             
         return ObtenerComportamientoResultado(comportamiento=comportamiento)
 
+    
+    def listar_comportamientos(self, usuario_id: int) -> ListarComportamientosResultado:
+        comportamientos = self.comportamientos.obtener_comportamientos_usuario(usuario_id)
+        
+        if not comportamientos:
+            raise ComportamientosNoEncontrados()
+            
+        return ListarComportamientosResultado(comportamientos=comportamientos)
+
+
     def crear_amistoso(self, usuario_id: int, duracion: int, jugadores_comportamientos: list[tuple[int, int]], formacion: int) -> CrearPartidoResultado:
         if duracion <= 0:
             raise DatosInvalidos()
@@ -214,3 +225,4 @@ class Servicios:
 
         equipo_actualizado = self.equipos.agregar_jugador(equipo, jugador)
         return CrearEquipoResultado(equipo=equipo_actualizado)
+

@@ -219,6 +219,48 @@ def test_login_usuario_inexistente():
         "inexistente@gmail.com"
     )
 
+    
+def test_listar_comportamientos_exitoso():
+    repositorio_comportamiento = Mock()
+    repositorio_usuarios = Mock()
+
+    comportamiento_1 = Comportamiento(
+        id_usuario=1,
+        nombre="Defender",
+        codigo="codigo defender")
+
+    comportamiento_2 = Comportamiento(
+        id_usuario=1,
+        nombre="Atacar",
+        codigo="codigo atacar")
+
+    comportamiento_3 = Comportamiento(
+        id_usuario=1,
+        nombre="Pasar",
+        codigo="codigo pasar")
+
+    repositorio_comportamiento.obtener_comportamientos_usuario.return_value = [comportamiento_1, comportamiento_2, comportamiento_3]
+
+    servicio = Servicios(usuarios=repositorio_usuarios, comportamientos = repositorio_comportamiento)
+
+    resultado = servicio.listar_comportamientos(1)
+
+    assert resultado.comportamientos == [comportamiento_1, comportamiento_2, comportamiento_3]
+
+    
+def test_listar_comportamientos_sin_comportamientos():
+    repositorio_comportamiento = Mock()
+    repositorio_usuarios = Mock()
+
+    repositorio_comportamiento.obtener_comportamientos_usuario.return_value = []
+    servicio = Servicios(usuarios=repositorio_usuarios, comportamientos = repositorio_comportamiento)
+    
+    with pytest.raises(ComportamientosNoEncontrados):
+        resultado = servicio.listar_comportamientos(1)
+    
+    repositorio_comportamiento.obtener_comportamientos_usuario.assert_called_once_with(1)
+
+    
 def test_crear_amistoso_correctamente():
     repo_equipos = Mock()
     repo_partidos = Mock()
@@ -298,6 +340,7 @@ def test_crear_amistoso_correctamente():
     assert repo_equipos.agregar_jugador.call_count == 6
     repo_partidos.crear.assert_called_once()
 
+    
 def test_crear_amistoso_jugador_no_encontrado():
     repo_equipos = Mock()
     repo_partidos = Mock()
@@ -319,6 +362,7 @@ def test_crear_amistoso_jugador_no_encontrado():
     repo_equipos.crear.assert_not_called()
     repo_partidos.crear.assert_not_called()
 
+    
 def test_crear_amistoso_comportamiento_no_encontrado():
     repo_equipos = Mock()
     repo_partidos = Mock()
@@ -356,6 +400,7 @@ def test_crear_amistoso_comportamiento_no_encontrado():
     repo_equipos.crear.assert_not_called()
     repo_partidos.crear.assert_not_called()
 
+    
 def test_crear_amistoso_duracion_invalida():
     repo_equipos = Mock()
     repo_partidos = Mock()
@@ -376,6 +421,7 @@ def test_crear_amistoso_duracion_invalida():
     repo_jugadores.obtener_por_id.assert_not_called()
     repo_partidos.crear.assert_not_called()
 
+    
 def test_crear_amistoso_formacion_invalida():
     repo_equipos = Mock()
     repo_partidos = Mock()
@@ -400,11 +446,13 @@ def test_crear_amistoso_formacion_invalida():
     repo_equipos.crear.assert_not_called()
     repo_partidos.crear.assert_not_called()
 
+    
 def agregar_jugador(equipo, jugador):
     equipo.jugadores_amistosos.append(jugador)
     jugador.id_equipo = equipo.id_equipo
     return equipo
 
+  
 def test_agregar_jugador_a_equipo_correctamente():
     repo_equipos = Mock()
     repo_jugadores = Mock()
@@ -455,6 +503,7 @@ def test_agregar_jugador_a_equipo_correctamente():
     repo_jugadores.obtener_por_id.assert_called_once_with(1)
     repo_equipos.agregar_jugador.assert_called_once_with(equipo, jugador)
 
+    
 def test_agregar_jugador_a_equipo_equipo_no_encontrado():
     repo_equipos = Mock()
     repo_jugadores = Mock()
@@ -471,6 +520,7 @@ def test_agregar_jugador_a_equipo_equipo_no_encontrado():
     repo_jugadores.obtener_por_id.assert_not_called()
     repo_equipos.agregar_jugador.assert_not_called()
 
+    
 def test_agregar_jugador_a_equipo_usuario_no_encontrado():
     repo_equipos = Mock()
     repo_jugadores = Mock()
@@ -492,6 +542,7 @@ def test_agregar_jugador_a_equipo_usuario_no_encontrado():
     repo_jugadores.obtener_por_id.assert_not_called()
     repo_equipos.agregar_jugador.assert_not_called()
 
+    
 def test_agregar_jugador_a_equipo_jugador_no_encontrado():
     repo_equipos = Mock()
     repo_jugadores = Mock()
@@ -514,6 +565,7 @@ def test_agregar_jugador_a_equipo_jugador_no_encontrado():
     repo_jugadores.obtener_por_id.assert_called_once_with(58)
     repo_equipos.agregar_jugador.assert_not_called()
 
+    
 def test_agregar_jugador_a_equipo_con_comportamiento():
     repo_equipos = Mock()
     repo_jugadores = Mock()
@@ -563,6 +615,7 @@ def test_agregar_jugador_a_equipo_con_comportamiento():
     repo_comportamientos.obtener_comportamiento_por_id_y_usuario.assert_called_once_with(7, 1)
     repo_equipos.agregar_jugador.assert_called_once_with(equipo, jugador)
 
+    
 def test_agregar_jugador_a_equipo_comportamiento_no_encontrado():
     repo_equipos = Mock()
     repo_jugadores = Mock()

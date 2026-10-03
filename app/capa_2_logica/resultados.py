@@ -4,6 +4,7 @@ from app.capa_0_definicion_bd.models.equipo_modelos import Equipo as EquipoModel
 from app.capa_0_definicion_bd.models.partidos_modelos import Partido as PartidoModelo
 from app.capa_0_definicion_bd.models.comportamientos_modelos import Comportamiento as ComportamientoModelo
 from dataclasses import dataclass
+from typing import List
 
 
 
@@ -20,9 +21,13 @@ class ObtenerComportamientoResultado:
     comportamiento: ComportamientoModelo
 
 @dataclass(slots=True)
+class ListarComportamientosResultado:
+    comportamientos: List[ComportamientoModelo]
+
 class CrearPartidoResultado:
     partido: PartidoModelo
 
 @dataclass(slots=True)
 class CrearEquipoResultado:
     equipo: EquipoModelo
+
