@@ -3,7 +3,14 @@ from typing import Dict, List
 
 class AdministradorConexiones:
     def __init__(self):
+        
+        # mantiene las conexiones activas por usuario_id (usuarios conectados)
+        self.conexiones_globales: Dict[int, WebSocket] = {}
+          
+        # mantiene las conexiones activas por partido_id (usuarios conectados a un partido)
         self.conexiones_activas: Dict[int, List[WebSocket]] = {}
+
+    # --- METODOS PARA PARTIDOS --- 
 
     async def conectar(self, websocket: WebSocket, partido_id: int):
         await websocket.accept() 
@@ -35,5 +42,26 @@ class AdministradorConexiones:
                 
                 except RuntimeError:
                     self.desconectar(conexion, partido_id)
+
+    # --- METODOS PARA USUARIOS ---
+
+    async def conectar_global (self, websocket: WebSocket, usuario_id: int): 
+        await websocket.accept()
+        self.conexiones_globales[usuario_id] = websocket
+
+    def desconectar_global(self, usuario_id: int):
+        if usuario_id in self.conexiones_globales:
+            del self.conexiones_globales[usuario_id] 
+
+    async def difundir (self, accion: str, payload: dict):
+        mensaje = { "action": accion, 
+                    "payload": payload
+        } 
+
+        for conexion in list(self.conexiones_globales.values()):
+            try:
+                await conexion.send_json(mensaje)
+            except RuntimeError:
+                pass 
 
 admin_conexiones = AdministradorConexiones()

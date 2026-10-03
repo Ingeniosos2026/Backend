@@ -12,3 +12,12 @@ async def websocket_endpoint(websocket: WebSocket, partido_id: int):
             data = await websocket.receive_text()
     except WebSocketDisconnect: 
         admin_conexiones.desconectar(websocket, partido_id)
+
+@ws_router.websocket("/ws/notificaciones/{usuario_id}")
+async def websocket_notificaciones(websocket: WebSocket, usuario_id: int):
+    await admin_conexiones.conectar_global(websocket, usuario_id)
+    try:
+        while True:
+            await websocket.receive_text()
+    except WebSocketDisconnect:
+        admin_conexiones.desconectar_global(usuario_id)
