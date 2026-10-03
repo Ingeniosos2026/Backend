@@ -18,3 +18,10 @@ class UsuarioRepositorio:
             .filter(UsuarioModelo.email == email)
             .first()
         )
+
+    def obtener_por_id(self, id_usuario: int) -> UsuarioModelo | None:
+        return (
+            self.db.query(UsuarioModelo)
+            .filter(UsuarioModelo.id_usuario == id_usuario)
+            .first()
+        )

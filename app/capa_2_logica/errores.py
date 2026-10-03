@@ -16,3 +16,12 @@ class ComportamientoNoEncontrado(Exception):
 
 class ComportamientosNoEncontrados(Exception):
     pass
+  
+class EquipoNoEncontrado(Exception):
+    pass
+
+class UsuarioNoEncontrado(Exception):
+    pass
+
+class JugadorNoEncontrado(Exception):
+    pass

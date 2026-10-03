@@ -10,3 +10,10 @@ class JugadorRepositorio:
         self.db.commit()
         self.db.refresh(jugador)
         return jugador
+
+    def obtener_por_id(self, id_jugador: int) -> JugadorModelo | None:
+        return (
+            self.db.query(JugadorModelo)
+            .filter(JugadorModelo.id_jugador == id_jugador)
+            .first()
+        )

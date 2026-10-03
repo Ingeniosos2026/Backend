@@ -2,7 +2,7 @@ import pytest
 from sqlalchemy.exc import IntegrityError
 from app.capa_0_definicion_bd.models.usuarios_modelos import Usuario
 from app.capa_0_definicion_bd.models.equipo_modelos import Equipo
-from app.capa_0_definicion_bd.models.partidos_modelos import Partido, TipoPartido, EstadoPartido
+from app.capa_0_definicion_bd.models.partidos_modelos import Partido, TipoPartido, EstadoPartido, Formacion
 
 def crear_escenario_partido(db_test):
     usuario_1 = Usuario(
@@ -40,6 +40,7 @@ def test_crear_partido_exitoso(db_test):
         id_equipo_1=e1.id_equipo,
         id_equipo_2=e2.id_equipo,
         duracion_partido=10,
+        formacion=Formacion.FORMACION_1,
         tipo_partido=TipoPartido.AMISTOSO,
         estado_partido=EstadoPartido.PENDIENTE
     )
@@ -56,4 +57,3 @@ def test_crear_partido_exitoso(db_test):
     assert partido.duracion_partido == 10
     assert partido.tipo_partido == TipoPartido.AMISTOSO
     assert partido.estado_partido == EstadoPartido.PENDIENTE
-

@@ -5,6 +5,9 @@ from pwdlib import PasswordHash
 from app.capa_0_definicion_bd.models.usuarios_modelos import Usuario as UsuarioModelo
 from app.capa_0_definicion_bd.models.jugadores_modelos import Jugador as JugadorModelo
 from app.capa_0_definicion_bd.models.comportamientos_modelos import Comportamiento as ComportamientoModelo
+from app.capa_0_definicion_bd.models.equipo_modelos import Equipo as EquipoModelo
+from app.capa_0_definicion_bd.models.partidos_modelos import Partido as PartidoModelo, TipoPartido, EstadoPartido, Formacion
+from app.partido.comportamientos import COMPORTAMIENTOS_PREDETERMINADOS
 from sqlalchemy.exc import IntegrityError
 from .errores import *
 from .resultados import *
@@ -14,22 +17,33 @@ password_hash = PasswordHash.recommended()
 class _RepoUsuariosProtocol(Protocol):
     def crear (self, usuario: UsuarioModelo) -> UsuarioModelo: ...
     def obtener_por_email(self, email: str) -> UsuarioModelo | None: ...
+    def obtener_por_id(self, id_usuario: int) -> UsuarioModelo | None: ...
 
 class _RepoJugadoresProtocol(Protocol):
     def crear(self, jugador: JugadorModelo) -> JugadorModelo: ...
+    def obtener_por_id(self, id_jugador: int) -> JugadorModelo | None: ...
 
 class _RepoComportamientosProtocol(Protocol):
     def obtener_comportamiento_por_id_y_usuario(self, comp_id: int, usuario_id: int) -> ComportamientoModelo | None: ...
     def obtener_comportamientos_usuario(self, usuario_id: int) -> List[ComportamientoModelo]: ...
 
+class _RepoPartidosProtocol(Protocol):
+    def crear(self, partido: PartidoModelo) -> PartidoModelo: ...
+
+class _RepoEquiposProtocol(Protocol):
+    def crear(self, equipo: EquipoModelo) -> EquipoModelo: ...
+    def obtener_por_id(self, id_equipo: int) -> EquipoModelo | None: ...
+    def agregar_jugador(self, equipo: EquipoModelo, jugador: JugadorModelo) -> EquipoModelo: ...
+
 class Servicios:
     """" Servicios que implementan la logica del juego """
 
-    def __init__(self, usuarios: _RepoUsuariosProtocol, jugadores: _RepoJugadoresProtocol = None, comportamientos: _RepoComportamientosProtocol = None ):
+    def __init__(self, usuarios: _RepoUsuariosProtocol, jugadores: _RepoJugadoresProtocol = None, comportamientos: _RepoComportamientosProtocol = None, partidos: _RepoPartidosProtocol = None, equipos: _RepoEquiposProtocol = None):
         self.usuarios = usuarios
         self.jugadores = jugadores
         self.comportamientos = comportamientos
-
+        self.partidos = partidos
+        self.equipos = equipos
     
     def email_valido(self, email: str) -> bool:
         patron = r"^[a-zA-Z0-9._%+-]+@(gmail|hotmail|outlook)\.com$"
@@ -62,6 +76,10 @@ class Servicios:
             contraseña=hash_contraseña,
             nombre_club=nombre_club
         )
+        nuevo_usuario.comportamientos = [
+            ComportamientoModelo(nombre=nombre_comportamiento, codigo=codigo)
+            for nombre_comportamiento, codigo in COMPORTAMIENTOS_PREDETERMINADOS
+        ]
 
         usuario = self.usuarios.crear(nuevo_usuario)
 
@@ -109,6 +127,7 @@ class Servicios:
             raise ComportamientoNoEncontrado()
             
         return ObtenerComportamientoResultado(comportamiento=comportamiento)
+
     
     def listar_comportamientos(self, usuario_id: int) -> ListarComportamientosResultado:
         comportamientos = self.comportamientos.obtener_comportamientos_usuario(usuario_id)
@@ -117,3 +136,93 @@ class Servicios:
             raise ComportamientosNoEncontrados()
             
         return ListarComportamientosResultado(comportamientos=comportamientos)
+
+
+    def crear_amistoso(self, usuario_id: int, duracion: int, jugadores_comportamientos: list[tuple[int, int]], formacion: int) -> CrearPartidoResultado:
+        if duracion <= 0:
+            raise DatosInvalidos()
+
+        try:
+            formacion = Formacion(formacion)
+        except (TypeError, ValueError) as error:
+            raise DatosInvalidos() from error
+
+        if len(jugadores_comportamientos) != 6:
+            raise DatosInvalidos()
+
+        ids_jugadores = [id_jugador for id_jugador, _ in jugadores_comportamientos]
+        if len(set(ids_jugadores)) != 6:
+            raise DatosInvalidos()
+
+        jugadores = []
+        for id_jugador, id_comportamiento in jugadores_comportamientos:
+            jugador = self.jugadores.obtener_por_id(id_jugador)
+            if jugador is None or jugador.id_usuario != usuario_id:
+                raise JugadorNoEncontrado()
+            comportamiento = self.comportamientos.obtener_comportamiento_por_id_y_usuario(
+                id_comportamiento,
+                usuario_id,
+            )
+            if comportamiento is None:
+                raise ComportamientoNoEncontrado()
+            jugadores.append((jugador, id_comportamiento))
+
+        resultado_equipo = self.crear_equipo(usuario_id=usuario_id)
+        equipo = resultado_equipo.equipo
+
+        for jugador, id_comportamiento in jugadores:
+            resultado_equipo = self.agregar_jugador_a_equipo(
+                usuario_id=usuario_id,
+                id_equipo=equipo.id_equipo,
+                id_jugador=jugador.id_jugador,
+                id_comportamiento=id_comportamiento,
+            )
+            equipo = resultado_equipo.equipo
+
+        nuevo_partido = PartidoModelo(
+            id_usuario_1=usuario_id,
+            id_usuario_2=None,
+            id_equipo_1=equipo.id_equipo,
+            id_equipo_2=None,
+            duracion_partido=duracion,
+            formacion=formacion,
+            tipo_partido=TipoPartido.AMISTOSO,
+            estado_partido=EstadoPartido.DISPONIBLE
+        )
+
+        partido = self.partidos.crear(nuevo_partido)
+        return CrearPartidoResultado(partido=partido)
+
+    def crear_equipo(self, usuario_id: int) -> CrearEquipoResultado:
+        nuevo_equipo = EquipoModelo(
+            id_usuario=usuario_id
+        )
+
+        usuario = self.usuarios.obtener_por_id(usuario_id)
+        if usuario is None:
+            raise UsuarioNoEncontrado()
+        equipo = self.equipos.crear(nuevo_equipo)
+        return CrearEquipoResultado(equipo=equipo)
+
+    def agregar_jugador_a_equipo(self, usuario_id: int, id_equipo: int, id_jugador: int, id_comportamiento: int) -> CrearEquipoResultado:
+        equipo = self.equipos.obtener_por_id(id_equipo)
+        if equipo is None:
+            raise EquipoNoEncontrado()
+        if equipo.id_usuario != usuario_id:
+            raise UsuarioNoEncontrado()
+
+        jugador = self.jugadores.obtener_por_id(id_jugador)
+        if jugador is None or jugador.id_usuario != usuario_id:
+            raise JugadorNoEncontrado()
+
+        comportamiento = self.comportamientos.obtener_comportamiento_por_id_y_usuario(
+            id_comportamiento,
+            usuario_id,
+        )
+        if comportamiento is None:
+            raise ComportamientoNoEncontrado()
+        jugador.comportamiento = comportamiento
+
+        equipo_actualizado = self.equipos.agregar_jugador(equipo, jugador)
+        return CrearEquipoResultado(equipo=equipo_actualizado)
+
