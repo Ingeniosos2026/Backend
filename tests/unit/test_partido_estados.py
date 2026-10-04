@@ -47,6 +47,7 @@ def test_jugador_estado():
     assert jugador.id_jugador == 1
     assert jugador.id_equipo == 10
     assert jugador.posicion == posicion
+    assert jugador.id_usuario == 1
     assert jugador.control == 50
     assert jugador.agilidad == 60
     assert jugador.fuerza == 70
@@ -106,6 +107,7 @@ def test_estado_partido():
         id_equipo_derecho=20,
         cancha=cancha,
         jugadores=jugadores,
+        comportamientos={},
         pelota=pelota)
 
     assert estado.id_usuario_izquierdo == 1
@@ -116,5 +118,6 @@ def test_estado_partido():
 
     assert estado.cancha == cancha
     assert estado.jugadores == jugadores
+    assert estado.comportamientos == {}
     assert estado.pelota == pelota
     assert estado.tiempo == 0.0

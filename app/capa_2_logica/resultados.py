@@ -32,3 +32,7 @@ class CrearPartidoResultado:
 class CrearEquipoResultado:
     equipo: EquipoModelo
 
+@dataclass(slots=True)
+class ListarAmistososResultado:
+    amistosos: List[PartidoModelo]
+

@@ -52,6 +52,7 @@ def crear_estado_partido():
         id_equipo_derecho=20,
         cancha=cancha,
         jugadores={(1, 1): jugador_1, (1, 2): jugador_2, (2, 3): jugador_3},
+        comportamientos={},
         pelota=pelota)
 
 

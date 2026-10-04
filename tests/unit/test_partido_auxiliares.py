@@ -104,6 +104,7 @@ def test_obtener_jugador():
         id_equipo_derecho=20,
         cancha=cancha,
         jugadores={(1, 1): jugador1, (2, 1): jugador2},
+        comportamientos={},
         pelota=pelota)
 
     resultado = obtener_jugador(estado, id_usuario=1, id_jugador=1)

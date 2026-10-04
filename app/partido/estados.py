@@ -57,6 +57,7 @@ class EstadoPartido:
     id_equipo_derecho: int
     cancha: Cancha
     jugadores: dict[tuple[int, int], JugadorEstado]
+    comportamientos: dict[tuple[int, int], str] 
     pelota: PelotaEstado
     tiempo: float = 0.0
     goles_izquierdo: int = 0

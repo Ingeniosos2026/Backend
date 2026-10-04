@@ -167,3 +167,35 @@ def test_crear_amistoso_comportamiento_inexistente(client, db_test):
         "error": "COMPORTAMIENTO_NO_ENCONTRADO",
         "mensaje": "El jugador no tiene un comportamiento válido"
     }
+
+def test_listar_amistosos_disponibles(client, db_test):
+    usuario = client.post("/usuario", json={
+        "email": "tomas@gmail.com",
+        "nombre": "tomas",
+        "avatar": 1,
+        "contraseña": "hola123",
+        "club": "Talleres"
+    })
+    usuario_id = usuario.json()['id']
+
+    jugadores = crear_jugadores_test(db_test, usuario_id)
+    comportamiento = db_test.query(Comportamiento).filter_by(id_usuario=usuario_id).first()
+
+    lista_partidos = client.get("/partidos")
+    assert lista_partidos.status_code == 200
+    assert len (lista_partidos.json()) == 0 # verifico que este vacia
+
+    # creo un partido
+    client.post(f"/partido/{usuario_id}", json={
+        "jugadores": [{"id_jugador": j.id_jugador, "id_comportamiento": comportamiento.id} for j in jugadores],
+        "duracion": 10,
+        "formacion": 1,
+    })
+
+    lista_partidos = client.get("/partidos")
+    assert lista_partidos.status_code == 200
+    
+    datos = lista_partidos.json()
+    assert len(datos) == 1
+    assert datos[0]["id"] is not None
+    assert datos[0]["nombre"] == "Partido de tomas"

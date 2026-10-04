@@ -1,7 +1,7 @@
 #aca se guardan los 3 comportamientos por default, un ejemplo podria ser:
 
 comportamiento_defender = """
-def comportamiento1(primitivas):
+def comportamiento(primitivas):
     arco_propio = primitivas.direccionArcoPropio()
 
     if primitivas.pelotaCerca():
@@ -12,7 +12,7 @@ def comportamiento1(primitivas):
 
 
 comportamiento_atacar = """
-def comportamiento2(primitivas):
+def comportamiento(primitivas):
     if primitivas.pelotaCerca():
         primitivas.patear(primitivas.direccionArcoRival())
         primitivas.correr(primitivas.direccionPelota())
@@ -22,7 +22,7 @@ def comportamiento2(primitivas):
 
 
 comportamiento_pasar_compañero = """
-def comportamiento3(primitivas):
+def comportamiento(primitivas):
     compañeros = primitivas.direccionCompañeros()
     compañero = compañeros[0]
     
