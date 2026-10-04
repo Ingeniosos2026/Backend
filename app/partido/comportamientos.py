@@ -33,6 +33,7 @@ def comportamiento(primitivas):
         primitivas.correr(primitivas.direccionPelota())
 """
 
+
 COMPORTAMIENTOS_PREDETERMINADOS = (
     ("Defender", comportamiento_defender),
     ("Atacar", comportamiento_atacar),
