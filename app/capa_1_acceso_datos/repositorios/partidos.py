@@ -8,7 +8,7 @@ class PartidoRepositorio:
 
     def crear(self, partido: PartidoModelo) -> PartidoModelo:
         self.db.add(partido)
-        self.db.flush()
+        self.db.commit()
         self.db.refresh(partido)
         return partido
     
