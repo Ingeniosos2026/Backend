@@ -36,6 +36,7 @@ def test_jugador_estado():
     jugador = JugadorEstado(
         id_jugador=1,
         id_equipo=10,
+        id_usuario=1,
         posicion=posicion,
         control=50,
         agilidad=60,
@@ -75,6 +76,7 @@ def test_estado_partido():
     jugador_1 = JugadorEstado(
         id_jugador=1,
         id_equipo=10,
+        id_usuario=1,
         posicion=Coordenada(20, 25),
         control=50,
         agilidad=60,
@@ -85,6 +87,7 @@ def test_estado_partido():
     jugador_2 = JugadorEstado(
         id_jugador=2,
         id_equipo=20,
+        id_usuario=2,
         posicion=Coordenada(80, 25),
         control=60,
         agilidad=50,

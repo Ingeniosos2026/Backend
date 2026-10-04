@@ -70,6 +70,7 @@ def test_obtener_jugador():
     jugador1 = JugadorEstado(
         id_jugador=1,
         id_equipo=10,
+        id_usuario=1,
         posicion=Coordenada(20, 25),
         control=50,
         agilidad=60,
@@ -80,6 +81,7 @@ def test_obtener_jugador():
     jugador2 = JugadorEstado(
         id_jugador=1,
         id_equipo=11,
+        id_usuario=2,
         posicion=Coordenada(20, 25),
         control=50,
         agilidad=60,
