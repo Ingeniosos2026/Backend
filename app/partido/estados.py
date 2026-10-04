@@ -28,6 +28,7 @@ class Cancha:
 class JugadorEstado:
     id_jugador: int
     id_equipo: int
+    id_usuario: int
 
     posicion: Coordenada
     # atributos del jugador
@@ -59,6 +60,7 @@ class EstadoPartido:
     cancha: Cancha
     
     jugadores: dict[tuple[int, int], JugadorEstado]
+    comportamientos: dict[tuple[int, int], str] 
 
     pelota: PelotaEstado
 
