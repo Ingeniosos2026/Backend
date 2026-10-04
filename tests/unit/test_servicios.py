@@ -642,3 +642,339 @@ def test_agregar_jugador_a_equipo_comportamiento_no_encontrado():
         )
 
     repo_equipos.agregar_jugador.assert_not_called()
+
+def test_unirse_amistoso_correctamente():
+    repo_equipos = Mock()
+    repo_partidos = Mock()
+    repo_usuarios = Mock()
+    repo_jugadores = Mock()
+    repo_comportamientos = Mock()
+
+    usuario = Usuario(id_usuario=2)
+
+    equipo = Equipo(id_equipo=2, id_usuario=2)
+
+    jugadores = [
+        Jugador(
+            id_jugador=id_jugador,
+            id_usuario=2,
+            id_comportamiento=7,
+            nombre_jugador=f"Jugador {id_jugador}",
+            poder=60,
+            agilidad=60,
+            control=60,
+            velocidad=60,
+            fuerza=60,
+        )
+        for id_jugador in range(1, 7)
+    ]
+
+    jugadores_por_id = {
+        jugador.id_jugador: jugador
+        for jugador in jugadores
+    }
+
+    comportamiento = Comportamiento(
+        id=7,
+        id_usuario=2,
+        nombre="Defender",
+        codigo="def comportamiento(primitivas): pass",
+    )
+
+    partido = Partido(
+        id_partido=1,
+        id_usuario_1=1,
+        id_usuario_2=None,
+        id_equipo_1=1,
+        id_equipo_2=None,
+        duracion=5,
+        formacion=1,
+        tipo_partido=TipoPartido.AMISTOSO,
+        estado_partido=EstadoPartido.DISPONIBLE,
+    )
+
+    repo_partidos.obtener_por_id.return_value = partido
+    repo_partidos.actualizar.return_value = partido
+
+    repo_usuarios.obtener_por_id.return_value = usuario
+
+    repo_jugadores.contar_jugadores_usuario.return_value = 6
+    repo_jugadores.obtener_por_id.side_effect = jugadores_por_id.get
+
+    repo_comportamientos.obtener_comportamiento_por_id_y_usuario.return_value = comportamiento
+
+    repo_equipos.crear.return_value = equipo
+    repo_equipos.obtener_por_id.return_value = equipo
+    repo_equipos.agregar_jugador.side_effect = agregar_jugador
+
+    servicio = Servicios(
+        usuarios=repo_usuarios,
+        jugadores=repo_jugadores,
+        partidos=repo_partidos,
+        equipos=repo_equipos,
+        comportamientos=repo_comportamientos,
+    )
+
+    resultado = servicio.unirse_amistoso(
+        partido_id=1,
+        usuario_id=2,
+        jugadores_comportamientos=[
+            (id_jugador, 7)
+            for id_jugador in jugadores_por_id
+        ],
+    )
+
+    assert resultado.partido == partido
+
+    assert partido.id_usuario_2 == 2
+    assert partido.id_equipo_2 == 2
+    assert partido.estado_partido == EstadoPartido.PENDIENTE
+
+    assert equipo.jugadores_amistosos == jugadores
+
+    repo_partidos.obtener_por_id.assert_called_once_with(1)
+    repo_usuarios.obtener_por_id.assert_called_once_with(2)
+    repo_jugadores.contar_jugadores_usuario.assert_called_once_with(2)
+
+    assert repo_jugadores.obtener_por_id.call_count == 6
+    assert repo_comportamientos.obtener_comportamiento_por_id_y_usuario.call_count == 6
+
+    repo_equipos.crear.assert_called_once()
+    assert repo_equipos.agregar_jugador.call_count == 6
+
+    repo_partidos.actualizar.assert_called_once_with(partido)
+
+def test_unirse_amistoso_partido_no_encontrado():
+    repo_partidos = Mock()
+    repo_usuarios = Mock()
+    repo_jugadores = Mock()
+    repo_equipos = Mock()
+
+    repo_partidos.obtener_por_id.return_value = None
+
+    servicio = Servicios(
+        usuarios=repo_usuarios,
+        jugadores=repo_jugadores,
+        partidos=repo_partidos,
+        equipos=repo_equipos,
+    )
+
+    with pytest.raises(PartidoNoEncontrado):
+        servicio.unirse_amistoso(
+            partido_id=999,
+            usuario_id=2,
+            jugadores_comportamientos=[
+                (1, 1),
+                (2, 1),
+                (3, 1),
+                (4, 1),
+                (5, 1),
+                (6, 1),
+            ],
+        )
+
+    repo_usuarios.obtener_por_id.assert_not_called()
+    repo_jugadores.contar_jugadores_usuario.assert_not_called()
+    repo_equipos.crear.assert_not_called()
+    repo_partidos.actualizar.assert_not_called()
+
+def test_unirse_amistoso_partido_no_disponible():
+    repo_partidos = Mock()
+    repo_usuarios = Mock()
+    repo_jugadores = Mock()
+    repo_equipos = Mock()
+
+    partido = Partido(
+        id_partido=1,
+        id_usuario_1=1,
+        id_usuario_2=None,
+        id_equipo_1=1,
+        id_equipo_2=None,
+        duracion=5,
+        formacion=1,
+        tipo_partido=TipoPartido.AMISTOSO,
+        estado_partido=EstadoPartido.EN_CURSO,
+    )
+
+    repo_partidos.obtener_por_id.return_value = partido
+
+    servicio = Servicios(
+        usuarios=repo_usuarios,
+        jugadores=repo_jugadores,
+        partidos=repo_partidos,
+        equipos=repo_equipos,
+    )
+
+    with pytest.raises(PartidoNoDisponible):
+        servicio.unirse_amistoso(
+            partido_id=1,
+            usuario_id=2,
+            jugadores_comportamientos=[],
+        )
+
+    repo_usuarios.obtener_por_id.assert_not_called()
+    repo_jugadores.contar_jugadores_usuario.assert_not_called()
+    repo_equipos.crear.assert_not_called()
+    repo_partidos.actualizar.assert_not_called()
+
+def test_unirse_amistoso_partido_ya_tiene_usuario_2():
+    repo_partidos = Mock()
+    repo_usuarios = Mock()
+    repo_jugadores = Mock()
+    repo_equipos = Mock()
+
+    partido = Partido(
+        id_partido=1,
+        id_usuario_1=1,
+        id_usuario_2=3,
+        id_equipo_1=1,
+        id_equipo_2=3,
+        duracion=5,
+        formacion=1,
+        tipo_partido=TipoPartido.AMISTOSO,
+        estado_partido=EstadoPartido.PENDIENTE,
+    )
+
+    repo_partidos.obtener_por_id.return_value = partido
+
+    servicio = Servicios(
+        usuarios=repo_usuarios,
+        jugadores=repo_jugadores,
+        partidos=repo_partidos,
+        equipos=repo_equipos,
+    )
+
+    with pytest.raises(PartidoNoDisponible):
+        servicio.unirse_amistoso(
+            partido_id=1,
+            usuario_id=2,
+            jugadores_comportamientos=[],
+        )
+
+    repo_usuarios.obtener_por_id.assert_not_called()
+    repo_jugadores.contar_jugadores_usuario.assert_not_called()
+    repo_equipos.crear.assert_not_called()
+
+def test_unirse_amistoso_usuario_no_encontrado():
+    repo_partidos = Mock()
+    repo_usuarios = Mock()
+    repo_jugadores = Mock()
+    repo_equipos = Mock()
+
+    partido = Partido(
+        id_partido=1,
+        id_usuario_1=1,
+        id_usuario_2=None,
+        id_equipo_1=1,
+        id_equipo_2=None,
+        duracion=5,
+        formacion=1,
+        tipo_partido=TipoPartido.AMISTOSO,
+        estado_partido=EstadoPartido.DISPONIBLE,
+    )
+
+    repo_partidos.obtener_por_id.return_value = partido
+    repo_usuarios.obtener_por_id.return_value = None
+
+    servicio = Servicios(
+        usuarios=repo_usuarios,
+        jugadores=repo_jugadores,
+        partidos=repo_partidos,
+        equipos=repo_equipos,
+    )
+
+    with pytest.raises(UsuarioNoEncontrado):
+        servicio.unirse_amistoso(
+            partido_id=1,
+            usuario_id=2,
+            jugadores_comportamientos=[],
+        )
+
+    repo_jugadores.contar_jugadores_usuario.assert_not_called()
+    repo_equipos.crear.assert_not_called()
+
+def test_unirse_amistoso_usuario_con_menos_de_6_jugadores():
+    repo_partidos = Mock()
+    repo_usuarios = Mock()
+    repo_jugadores = Mock()
+    repo_equipos = Mock()
+
+    partido = Partido(
+        id_partido=1,
+        id_usuario_1=1,
+        id_usuario_2=None,
+        id_equipo_1=1,
+        id_equipo_2=None,
+        duracion=5,
+        formacion=1,
+        tipo_partido=TipoPartido.AMISTOSO,
+        estado_partido=EstadoPartido.DISPONIBLE,
+    )
+
+    repo_partidos.obtener_por_id.return_value = partido
+    repo_usuarios.obtener_por_id.return_value = Usuario(id_usuario=2)
+    repo_jugadores.contar_jugadores_usuario.return_value = 5
+
+    servicio = Servicios(
+        usuarios=repo_usuarios,
+        jugadores=repo_jugadores,
+        partidos=repo_partidos,
+        equipos=repo_equipos,
+    )
+
+    with pytest.raises(JugadoresInsuficientes):
+        servicio.unirse_amistoso(
+            partido_id=1,
+            usuario_id=2,
+            jugadores_comportamientos=[],
+        )
+
+    repo_jugadores.obtener_por_id.assert_not_called()
+    repo_equipos.crear.assert_not_called()
+    repo_partidos.actualizar.assert_not_called()
+
+def test_unirse_amistoso_no_permite_jugadores_repetidos():
+    repo_partidos = Mock()
+    repo_usuarios = Mock()
+    repo_jugadores = Mock()
+    repo_equipos = Mock()
+
+    partido = Partido(
+        id_partido=1,
+        id_usuario_1=1,
+        id_usuario_2=None,
+        id_equipo_1=1,
+        id_equipo_2=None,
+        duracion=5,
+        formacion=1,
+        tipo_partido=TipoPartido.AMISTOSO,
+        estado_partido=EstadoPartido.DISPONIBLE,
+    )
+
+    repo_partidos.obtener_por_id.return_value = partido
+    repo_usuarios.obtener_por_id.return_value = Usuario(id_usuario=2)
+    repo_jugadores.contar_jugadores_usuario.return_value = 6
+
+    servicio = Servicios(
+        usuarios=repo_usuarios,
+        jugadores=repo_jugadores,
+        partidos=repo_partidos,
+        equipos=repo_equipos,
+    )
+
+    with pytest.raises(DatosInvalidos):
+        servicio.unirse_amistoso(
+            partido_id=1,
+            usuario_id=2,
+            jugadores_comportamientos=[
+                (1, 1),
+                (1, 1),
+                (2, 1),
+                (3, 1),
+                (4, 1),
+                (5, 1),
+            ],
+        )
+
+    repo_jugadores.obtener_por_id.assert_not_called()
+    repo_equipos.crear.assert_not_called()

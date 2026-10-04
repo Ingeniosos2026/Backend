@@ -25,3 +25,12 @@ class UsuarioNoEncontrado(Exception):
 
 class JugadorNoEncontrado(Exception):
     pass
+
+class JugadoresInsuficientes(Exception):
+    pass
+
+class PartidoNoEncontrado(Exception):
+    pass
+
+class PartidoNoDisponible(Exception):
+    pass

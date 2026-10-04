@@ -11,3 +11,6 @@ class CrearAmistoso(BaseModel):
     jugadores: list[JugadorConComportamiento]
     duracion: int
     formacion: Formacion
+
+class UnirseAmistoso(BaseModel):
+    jugadores: list[JugadorConComportamiento]

@@ -17,3 +17,10 @@ class JugadorRepositorio:
             .filter(JugadorModelo.id_jugador == id_jugador)
             .first()
         )
+
+    def contar_jugadores_usuario(self, id_usuario: int) -> int:
+        return (
+            self.db.query(JugadorModelo)
+            .filter(JugadorModelo.id_usuario == id_usuario)
+            .count()
+        )

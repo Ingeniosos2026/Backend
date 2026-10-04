@@ -1,8 +1,24 @@
+from unittest.mock import AsyncMock, Mock
+import pytest
+
 from app.capa_0_definicion_bd.models.jugadores_modelos import Jugador
 from app.capa_0_definicion_bd.models.equipo_modelos import Equipo
 from app.capa_0_definicion_bd.models.comportamientos_modelos import Comportamiento
+from app.capa_0_definicion_bd.models.partidos_modelos import EstadoPartido, TipoPartido, Partido
+from app.capa_2_logica.errores import *
+from app.capa_2_logica.resultados import CrearPartidoResultado
+from app.capa_3_api.dependencias import obtener_servicio
+from app.capa_3_api.websockets.admin_conexiones import admin_conexiones
 
-# helper
+#helper
+def crear_override_servicio(servicio):
+    def obtener_servicio_de_prueba():
+        return servicio
+
+    return obtener_servicio_de_prueba
+
+
+
 def crear_jugadores_test(db_test, usuario_id, cantidad=6):
     jugadores = [
         Jugador(
@@ -69,6 +85,170 @@ def test_crear_amistoso(client, db_test):
         jugador.id_comportamiento == comportamiento.id
         for jugador in equipo.jugadores_amistosos
     )
+
+# esto sirve para ejecutar el test con toddos los tipos de peticiones
+@pytest.mark.parametrize(
+    ("scheme", "expected_scheme"),
+    [("http", "ws"), ("https", "wss")],
+)
+def test_crear_amistoso_devuelve_url_websocket_con_esquema_correcto(client,scheme,expected_scheme):
+    partido = Partido(
+        id_partido=51,
+        id_usuario_1=10,
+        id_usuario_2=None,
+        id_equipo_1=20,
+        id_equipo_2=None,
+        duracion_partido=5,
+        formacion=1,
+        tipo_partido=TipoPartido.AMISTOSO,
+        estado_partido=EstadoPartido.DISPONIBLE,
+    )
+    servicio = Mock()
+    servicio.crear_amistoso.return_value = CrearPartidoResultado(partido=partido)
+    client.app.dependency_overrides[obtener_servicio] = crear_override_servicio(servicio)
+
+    secure_client = client if scheme == "http" else client.__class__(
+        client.app,
+        base_url=f"{scheme}://testserver",
+    )
+    response = secure_client.post("/partido/10", json={
+        "jugadores": [
+            {"id_jugador": jugador_id, "id_comportamiento": 1}
+            for jugador_id in range(1, 7)
+        ],
+        "duracion": 5,
+        "formacion": 1,
+    })
+
+    assert response.status_code == 201
+    assert response.json()["websocket_url"] == (
+        f"{expected_scheme}://testserver/ws/amistoso/51"
+    )
+
+
+@pytest.mark.parametrize(
+    ("error", "status_code", "error_code"),
+    [
+        (DatosInvalidos, 400, "DATOS_INVALIDOS"),
+        (EquipoNoEncontrado, 404, "EQUIPO_NO_ENCONTRADO"),
+        (JugadorNoEncontrado, 404, "JUGADOR_NO_ENCONTRADO"),
+        (ComportamientoNoEncontrado, 404, "COMPORTAMIENTO_NO_ENCONTRADO"),
+        (RuntimeError, 500, "ERROR_INTERNO"),
+    ],
+)
+def test_crear_amistoso_mapea_errores_del_servicio(client, error, status_code, error_code):
+    servicio = Mock()
+    servicio.crear_amistoso.side_effect = error()
+    client.app.dependency_overrides[obtener_servicio] = crear_override_servicio(servicio)
+
+    response = client.post("/partido/10", json={
+        "jugadores": [
+            {"id_jugador": jugador_id, "id_comportamiento": 1}
+            for jugador_id in range(1, 7)
+        ],
+        "duracion": 5,
+        "formacion": 1,
+    })
+
+    assert response.status_code == status_code
+    assert response.json()["error"] == error_code
+
+
+def test_unirse_amistoso_emite_evento_y_devuelve_partido(client, db_test):
+    creador = client.post("/usuario", json={
+        "email": "pepito@gmail.com",
+        "nombre": "Pepito",
+        "avatar": 1,
+        "contraseña": "asd123",
+        "club": "Boca"
+    })
+    usuario_id_1 = creador.json()["id"]
+    jugadores_1 = crear_jugadores_test(db_test, usuario_id_1)
+    comportamiento_1 = db_test.query(Comportamiento).filter_by(
+        id_usuario=usuario_id_1
+    ).first()
+
+    partido = client.post(f"/partido/{usuario_id_1}", json={
+        "jugadores": [
+            {
+                "id_jugador": jugador.id_jugador,
+                "id_comportamiento": comportamiento_1.id,
+            }
+            for jugador in jugadores_1
+        ],
+        "duracion": 5,
+        "formacion": 1,
+    })
+
+    assert partido.status_code == 201
+    websocket_url = partido.json()["websocket_url"]
+
+    usuario_2 = client.post("/usuario", json={
+        "email": "tomi@gmail.com",
+        "nombre": "tomi",
+        "avatar": 2,
+        "contraseña": "asd123",
+        "club": "Talleres"
+    })
+    usuario_id_2 = usuario_2.json()["id"]
+    jugadores_2 = crear_jugadores_test(db_test, usuario_id_2)
+    comportamiento_2 = db_test.query(Comportamiento).filter_by(
+        id_usuario=usuario_id_2
+    ).first()
+
+    with client.websocket_connect(websocket_url) as websocket:
+        response = client.put(
+            f"/partido/{partido.json()['id_partido']}/unirse/{usuario_id_2}",
+            json={
+                "jugadores": [
+                    {
+                        "id_jugador": jugador.id_jugador,
+                        "id_comportamiento": comportamiento_2.id,
+                    }
+                    for jugador in jugadores_2
+                ],
+            },
+        )
+
+        assert response.status_code == 200
+        assert response.json()["id_usuario_2"] == usuario_id_2
+        assert response.json()["estado"] == "PENDIENTE"
+        assert websocket.receive_json() == {
+            "action": "usuario_unido",
+            "payload": {"usuario_id": usuario_id_2},
+        }
+
+
+@pytest.mark.parametrize(
+    ("error", "status_code", "error_code"),
+    [
+        (PartidoNoEncontrado, 404, "PARTIDO_NO_ENCONTRADO"),
+        (PartidoNoDisponible, 409, "PARTIDO_NO_DISPONIBLE"),
+        (UsuarioNoEncontrado, 404, "USUARIO_NO_ENCONTRADO"),
+        (JugadoresInsuficientes, 400, "JUGADORES_INSUFICIENTES"),
+        (DatosInvalidos, 400, "DATOS_INVALIDOS"),
+        (JugadorNoEncontrado, 404, "JUGADOR_NO_ENCONTRADO"),
+        (ComportamientoNoEncontrado, 404, "COMPORTAMIENTO_NO_ENCONTRADO"),
+    ],
+)
+def test_unirse_amistoso_mapea_errores_y_no_emite_evento(client, monkeypatch, error, status_code, error_code):
+    servicio = Mock()
+    servicio.unirse_amistoso.side_effect = error()
+    client.app.dependency_overrides[obtener_servicio] = crear_override_servicio(servicio)
+    emitir_lobby = AsyncMock()
+    monkeypatch.setattr(admin_conexiones, "emitir_lobby", emitir_lobby)
+
+    response = client.put("/partido/51/unirse/10", json={
+        "jugadores": [
+            {"id_jugador": jugador_id, "id_comportamiento": 1}
+            for jugador_id in range(1, 7)
+        ],
+    })
+
+    assert response.status_code == status_code
+    assert response.json()["error"] == error_code
+    emitir_lobby.assert_not_awaited()
+
 
 def test_crear_amistoso_jugador_no_existente(client):
     usuario = client.post("/usuario", json={
@@ -199,3 +379,17 @@ def test_listar_amistosos_disponibles(client, db_test):
     assert len(datos) == 1
     assert datos[0]["id"] is not None
     assert datos[0]["nombre"] == "Partido de tomas"
+
+
+def test_listar_amistosos_disponibles_devuelve_error_interno(client):
+    servicio = Mock()
+    servicio.listar_amistosos_disponibles.side_effect = RuntimeError("fallo")
+    client.app.dependency_overrides[obtener_servicio] = crear_override_servicio(servicio)
+
+    response = client.get("/partidos")
+
+    assert response.status_code == 500
+    assert response.json() == {
+        "error": "ERROR_INTERNO",
+        "mensaje": "Ocurrió un error interno del servidor",
+    }

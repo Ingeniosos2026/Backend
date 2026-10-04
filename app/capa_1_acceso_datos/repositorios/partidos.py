@@ -21,3 +21,15 @@ class PartidoRepositorio:
             )
             .all()
         )
+
+    def obtener_por_id(self, id_partido: int) -> PartidoModelo | None:
+        return (
+            self.db.query(PartidoModelo)
+            .filter(PartidoModelo.id_partido == id_partido)
+            .first()
+        )
+
+    def actualizar(self, partido: PartidoModelo) -> PartidoModelo:
+        self.db.flush()
+        self.db.refresh(partido)
+        return partido
