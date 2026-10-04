@@ -58,3 +58,23 @@ def crear_amistoso(usuario_id: int, datos: CrearAmistoso, servicio: Servicios = 
             status_code=500, 
             content={"error": "ERROR_INTERNO", "mensaje": "Ocurrió un error interno del servidor"}
         )
+    
+@partido_router.get("/partidos", status_code=status.HTTP_200_OK)
+def listar_amistosos_disponibles(servicio: Servicios = Depends(obtener_servicio)):
+    try:
+        resultado = servicio.listar_amistosos_disponibles()
+        return [
+            {
+                "id": partido.id_partido,
+                "nombre": f"Partido de {partido.usuario_1.nombre}",
+            }
+            for partido in resultado.amistosos
+        ]
+    except Exception:
+        return JSONResponse(
+            status_code=500, 
+            content={
+                "error": "ERROR_INTERNO", 
+                "mensaje": "Ocurrió un error interno del servidor"
+            }
+        )

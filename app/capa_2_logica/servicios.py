@@ -29,6 +29,7 @@ class _RepoComportamientosProtocol(Protocol):
 
 class _RepoPartidosProtocol(Protocol):
     def crear(self, partido: PartidoModelo) -> PartidoModelo: ...
+    def obtener_amistosos_disponibles(self) -> list[PartidoModelo]: ...
 
 class _RepoEquiposProtocol(Protocol):
     def crear(self, equipo: EquipoModelo) -> EquipoModelo: ...
@@ -226,3 +227,6 @@ class Servicios:
         equipo_actualizado = self.equipos.agregar_jugador(equipo, jugador)
         return CrearEquipoResultado(equipo=equipo_actualizado)
 
+    def listar_amistosos_disponibles(self) -> ListarAmistososResultado:
+        amistosos = self.partidos.obtener_partidos_amistosos_disponibles()
+        return ListarAmistososResultado(amistosos=amistosos)
