@@ -59,7 +59,7 @@ def crear_estado_partido():
 def test_correr():
     estado = crear_estado_partido()
 
-    primitivas = Primitivas(estado=estado, id_usuario=1, id_jugador=1)
+    primitivas = Primitivas(estado=estado, id_usuario=1, id_jugador=1, eventos=[])
 
     destino = Coordenada(50, 30)
 
@@ -73,7 +73,7 @@ def test_correr():
 def test_correr_destino_fuera_de_cancha():
     estado = crear_estado_partido()
 
-    primitivas = Primitivas(estado=estado, id_usuario=1, id_jugador=1)
+    primitivas = Primitivas(estado=estado, id_usuario=1, id_jugador=1, eventos=[])
 
     destino = Coordenada(101, 30)
 
@@ -83,8 +83,8 @@ def test_correr_destino_fuera_de_cancha():
 
 def test_patear():
     estado = crear_estado_partido()
-
-    primitivas = Primitivas(estado=estado, id_usuario=1, id_jugador=1)
+    eventos = []
+    primitivas = Primitivas(estado=estado, id_usuario=1, id_jugador=1, eventos=eventos)
 
     direccion = Coordenada(100, 25)
 
@@ -95,13 +95,17 @@ def test_patear():
     assert estado.pelota.velocidad.y == pytest.approx(0)
     assert estado.jugadores[(1, 1)].ultimo_pateo == estado.tiempo
 
+    assert eventos[0].id_jugador == 1
+    assert eventos[0].id_usuario == 1   
+    assert eventos[0].accion == "pateando"
+
 
 def test_patear_pelota_fuera_de_alcance():
     estado = crear_estado_partido()
 
     estado.pelota.posicion = Coordenada(55, 25)
 
-    primitivas = Primitivas(estado=estado, id_usuario=1, id_jugador=1)
+    primitivas = Primitivas(estado=estado, id_usuario=1, id_jugador=1, eventos=[])
 
     direccion = Coordenada(100, 25)
 
@@ -114,7 +118,7 @@ def test_patear_pelota_fuera_de_alcance():
 def test_patear_direccion_invalida():
     estado = crear_estado_partido()
 
-    primitivas = Primitivas(estado=estado, id_usuario=1, id_jugador=1)
+    primitivas = Primitivas(estado=estado, id_usuario=1, id_jugador=1, eventos=[])
 
     resultado = primitivas.patear(Coordenada(50, 25))
 
@@ -126,7 +130,7 @@ def test_direccion_pelota():
 
     estado.pelota.posicion = Coordenada(40, 30)
 
-    primitivas = Primitivas(estado=estado, id_usuario=1, id_jugador=1)
+    primitivas = Primitivas(estado=estado, id_usuario=1, id_jugador=1, eventos=[])
 
     resultado = primitivas.direccionPelota()
 
@@ -136,7 +140,7 @@ def test_direccion_pelota():
 def test_direccion_compañeros():
     estado = crear_estado_partido()
 
-    primitivas = Primitivas(estado=estado, id_usuario=1, id_jugador=1)
+    primitivas = Primitivas(estado=estado, id_usuario=1, id_jugador=1, eventos=[])
 
     resultado = primitivas.direccionCompañeros()
 
@@ -147,7 +151,7 @@ def test_direccion_compañeros():
 def test_direccion_rivales():
     estado = crear_estado_partido()
 
-    primitivas = Primitivas(estado=estado, id_usuario=1, id_jugador=1)
+    primitivas = Primitivas(estado=estado, id_usuario=1, id_jugador=1, eventos=[])
 
     resultado = primitivas.direccionRivales()
 
@@ -158,7 +162,7 @@ def test_direccion_rivales():
 def test_pelota_cerca():
     estado = crear_estado_partido()
 
-    primitivas = Primitivas(estado=estado, id_usuario=1, id_jugador=1)
+    primitivas = Primitivas(estado=estado, id_usuario=1, id_jugador=1, eventos=[])
 
     assert primitivas.pelotaCerca() is True
 
@@ -168,7 +172,7 @@ def test_pelota_lejos():
 
     estado.pelota.posicion = Coordenada(60, 25)
 
-    primitivas = Primitivas(estado=estado, id_usuario=1, id_jugador=1)
+    primitivas = Primitivas(estado=estado, id_usuario=1, id_jugador=1, eventos=[])
 
     assert primitivas.pelotaCerca() is False
 
@@ -176,7 +180,7 @@ def test_pelota_lejos():
 def test_direccion_arco_rival():
     estado = crear_estado_partido()
 
-    primitivas = Primitivas(estado=estado, id_usuario=1, id_jugador=1)
+    primitivas = Primitivas(estado=estado, id_usuario=1, id_jugador=1, eventos=[])
 
     resultado = primitivas.direccionArcoRival()
 
@@ -186,7 +190,7 @@ def test_direccion_arco_rival():
 def test_direccion_arco_propio():
     estado = crear_estado_partido()
 
-    primitivas = Primitivas(estado=estado, id_usuario=1, id_jugador=1)
+    primitivas = Primitivas(estado=estado, id_usuario=1, id_jugador=1, eventos=[])
 
     resultado = primitivas.direccionArcoPropio()
 
@@ -196,7 +200,7 @@ def test_direccion_arco_propio():
 def test_direccion_arco_rival_usuario_derecho():
     estado = crear_estado_partido()
 
-    primitivas = Primitivas(estado=estado, id_usuario=2, id_jugador=3)
+    primitivas = Primitivas(estado=estado, id_usuario=2, id_jugador=3, eventos=[])
 
     resultado = primitivas.direccionArcoRival()
 
@@ -206,7 +210,7 @@ def test_direccion_arco_rival_usuario_derecho():
 def test_direccion_arco_propio_usuario_derecho():
     estado = crear_estado_partido()
 
-    primitivas = Primitivas(estado=estado, id_usuario=2, id_jugador=3)
+    primitivas = Primitivas(estado=estado, id_usuario=2, id_jugador=3, eventos=[])
 
     resultado = primitivas.direccionArcoPropio()
 
