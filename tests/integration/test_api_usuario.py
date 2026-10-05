@@ -92,7 +92,7 @@ def test_login_usuario_correcto(client):
     usuario_id = crear_respuesta.json()["id"]
 
     response = client.put(
-        "/usuario/login",
+        "/usuario",
         json={
             "email": datos["email"],
             "contraseña": datos["contraseña"]
@@ -121,7 +121,7 @@ def test_login_usuario_contraseña_incorrecta(client):
     assert crear_respuesta.status_code == 201
 
     response = client.put(
-        "/usuario/login",
+        "/usuario",
         json={
             "email": datos["email"],
             "contraseña": "contraseña-incorrecta"
@@ -138,7 +138,7 @@ def test_login_usuario_contraseña_incorrecta(client):
 def test_login_usuario_email_inexistente(client):
 
     response = client.put(
-        "/usuario/login",
+        "/usuario",
         json={
             "email": "inexistente@gmail.com",
             "contraseña": "asd123"

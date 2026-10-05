@@ -305,3 +305,22 @@ class Servicios:
     def listar_jugadores_disponibles(self, usuario_id: int) -> ListarJugadoresResultado:
         jugadores = self.jugadores.obtener_jugadores_disponibles(usuario_id)
         return ListarJugadoresResultado(jugadores=jugadores)
+
+    def iniciar_partido(self, partido_id: int, usuario_id: int) -> PartidoResultado:
+
+        partido = self.partidos.obtener_por_id(partido_id)
+
+        if partido is None:
+            raise AmistosoNoEncontrado()
+
+        if partido.id_usuario_1 != usuario_id:
+            raise IniciarNoPermitido()
+
+        if partido.estado_partido != EstadoPartido.PENDIENTE:
+            raise AmistosoNoPuedeIniciar()
+
+        partido.estado_partido = EstadoPartido.EN_CURSO
+
+        self.partidos.actualizar(partido)
+
+        return PartidoResultado(partido=partido)
