@@ -235,7 +235,7 @@ class Servicios:
         amistosos = self.partidos.obtener_partidos_amistosos_disponibles()
         return ListarAmistososResultado(amistosos=amistosos)
 
-    def unirse_amistoso(self, partido_id: int, usuario_id: int, jugadores_comportamientos: list[tuple[int, int]], formacion: Formacion) -> CrearPartidoResultado:
+    def unirse_amistoso(self, partido_id: int, usuario_id: int, jugadores_comportamientos: list[tuple[int, int]], formacion: Formacion) -> UnirseAmistosoResultado:
         try:
             formacion = Formacion(formacion)
         except (TypeError, ValueError) as error:
@@ -299,4 +299,4 @@ class Servicios:
 
         partido = self.partidos.actualizar(partido)
 
-        return CrearPartidoResultado(partido=partido)
+        return UnirseAmistosoResultado(partido=partido, usuario_unido=usuario)

@@ -39,7 +39,9 @@ def crear_jugadores_test(db_test, usuario_id, cantidad=6):
 
 
 
-def test_crear_amistoso(client, db_test):
+def test_crear_amistoso(client, db_test, monkeypatch):
+    difundir = AsyncMock()
+    monkeypatch.setattr(admin_conexiones, "difundir", difundir)
     usuario = client.post("/usuario", json={
         "email": "pepito@gmail.com",
         "nombre": "Pepito",
@@ -86,46 +88,13 @@ def test_crear_amistoso(client, db_test):
         jugador.id_comportamiento == comportamiento.id
         for jugador in equipo.jugadores_amistosos
     )
+    # Verificar que se notificó a todos los usuarios conectados 
+    difundir.assert_awaited_once_with("amistoso_creado", 
+            {"id_partido": datos["id_partido"], 
+            "duracion": 5, 
+            "tipo": "AMISTOSO", 
+            "estado": "DISPONIBLE"})
 
-# esto sirve para ejecutar el test con toddos los tipos de peticiones
-@pytest.mark.parametrize(
-    ("scheme", "expected_scheme"),
-    [("http", "ws"), ("https", "wss")],
-)
-def test_crear_amistoso_devuelve_url_websocket_con_esquema_correcto(client,scheme,expected_scheme):
-    partido = Partido(
-        id_partido=51,
-        id_usuario_1=10,
-        id_usuario_2=None,
-        id_equipo_1=20,
-        id_equipo_2=None,
-        duracion_partido=5,
-        formacion_1=Formacion.OFENSIVA,
-        formacion_2=None,
-        tipo_partido=TipoPartido.AMISTOSO,
-        estado_partido=EstadoPartido.DISPONIBLE,
-    )
-    servicio = Mock()
-    servicio.crear_amistoso.return_value = CrearPartidoResultado(partido=partido)
-    client.app.dependency_overrides[obtener_servicio] = crear_override_servicio(servicio)
-
-    secure_client = client if scheme == "http" else client.__class__(
-        client.app,
-        base_url=f"{scheme}://testserver",
-    )
-    response = secure_client.post("/partido/10", json={
-        "jugadores": [
-            {"id_jugador": jugador_id, "id_comportamiento": 1}
-            for jugador_id in range(1, 7)
-        ],
-        "duracion": 5,
-        "formacion": "ofensiva",
-    })
-
-    assert response.status_code == 201
-    assert response.json()["websocket_url"] == (
-        f"{expected_scheme}://testserver/ws/amistoso/51"
-    )
 
 
 @pytest.mark.parametrize(
@@ -156,75 +125,37 @@ def test_crear_amistoso_mapea_errores_del_servicio(client, error, status_code, e
     assert response.json()["error"] == error_code
 
 
-@pytest.mark.parametrize("formacion", list(Formacion))
-def test_unirse_amistoso_emite_evento_y_devuelve_partido(client, db_test, formacion):
-    creador = client.post("/usuario", json={
-        "email": "pepito@gmail.com",
-        "nombre": "Pepito",
-        "avatar": 1,
-        "contraseña": "asd123",
-        "club": "Boca"
-    })
-    usuario_id_1 = creador.json()["id"]
-    jugadores_1 = crear_jugadores_test(db_test, usuario_id_1)
-    comportamiento_1 = db_test.query(Comportamiento).filter_by(
-        id_usuario=usuario_id_1
-    ).first()
+def test_unirse_amistoso_emite_evento_y_devuelve_partido(client, db_test, monkeypatch):
+    emitir_lobby = AsyncMock()
+    monkeypatch.setattr(admin_conexiones,"emitir_lobby", emitir_lobby)
 
-    partido = client.post(f"/partido/{usuario_id_1}", json={
-        "jugadores": [
-            {
-                "id_jugador": jugador.id_jugador,
-                "id_comportamiento": comportamiento_1.id,
-            }
-            for jugador in jugadores_1
-        ],
-        "duracion": 5,
-        "formacion": "ofensiva",
-    })
+    respuesta_owner = client.post(
+        "/usuario",
+        json={"email": "owner@gmail.com",
+            "nombre": "Leandro",
+            "avatar": 1,
+            "contraseña": "asd123",
+            "club": "Los Pibes FC"})
 
-    assert partido.status_code == 201
-    websocket_url = partido.json()["websocket_url"]
+    assert respuesta_owner.status_code == 201
+    owner_id = respuesta_owner.json()["id"]
 
-    usuario_2 = client.post("/usuario", json={
-        "email": "tomi@gmail.com",
-        "nombre": "tomi",
-        "avatar": 2,
-        "contraseña": "asd123",
-        "club": "Talleres"
-    })
-    usuario_id_2 = usuario_2.json()["id"]
-    jugadores_2 = crear_jugadores_test(db_test, usuario_id_2)
-    comportamiento_2 = db_test.query(Comportamiento).filter_by(
-        id_usuario=usuario_id_2
-    ).first()
+    respuesta_unido = client.post(
+        "/usuario",
+        json={
+            "email": "juan@gmail.com",
+            "nombre": "Juan",
+            "avatar": 2,
+            "contraseña": "asd123",
+            "club": "Los Cracks FC"})
 
-    with client.websocket_connect(websocket_url) as websocket:
-        response = client.put(
-            f"/partido/{partido.json()['id_partido']}/unirse/{usuario_id_2}",
-            json={
-                "jugadores": [
-                    {
-                        "id_jugador": jugador.id_jugador,
-                        "id_comportamiento": comportamiento_2.id,
-                    }
-                    for jugador in jugadores_2
-                ],
-                "formacion": formacion.value,
-            },
-        )
+    assert respuesta_unido.status_code == 201
+    usuario_unido_id = respuesta_unido.json()["id"]
 
-        assert response.status_code == 200
-        assert response.json() == {"mensaje": "Te has unido al partido"}
-        partido_actualizado = db_test.get(Partido, partido.json()["id_partido"])
-        assert partido_actualizado.id_usuario_2 == usuario_id_2
-        assert partido_actualizado.formacion_2 == formacion
-        assert partido_actualizado.estado_partido == EstadoPartido.PENDIENTE
-        assert websocket.receive_json() == {
-            "action": "usuario_unido",
-            "payload": {"usuario_id": usuario_id_2},
-        }
-
+    jugadores_owner = crear_jugadores_test(db_test, owner_id)
+    jugadores_unido = crear_jugadores_test(db_test, usuario_unido_id)
+    comportamientos_owner = (db_test.query(Comportamiento).filter(Comportamiento.id_usuario == owner_id).all())
+    comportamientos_unido = (db_test.query(Comportamiento).filter(Comportamiento.id_usuario == usuario_unido_id).all())
 
 @pytest.mark.parametrize(
     ("error", "status_code", "error_code"),

@@ -10,7 +10,7 @@ from app.capa_3_api.websockets.admin_conexiones import admin_conexiones
 partido_router = APIRouter()
 
 @partido_router.post("/partido/{usuario_id}", status_code=status.HTTP_201_CREATED)
-def crear_amistoso(usuario_id: int, datos: CrearAmistoso, request: Request, servicio: Servicios = Depends(obtener_servicio)):
+async def crear_amistoso(usuario_id: int, datos: CrearAmistoso, servicio: Servicios = Depends(obtener_servicio)):
     try:
         resultado = servicio.crear_amistoso(
             usuario_id=usuario_id,
@@ -23,25 +23,6 @@ def crear_amistoso(usuario_id: int, datos: CrearAmistoso, request: Request, serv
         )
         partido_bd = resultado.partido
 
-        #esto arma la url del ws. si el request es http usa ws://, si es https usa wss://
-        websocket_url = request.url_for(
-            "websocket_amistoso",
-            partido_id=partido_bd.id_partido,
-        ).replace(scheme="wss" if request.url.scheme == "https" else "ws")
-
-        return {
-            "id_partido": partido_bd.id_partido,
-            "id_usuario_1": partido_bd.id_usuario_1,
-            "id_usuario_2": partido_bd.id_usuario_2,
-            "id_equipo_1": partido_bd.id_equipo_1,
-            "id_equipo_2": partido_bd.id_equipo_2,
-            "duracion": partido_bd.duracion_partido,
-            "formacion_1": partido_bd.formacion_1,
-            "formacion_2": partido_bd.formacion_2,
-            "tipo": partido_bd.tipo_partido.name,
-            "estado": partido_bd.estado_partido.name,
-            "websocket_url": str(websocket_url),
-        }
     except DatosInvalidos:
         return JSONResponse(
             status_code=400, 
@@ -68,11 +49,29 @@ def crear_amistoso(usuario_id: int, datos: CrearAmistoso, request: Request, serv
             content={"error": "ERROR_INTERNO", "mensaje": "Ocurrió un error interno del servidor"}
         )
 
+    await admin_conexiones.difundir("amistoso_creado", 
+        {"id_partido": partido_bd.id_partido,
+        "duracion": partido_bd.duracion_partido,
+        "tipo": partido_bd.tipo_partido.name,
+        "estado": partido_bd.estado_partido.name})
+
+    return {
+            "id_partido": partido_bd.id_partido,
+            "id_usuario_1": partido_bd.id_usuario_1,
+            "id_usuario_2": partido_bd.id_usuario_2,
+            "id_equipo_1": partido_bd.id_equipo_1,
+            "id_equipo_2": partido_bd.id_equipo_2,
+            "duracion": partido_bd.duracion_partido,
+            "formacion_1": partido_bd.formacion_1,
+            "formacion_2": partido_bd.formacion_2,
+            "tipo": partido_bd.tipo_partido.name,
+            "estado": partido_bd.estado_partido.name
+        }
 
 @partido_router.put("/partido/{partido_id}/unirse/{usuario_id}", status_code=status.HTTP_200_OK)
 async def unirse_amistoso(partido_id: int, usuario_id: int, datos: UnirseAmistoso, servicio: Servicios = Depends(obtener_servicio)):
     try:
-        servicio.unirse_amistoso(
+        resultado = servicio.unirse_amistoso(
             partido_id=partido_id,
             usuario_id=usuario_id,
             jugadores_comportamientos=[
@@ -82,10 +81,17 @@ async def unirse_amistoso(partido_id: int, usuario_id: int, datos: UnirseAmistos
             formacion=datos.formacion
         )
 
+        partido = resultado.partido
+        usuario_unido = resultado.usuario_unido
+
         await admin_conexiones.emitir_lobby(
             partido_id,
             "usuario_unido",
-            {"usuario_id": usuario_id},
+            {"owner": {"nombre": partido.usuario_1.nombre,
+                       "club": partido.usuario_1.nombre_club},
+            "usuario_unido": {"nombre": usuario_unido.nombre,
+                              "club": usuario_unido.nombre_club}
+            }
         )
 
         return {"mensaje": "Te has unido al partido"}
