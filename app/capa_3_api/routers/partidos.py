@@ -209,6 +209,8 @@ async def iniciar_partido(partido_id: int, usuario_id: int, servicio: Servicios 
             }
         )
     
+    await admin_conexiones.emitir_lobby(partido_id, "iniciar_partido", {})
+
     #devuelvo el tamaño de la cancha y las posiciones de los arcos, esto lo mando una vez ya que es fijo
 
     return {"mensaje": "Partido amistoso iniciado", "id_partido": partido.id_partido,

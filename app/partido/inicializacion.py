@@ -72,7 +72,8 @@ def obtener_posiciones_formacion(formacion: Formacion, lado: str, cancha: Cancha
 
 
 def crear_jugadores_estado(jugadores: list[Jugador], id_usuario: int, id_equipo: int, posiciones: list[Coordenada]):
-    titulares = [jugador for jugador in jugadores if jugador.estado == EstadoJugador.TITULAR]
+    # titulares = [jugador for jugador in jugadores if jugador.estado == EstadoJugador.TITULAR]
+    titulares = jugadores[:3]
 
     if len(titulares) != 3:
         raise ValueError("un equipo debe tener exactamente 3 jugadores titulares")
