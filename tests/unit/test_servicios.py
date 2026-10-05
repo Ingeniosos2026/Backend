@@ -307,7 +307,8 @@ def test_crear_amistoso_correctamente():
         id_equipo_1=1,
         id_equipo_2=None,
         duracion=5,
-        formacion=Formacion.FORMACION_1,
+        formacion_1=Formacion.OFENSIVA,
+        formacion_2=None,
         tipo=TipoPartido.AMISTOSO,
         estado=EstadoPartido.DISPONIBLE
     )
@@ -321,14 +322,15 @@ def test_crear_amistoso_correctamente():
             (id_jugador, 7) for id_jugador in jugadores_por_id
         ],
         duracion=5,
-        formacion=Formacion.FORMACION_1,
+        formacion=Formacion.OFENSIVA,
     )
 
     assert resultado.partido == partido_nuevo
     assert partido_nuevo.id_usuario_1 == 1
     assert partido_nuevo.id_equipo_1 == 1
     assert partido_nuevo.duracion == 5
-    assert partido_nuevo.formacion == Formacion.FORMACION_1
+    assert partido_nuevo.formacion_1 == Formacion.OFENSIVA
+    assert partido_nuevo.formacion_2 is None
     assert partido_nuevo.id_usuario_2 is None
     assert partido_nuevo.id_equipo_2 is None
     assert partido_nuevo.tipo == TipoPartido.AMISTOSO
@@ -356,7 +358,7 @@ def test_crear_amistoso_jugador_no_encontrado():
             usuario_id=1,
             jugadores_comportamientos=[(id_jugador, 7) for id_jugador in range(1, 7)],
             duracion=5,
-            formacion=Formacion.FORMACION_1,
+            formacion=Formacion.OFENSIVA,
         )
 
     repo_equipos.crear.assert_not_called()
@@ -394,7 +396,7 @@ def test_crear_amistoso_comportamiento_no_encontrado():
             usuario_id=1,
             jugadores_comportamientos=[(id_jugador, 999) for id_jugador in range(1, 7)],
             duracion=5,
-            formacion=Formacion.FORMACION_1,
+            formacion=Formacion.OFENSIVA,
         )
 
     repo_equipos.crear.assert_not_called()
@@ -414,7 +416,7 @@ def test_crear_amistoso_duracion_invalida():
             usuario_id=1,
             jugadores_comportamientos=[],
             duracion=0,
-            formacion=Formacion.FORMACION_1,
+            formacion=Formacion.OFENSIVA,
         )
 
     repo_equipos.crear.assert_not_called()
@@ -688,7 +690,8 @@ def test_unirse_amistoso_correctamente():
         id_equipo_1=1,
         id_equipo_2=None,
         duracion=5,
-        formacion=1,
+        formacion_1=Formacion.OFENSIVA,
+        formacion_2=None,
         tipo_partido=TipoPartido.AMISTOSO,
         estado_partido=EstadoPartido.DISPONIBLE,
     )
@@ -722,12 +725,14 @@ def test_unirse_amistoso_correctamente():
             (id_jugador, 7)
             for id_jugador in jugadores_por_id
         ],
+        formacion=Formacion.DEFENSIVA,
     )
 
     assert resultado.partido == partido
 
     assert partido.id_usuario_2 == 2
     assert partido.id_equipo_2 == 2
+    assert partido.formacion_2 == Formacion.DEFENSIVA
     assert partido.estado_partido == EstadoPartido.PENDIENTE
 
     assert equipo.jugadores_amistosos == jugadores
@@ -771,6 +776,7 @@ def test_unirse_amistoso_partido_no_encontrado():
                 (5, 1),
                 (6, 1),
             ],
+            formacion=Formacion.DEFENSIVA,
         )
 
     repo_usuarios.obtener_por_id.assert_not_called()
@@ -791,7 +797,8 @@ def test_unirse_amistoso_partido_no_disponible():
         id_equipo_1=1,
         id_equipo_2=None,
         duracion=5,
-        formacion=1,
+        formacion_1=Formacion.OFENSIVA,
+        formacion_2=None,
         tipo_partido=TipoPartido.AMISTOSO,
         estado_partido=EstadoPartido.EN_CURSO,
     )
@@ -810,6 +817,7 @@ def test_unirse_amistoso_partido_no_disponible():
             partido_id=1,
             usuario_id=2,
             jugadores_comportamientos=[],
+            formacion=Formacion.DEFENSIVA,
         )
 
     repo_usuarios.obtener_por_id.assert_not_called()
@@ -830,7 +838,8 @@ def test_unirse_amistoso_partido_ya_tiene_usuario_2():
         id_equipo_1=1,
         id_equipo_2=3,
         duracion=5,
-        formacion=1,
+        formacion_1=Formacion.OFENSIVA,
+        formacion_2=None,
         tipo_partido=TipoPartido.AMISTOSO,
         estado_partido=EstadoPartido.PENDIENTE,
     )
@@ -849,6 +858,7 @@ def test_unirse_amistoso_partido_ya_tiene_usuario_2():
             partido_id=1,
             usuario_id=2,
             jugadores_comportamientos=[],
+            formacion=Formacion.DEFENSIVA,
         )
 
     repo_usuarios.obtener_por_id.assert_not_called()
@@ -868,7 +878,8 @@ def test_unirse_amistoso_usuario_no_encontrado():
         id_equipo_1=1,
         id_equipo_2=None,
         duracion=5,
-        formacion=1,
+        formacion_1=Formacion.OFENSIVA,
+        formacion_2=None,
         tipo_partido=TipoPartido.AMISTOSO,
         estado_partido=EstadoPartido.DISPONIBLE,
     )
@@ -888,6 +899,7 @@ def test_unirse_amistoso_usuario_no_encontrado():
             partido_id=1,
             usuario_id=2,
             jugadores_comportamientos=[],
+            formacion=Formacion.DEFENSIVA,
         )
 
     repo_jugadores.contar_jugadores_usuario.assert_not_called()
@@ -906,7 +918,8 @@ def test_unirse_amistoso_usuario_con_menos_de_6_jugadores():
         id_equipo_1=1,
         id_equipo_2=None,
         duracion=5,
-        formacion=1,
+        formacion_1=Formacion.OFENSIVA,
+        formacion_2=None,
         tipo_partido=TipoPartido.AMISTOSO,
         estado_partido=EstadoPartido.DISPONIBLE,
     )
@@ -927,6 +940,7 @@ def test_unirse_amistoso_usuario_con_menos_de_6_jugadores():
             partido_id=1,
             usuario_id=2,
             jugadores_comportamientos=[],
+            formacion=Formacion.DEFENSIVA,
         )
 
     repo_jugadores.obtener_por_id.assert_not_called()
@@ -946,7 +960,8 @@ def test_unirse_amistoso_no_permite_jugadores_repetidos():
         id_equipo_1=1,
         id_equipo_2=None,
         duracion=5,
-        formacion=1,
+        formacion_1=Formacion.OFENSIVA,
+        formacion_2=None,
         tipo_partido=TipoPartido.AMISTOSO,
         estado_partido=EstadoPartido.DISPONIBLE,
     )
@@ -974,7 +989,33 @@ def test_unirse_amistoso_no_permite_jugadores_repetidos():
                 (4, 1),
                 (5, 1),
             ],
+            formacion=Formacion.DEFENSIVA,
         )
 
     repo_jugadores.obtener_por_id.assert_not_called()
+    repo_equipos.crear.assert_not_called()
+
+
+def test_unirse_amistoso_rechaza_formacion_invalida():
+    repo_partidos = Mock()
+    repo_usuarios = Mock()
+    repo_jugadores = Mock()
+    repo_equipos = Mock()
+
+    servicio = Servicios(
+        usuarios=repo_usuarios,
+        jugadores=repo_jugadores,
+        partidos=repo_partidos,
+        equipos=repo_equipos,
+    )
+
+    with pytest.raises(DatosInvalidos):
+        servicio.unirse_amistoso(
+            partido_id=1,
+            usuario_id=2,
+            jugadores_comportamientos=[],
+            formacion="todos al arco",
+        )
+
+    repo_partidos.obtener_por_id.assert_not_called()
     repo_equipos.crear.assert_not_called()

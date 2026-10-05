@@ -14,3 +14,4 @@ class CrearAmistoso(BaseModel):
 
 class UnirseAmistoso(BaseModel):
     jugadores: list[JugadorConComportamiento]
+    formacion: Formacion

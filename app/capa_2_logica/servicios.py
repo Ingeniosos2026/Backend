@@ -33,7 +33,7 @@ class _RepoPartidosProtocol(Protocol):
     def obtener_amistosos_disponibles(self) -> list[PartidoModelo]: ...
     def obtener_por_id(self, id_partido: int) -> PartidoModelo | None: ...
     def actualizar(self, partido: PartidoModelo) -> PartidoModelo: ...
-    
+
 class _RepoEquiposProtocol(Protocol):
     def crear(self, equipo: EquipoModelo) -> EquipoModelo: ...
     def obtener_por_id(self, id_equipo: int) -> EquipoModelo | None: ...
@@ -142,7 +142,7 @@ class Servicios:
         return ListarComportamientosResultado(comportamientos=comportamientos)
 
 
-    def crear_amistoso(self, usuario_id: int, duracion: int, jugadores_comportamientos: list[tuple[int, int]], formacion: int) -> CrearPartidoResultado:
+    def crear_amistoso(self, usuario_id: int, duracion: int, jugadores_comportamientos: list[tuple[int, int]], formacion: Formacion) -> CrearPartidoResultado:
         if duracion <= 0:
             raise DatosInvalidos()
 
@@ -189,7 +189,8 @@ class Servicios:
             id_equipo_1=equipo.id_equipo,
             id_equipo_2=None,
             duracion_partido=duracion,
-            formacion=formacion,
+            formacion_1=formacion,
+            formacion_2=None,
             tipo_partido=TipoPartido.AMISTOSO,
             estado_partido=EstadoPartido.DISPONIBLE
         )
@@ -234,7 +235,12 @@ class Servicios:
         amistosos = self.partidos.obtener_partidos_amistosos_disponibles()
         return ListarAmistososResultado(amistosos=amistosos)
 
-    def unirse_amistoso(self, partido_id: int, usuario_id: int, jugadores_comportamientos: list[tuple[int, int]]) -> CrearPartidoResultado:
+    def unirse_amistoso(self, partido_id: int, usuario_id: int, jugadores_comportamientos: list[tuple[int, int]], formacion: Formacion) -> CrearPartidoResultado:
+        try:
+            formacion = Formacion(formacion)
+        except (TypeError, ValueError) as error:
+            raise DatosInvalidos() from error
+
         partido = self.partidos.obtener_por_id(partido_id)
 
         if partido is None:
@@ -288,6 +294,7 @@ class Servicios:
 
         partido.id_usuario_2 = usuario_id
         partido.id_equipo_2 = equipo.id_equipo
+        partido.formacion_2 = formacion
         partido.estado_partido = EstadoPartido.PENDIENTE
 
         partido = self.partidos.actualizar(partido)

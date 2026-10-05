@@ -22,12 +22,12 @@ def crear_amistoso(usuario_id: int, datos: CrearAmistoso, request: Request, serv
             formacion=datos.formacion,
         )
         partido_bd = resultado.partido
-        
-        websocket_scheme = "wss" if request.url.scheme == "https" else "ws"
+
+        #esto arma la url del ws. si el request es http usa ws://, si es https usa wss://
         websocket_url = request.url_for(
             "websocket_amistoso",
             partido_id=partido_bd.id_partido,
-        ).replace(scheme=websocket_scheme)
+        ).replace(scheme="wss" if request.url.scheme == "https" else "ws")
 
         return {
             "id_partido": partido_bd.id_partido,
@@ -36,7 +36,8 @@ def crear_amistoso(usuario_id: int, datos: CrearAmistoso, request: Request, serv
             "id_equipo_1": partido_bd.id_equipo_1,
             "id_equipo_2": partido_bd.id_equipo_2,
             "duracion": partido_bd.duracion_partido,
-            "formacion": partido_bd.formacion,
+            "formacion_1": partido_bd.formacion_1,
+            "formacion_2": partido_bd.formacion_2,
             "tipo": partido_bd.tipo_partido.name,
             "estado": partido_bd.estado_partido.name,
             "websocket_url": str(websocket_url),
@@ -71,15 +72,15 @@ def crear_amistoso(usuario_id: int, datos: CrearAmistoso, request: Request, serv
 @partido_router.put("/partido/{partido_id}/unirse/{usuario_id}", status_code=status.HTTP_200_OK)
 async def unirse_amistoso(partido_id: int, usuario_id: int, datos: UnirseAmistoso, servicio: Servicios = Depends(obtener_servicio)):
     try:
-        resultado = servicio.unirse_amistoso(
+        servicio.unirse_amistoso(
             partido_id=partido_id,
             usuario_id=usuario_id,
             jugadores_comportamientos=[
                 (asignacion.id_jugador, asignacion.id_comportamiento)
                 for asignacion in datos.jugadores
             ],
+            formacion=datos.formacion
         )
-        partido_bd = resultado.partido
 
         await admin_conexiones.emitir_lobby(
             partido_id,
@@ -87,17 +88,7 @@ async def unirse_amistoso(partido_id: int, usuario_id: int, datos: UnirseAmistos
             {"usuario_id": usuario_id},
         )
 
-        return {
-            "id_partido": partido_bd.id_partido,
-            "id_usuario_1": partido_bd.id_usuario_1,
-            "id_usuario_2": partido_bd.id_usuario_2,
-            "id_equipo_1": partido_bd.id_equipo_1,
-            "id_equipo_2": partido_bd.id_equipo_2,
-            "duracion": partido_bd.duracion_partido,
-            "formacion": partido_bd.formacion,
-            "tipo": partido_bd.tipo_partido.name,
-            "estado": partido_bd.estado_partido.name,
-        }
+        return {"mensaje": "Te has unido al partido"}
     except PartidoNoEncontrado:
         return JSONResponse(
             status_code=404,

@@ -4,7 +4,7 @@ import pytest
 from app.capa_0_definicion_bd.models.jugadores_modelos import Jugador
 from app.capa_0_definicion_bd.models.equipo_modelos import Equipo
 from app.capa_0_definicion_bd.models.comportamientos_modelos import Comportamiento
-from app.capa_0_definicion_bd.models.partidos_modelos import EstadoPartido, TipoPartido, Partido
+from app.capa_0_definicion_bd.models.partidos_modelos import (EstadoPartido, Formacion, TipoPartido, Partido)
 from app.capa_2_logica.errores import *
 from app.capa_2_logica.resultados import CrearPartidoResultado
 from app.capa_3_api.dependencias import obtener_servicio
@@ -67,7 +67,7 @@ def test_crear_amistoso(client, db_test):
             for jugador in jugadores
         ],
         "duracion": 5,
-        "formacion": 1,
+        "formacion": "ofensiva",
     })
     assert response.status_code == 201
     datos = response.json()
@@ -75,7 +75,8 @@ def test_crear_amistoso(client, db_test):
     assert datos["id_usuario_1"] == usuario_id
     assert datos["id_equipo_1"] is not None
     assert datos["duracion"] == 5
-    assert datos["formacion"] == 1
+    assert datos["formacion_1"] == "ofensiva"
+    assert datos["formacion_2"] is None
     assert datos["tipo"] == "AMISTOSO"
     assert datos["estado"] == "DISPONIBLE"
     equipo = db_test.get(Equipo, datos["id_equipo_1"])
@@ -99,7 +100,8 @@ def test_crear_amistoso_devuelve_url_websocket_con_esquema_correcto(client,schem
         id_equipo_1=20,
         id_equipo_2=None,
         duracion_partido=5,
-        formacion=1,
+        formacion_1=Formacion.OFENSIVA,
+        formacion_2=None,
         tipo_partido=TipoPartido.AMISTOSO,
         estado_partido=EstadoPartido.DISPONIBLE,
     )
@@ -117,7 +119,7 @@ def test_crear_amistoso_devuelve_url_websocket_con_esquema_correcto(client,schem
             for jugador_id in range(1, 7)
         ],
         "duracion": 5,
-        "formacion": 1,
+        "formacion": "ofensiva",
     })
 
     assert response.status_code == 201
@@ -147,14 +149,15 @@ def test_crear_amistoso_mapea_errores_del_servicio(client, error, status_code, e
             for jugador_id in range(1, 7)
         ],
         "duracion": 5,
-        "formacion": 1,
+        "formacion": "ofensiva",
     })
 
     assert response.status_code == status_code
     assert response.json()["error"] == error_code
 
 
-def test_unirse_amistoso_emite_evento_y_devuelve_partido(client, db_test):
+@pytest.mark.parametrize("formacion", list(Formacion))
+def test_unirse_amistoso_emite_evento_y_devuelve_partido(client, db_test, formacion):
     creador = client.post("/usuario", json={
         "email": "pepito@gmail.com",
         "nombre": "Pepito",
@@ -177,7 +180,7 @@ def test_unirse_amistoso_emite_evento_y_devuelve_partido(client, db_test):
             for jugador in jugadores_1
         ],
         "duracion": 5,
-        "formacion": 1,
+        "formacion": "ofensiva",
     })
 
     assert partido.status_code == 201
@@ -207,12 +210,16 @@ def test_unirse_amistoso_emite_evento_y_devuelve_partido(client, db_test):
                     }
                     for jugador in jugadores_2
                 ],
+                "formacion": formacion.value,
             },
         )
 
         assert response.status_code == 200
-        assert response.json()["id_usuario_2"] == usuario_id_2
-        assert response.json()["estado"] == "PENDIENTE"
+        assert response.json() == {"mensaje": "Te has unido al partido"}
+        partido_actualizado = db_test.get(Partido, partido.json()["id_partido"])
+        assert partido_actualizado.id_usuario_2 == usuario_id_2
+        assert partido_actualizado.formacion_2 == formacion
+        assert partido_actualizado.estado_partido == EstadoPartido.PENDIENTE
         assert websocket.receive_json() == {
             "action": "usuario_unido",
             "payload": {"usuario_id": usuario_id_2},
@@ -243,11 +250,28 @@ def test_unirse_amistoso_mapea_errores_y_no_emite_evento(client, monkeypatch, er
             {"id_jugador": jugador_id, "id_comportamiento": 1}
             for jugador_id in range(1, 7)
         ],
+        "formacion": "defensiva",
     })
 
     assert response.status_code == status_code
     assert response.json()["error"] == error_code
     emitir_lobby.assert_not_awaited()
+
+
+def test_unirse_amistoso_rechaza_formacion_invalida(client):
+    servicio = Mock()
+    client.app.dependency_overrides[obtener_servicio] = crear_override_servicio(servicio)
+
+    response = client.put("/partido/51/unirse/10", json={
+        "jugadores": [
+            {"id_jugador": jugador_id, "id_comportamiento": 1}
+            for jugador_id in range(1, 7)
+        ],
+        "formacion": "todos al arco",
+    })
+
+    assert response.status_code == 422
+    servicio.unirse_amistoso.assert_not_called()
 
 
 def test_crear_amistoso_jugador_no_existente(client):
@@ -267,7 +291,7 @@ def test_crear_amistoso_jugador_no_existente(client):
             for id_jugador in [999, 1000, 1001, 1002, 1003, 1004]
         ],
         "duracion": 5,
-        "formacion": 1,
+        "formacion": "ofensiva",
     })
     assert response.status_code == 404
     assert response.json() == {
@@ -292,7 +316,7 @@ def test_crear_amistoso_duracion_invalida(client):
             for id_jugador in [1, 2, 3, 4, 5, 6]
         ],
         "duracion": 0,
-        "formacion": 1,
+        "formacion": "ofensiva",
     })
     assert response.status_code == 400
     assert response.json() == {
@@ -316,7 +340,7 @@ def test_crear_amistoso_formacion_invalida(client):
             for id_jugador in [1, 2, 3, 4, 5, 6]
         ],
         "duracion": 5,
-        "formacion": 5,
+        "formacion": "todos al arco",
     })
 
     assert response.status_code == 422
@@ -339,7 +363,7 @@ def test_crear_amistoso_comportamiento_inexistente(client, db_test):
             for jugador in jugadores
         ],
         "duracion": 5,
-        "formacion": 1,
+        "formacion": "ofensiva",
     })
 
     assert response.status_code == 404
@@ -369,7 +393,7 @@ def test_listar_amistosos_disponibles(client, db_test):
     client.post(f"/partido/{usuario_id}", json={
         "jugadores": [{"id_jugador": j.id_jugador, "id_comportamiento": comportamiento.id} for j in jugadores],
         "duracion": 10,
-        "formacion": 1,
+        "formacion": "ofensiva",
     })
 
     lista_partidos = client.get("/partidos")

@@ -30,6 +30,6 @@ class PartidoRepositorio:
         )
 
     def actualizar(self, partido: PartidoModelo) -> PartidoModelo:
-        self.db.flush()
+        self.db.commit()
         self.db.refresh(partido)
         return partido
