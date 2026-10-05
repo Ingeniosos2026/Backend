@@ -1,5 +1,7 @@
 from sqlalchemy.orm import Session
+from typing import List
 from app.capa_0_definicion_bd.models.jugadores_modelos import Jugador as JugadorModelo
+from app.capa_0_definicion_bd.models.usuarios_modelos import Usuario as UsuarioModelo
 
 class JugadorRepositorio:
     def __init__(self, db: Session):
@@ -16,4 +18,11 @@ class JugadorRepositorio:
             self.db.query(JugadorModelo)
             .filter(JugadorModelo.id_jugador == id_jugador)
             .first()
+        )
+    
+    def obtener_jugadores_disponibles(self, id_usuario: int) -> List[JugadorModelo] | None:
+        return (
+            self.db.query(JugadorModelo) 
+            .filter (JugadorModelo.id_usuario == id_usuario)
+            .all()
         )
