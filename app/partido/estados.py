@@ -44,7 +44,7 @@ class JugadorEstado:
 
 @dataclass
 class PelotaEstado:
-    posicion: Coordenada
+    posicion: Coordenada   
     # la velocidad me indica la dirreccion de pateo y a que velocidad se patea, luego en el motor de fisicas 
     # se tendra que ver el tema de la friccion para que reduzca el la velocidad de pateo hasta que no avance mas
     velocidad: Coordenada
@@ -53,19 +53,15 @@ class PelotaEstado:
 class EstadoPartido:
     id_usuario_izquierdo: int
     id_usuario_derecho: int
-
     id_equipo_izquierdo: int
     id_equipo_derecho: int
-
     cancha: Cancha
-    
     jugadores: dict[tuple[int, int], JugadorEstado]
     comportamientos: dict[tuple[int, int], str] 
-
     pelota: PelotaEstado
-
     tiempo: float = 0.0
-
+    goles_izquierdo: int = 0
+    goles_derecho: int = 0
 
 
 

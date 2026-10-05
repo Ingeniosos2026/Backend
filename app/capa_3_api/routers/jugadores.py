@@ -48,3 +48,29 @@ def crear_jugador(usuario_id: int, datos: CrearJugador, servicio: Servicios = De
                 "mensaje": "Ocurrió un error interno del servidor"
             }
         )
+    
+@jugador_router.get("/jugadores/{usuario_id}", status_code=status.HTTP_200_OK)
+def listar_jugadores_disponibles(usuario_id: int, servicio: Servicios = Depends(obtener_servicio)):
+    try:
+        resultado = servicio.listar_jugadores_disponibles(usuario_id)
+        return [
+            {
+                "id": jugador.id_jugador,
+                "nombre": jugador.nombre_jugador,
+                "power": jugador.poder,
+                "agility": jugador.agilidad,
+                "control": jugador.control,
+                "speed": jugador.velocidad,
+                "strength": jugador.fuerza
+            }
+            for jugador in resultado.jugadores 
+        ]
+    
+    except Exception:
+        return JSONResponse(
+            status_code=500, 
+            content={
+                "error": "ERROR_INTERNO", 
+                "mensaje": "No se pudo obtener la lista de jugadores"
+            }
+        )
