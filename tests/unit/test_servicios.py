@@ -1019,3 +1019,87 @@ def test_unirse_amistoso_rechaza_formacion_invalida():
 
     repo_partidos.obtener_por_id.assert_not_called()
     repo_equipos.crear.assert_not_called()
+
+
+def crear_partido_pendiente():
+    partido = Mock()
+
+    partido.id_partido = 1
+    partido.id_usuario_1 = 1
+    partido.estado_partido = EstadoPartido.PENDIENTE
+
+    return partido
+
+
+def crear_servicio(repositorio_partidos):
+    repositorio_usuarios = Mock()
+    repositorio_jugadores = Mock()
+    repositorio_comportamientos = Mock()
+    repositorio_equipos = Mock()
+
+    return Servicios(
+        usuarios=repositorio_usuarios,
+        jugadores=repositorio_jugadores,
+        comportamientos=repositorio_comportamientos,
+        equipos=repositorio_equipos,
+        partidos=repositorio_partidos,
+    )
+
+
+def test_iniciar_partido_cambia_estado_a_en_curso():
+    partido = crear_partido_pendiente()
+
+    repositorio_partidos = Mock()
+    repositorio_partidos.obtener_por_id.return_value = partido
+
+    servicio = crear_servicio(repositorio_partidos)
+
+    resultado = servicio.iniciar_partido(partido_id=1, usuario_id=1)
+
+    assert partido.estado_partido == EstadoPartido.EN_CURSO
+    assert resultado.partido == partido
+
+    repositorio_partidos.obtener_por_id.assert_called_once_with(1)
+    repositorio_partidos.actualizar.assert_called_once_with(partido)
+
+
+def test_iniciar_partido_lanza_error_si_no_existe():
+    repositorio_partidos = Mock()
+    repositorio_partidos.obtener_por_id.return_value = None
+
+    servicio = crear_servicio(repositorio_partidos)
+
+    with pytest.raises(AmistosoNoEncontrado):
+        servicio.iniciar_partido(partido_id=1, usuario_id=1)
+
+    repositorio_partidos.actualizar.assert_not_called()
+
+
+def test_iniciar_partido_lanza_error_si_no_es_el_creador():
+    partido = crear_partido_pendiente()
+
+    repositorio_partidos = Mock()
+    repositorio_partidos.obtener_por_id.return_value = partido
+
+    servicio = crear_servicio(repositorio_partidos)
+
+    with pytest.raises(IniciarNoPermitido):
+        servicio.iniciar_partido(partido_id=1, usuario_id=2)
+
+    assert partido.estado_partido == EstadoPartido.PENDIENTE
+    repositorio_partidos.actualizar.assert_not_called()
+
+
+def test_iniciar_partido_lanza_error_si_no_esta_pendiente():
+    partido = crear_partido_pendiente()
+    partido.estado_partido = EstadoPartido.EN_CURSO
+
+    repositorio_partidos = Mock()
+    repositorio_partidos.obtener_por_id.return_value = partido
+
+    servicio = crear_servicio(repositorio_partidos)
+
+    with pytest.raises(AmistosoNoPuedeIniciar):
+        servicio.iniciar_partido(partido_id=1, usuario_id=1)
+
+    repositorio_partidos.actualizar.assert_not_called()

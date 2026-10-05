@@ -1,12 +1,13 @@
 from .estados import EstadoPartido, JugadorEstado
 from .primitivas import Primitivas
+from .evento import EventoJugador
 
-
-def ejecutar_comportamiento(estado: EstadoPartido, jugador: JugadorEstado, codigo: str) -> None:
+def ejecutar_comportamiento(estado: EstadoPartido, jugador: JugadorEstado, codigo: str, eventos: list[EventoJugador]) -> None:
     primitivas = Primitivas(
         estado=estado,
         id_usuario=jugador.id_usuario,
-        id_jugador=jugador.id_jugador
+        id_jugador=jugador.id_jugador,
+        eventos=eventos
     )
 
 ## esto necesitaria algun tipo de aislamiento cuando implementemos crear_comportamiento

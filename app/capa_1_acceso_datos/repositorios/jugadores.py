@@ -24,7 +24,7 @@ class JugadorRepositorio:
         return (
             self.db.query(JugadorModelo)
             .filter(JugadorModelo.id_usuario == id_usuario)
-            .count()
+            .count())
     
     def obtener_jugadores_disponibles(self, id_usuario: int) -> List[JugadorModelo] | None:
         return (

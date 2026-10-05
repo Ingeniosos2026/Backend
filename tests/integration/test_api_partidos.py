@@ -10,6 +10,7 @@ from app.capa_2_logica.resultados import CrearPartidoResultado
 from app.capa_3_api.dependencias import obtener_servicio
 from app.capa_3_api.websockets.admin_conexiones import admin_conexiones
 
+
 #helper
 def crear_override_servicio(servicio):
     def obtener_servicio_de_prueba():
@@ -348,3 +349,116 @@ def test_listar_amistosos_disponibles_devuelve_error_interno(client):
         "error": "ERROR_INTERNO",
         "mensaje": "Ocurrió un error interno del servidor",
     }
+
+
+def crear_partido_pendiente_test(client, db_test):
+    usuario_1 = client.post("/usuario", json={
+        "email": "lean@gmail.com",
+        "nombre": "Lean",
+        "avatar": 1,
+        "contraseña": "asd123",
+        "club": "talleres"
+    })
+
+    assert usuario_1.status_code == 201
+    usuario_1_id = usuario_1.json()["id"]
+
+    usuario_2 = client.post("/usuario", json={
+        "email": "juan@gmail.com",
+        "nombre": "juan",
+        "avatar": 2,
+        "contraseña": "juan",
+        "club": "boca"
+    })
+
+    assert usuario_2.status_code == 201
+    usuario_2_id = usuario_2.json()["id"]
+
+    equipo_1 = Equipo(id_usuario=usuario_1_id) 
+    equipo_2 = Equipo(id_usuario=usuario_2_id) 
+    db_test.add_all([equipo_1, equipo_2]) 
+    db_test.commit() 
+    db_test.refresh(equipo_1) 
+    db_test.refresh(equipo_2)
+
+    equipo_1 = db_test.query(Equipo).filter(Equipo.id_usuario == usuario_1_id).first()
+    equipo_2 = db_test.query(Equipo).filter(Equipo.id_usuario == usuario_2_id).first()
+
+    partido = Partido(
+        id_usuario_1=usuario_1_id,
+        id_usuario_2=usuario_2_id,
+        id_equipo_1=equipo_1.id_equipo,
+        id_equipo_2=equipo_2.id_equipo,
+        duracion_partido=5,
+        formacion_1=Formacion.OFENSIVA,
+        formacion_2=Formacion.DEFENSIVA,
+        tipo_partido=TipoPartido.AMISTOSO,
+        estado_partido=EstadoPartido.PENDIENTE)
+
+    db_test.add(partido)
+    db_test.commit()
+    db_test.refresh(partido)
+
+    return partido, usuario_1_id
+
+
+def test_iniciar_partido(client, db_test, monkeypatch):
+    partido, usuario_id = crear_partido_pendiente_test(client, db_test)
+
+    estado = Mock()
+    motor = Mock()
+    ejecutor = Mock()
+
+    ejecutar = Mock()
+    ejecutor.ejecutar = ejecutar
+
+    monkeypatch.setattr("app.capa_3_api.routers.partidos.crear_estado_partido", Mock(return_value=estado))
+
+    monkeypatch.setattr("app.capa_3_api.routers.partidos.MotorPartido", Mock(return_value=motor))
+
+    monkeypatch.setattr("app.capa_3_api.routers.partidos.EjecutorPartido", Mock(return_value=ejecutor))
+
+    create_task = Mock()
+
+    monkeypatch.setattr("app.capa_3_api.routers.partidos.asyncio.create_task", create_task)
+
+    emitir_lobby = AsyncMock()
+
+    monkeypatch.setattr(admin_conexiones, "emitir_lobby", emitir_lobby)
+
+    respuesta = client.put(f"/partido/{partido.id_partido}/{usuario_id}")
+
+    assert respuesta.status_code == 200
+
+    datos = respuesta.json()
+
+    assert datos["mensaje"] == "Partido amistoso iniciado"
+    assert datos["id_partido"] == partido.id_partido
+
+    assert datos["cancha"]["ancho"] == 100
+    assert datos["cancha"]["alto"] == 60
+
+    assert datos["cancha"]["arco_izquierdo"] == {
+        "poste_superior": {
+            "x": 0,
+            "y": 40
+        },
+        "poste_inferior": {
+            "x": 0,
+            "y": 20
+        }
+    }
+
+    assert datos["cancha"]["arco_derecho"] == {
+        "poste_superior": {
+            "x": 100,
+            "y": 40
+        },
+        "poste_inferior": {
+            "x": 100,
+            "y": 20
+        }
+    }
+
+
+    assert partido.estado_partido == EstadoPartido.EN_CURSO

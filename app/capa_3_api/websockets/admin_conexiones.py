@@ -88,6 +88,20 @@ class AdministradorConexiones:
                 
                 except RuntimeError:
                     self.desconectar(conexion, partido_id)
+    
+    # de preferencia esta pero no estoy seguro si usaron la de arriba 
+    async def emitir_partido(self, partido_id: int, accion: str, payload: dict):
+        if partido_id not in self.conexiones_activas:
+            return
+
+        mensaje = {"action": accion, "payload": payload}
+
+        for conexion in list(self.conexiones_activas[partido_id]):
+            try:
+                await conexion.send_json(mensaje)
+
+            except RuntimeError:
+                self.desconectar(conexion, partido_id)
 
     # --- METODOS PARA USUARIOS ---
 

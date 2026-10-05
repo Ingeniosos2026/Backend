@@ -43,6 +43,7 @@ def crear_estado():
         id_equipo_derecho=2,
         cancha=cancha,
         jugadores=jugadores,
+        comportamientos={},
         pelota=pelota)
 
 

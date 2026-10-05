@@ -64,7 +64,7 @@ def comportamiento(primitivas):
     primitivas.correr(compañero)
 """
 
-    ejecutar_comportamiento(estado, jugador, codigo)
+    ejecutar_comportamiento(estado, jugador, codigo, [])
 
     assert jugador.destino == estado.jugadores[(1, 2)].posicion
 
@@ -76,12 +76,18 @@ def test_ejecutar_comportamiento_patea_la_pelota():
 def comportamiento(primitivas):
     primitivas.patear(primitivas.direccionArcoRival())
 """
+    evento = []
 
-    ejecutar_comportamiento(estado, jugador, codigo)
+    ejecutar_comportamiento(estado, jugador, codigo, evento)
 
     assert estado.pelota.velocidad.x > 0
     assert estado.pelota.velocidad.y == pytest.approx(0)
     assert jugador.ultimo_pateo == estado.tiempo
+
+    assert len(evento) == 1
+    assert evento[0].id_jugador == 1
+    assert evento[0].id_usuario == 1
+    assert evento[0].accion == "pateando"
 
 
 def test_ejecutar_comportamiento_invalido_sin_funcion_comportamiento():
@@ -90,7 +96,7 @@ def test_ejecutar_comportamiento_invalido_sin_funcion_comportamiento():
     codigo = "def otra_funcion(primitivas): pass"
 
     with pytest.raises(ValueError, match="debe definir una funcion"):
-        ejecutar_comportamiento(estado, jugador, codigo)
+        ejecutar_comportamiento(estado, jugador, codigo, [])
 
 
 def test_ejecutar_comportamiento_ejecuta_la_funcion_definida():
@@ -101,7 +107,7 @@ def comportamiento(primitivas):
     primitivas.correr(primitivas.direccionPelota())
 """
 
-    resultado = ejecutar_comportamiento(estado, jugador, codigo)
+    resultado = ejecutar_comportamiento(estado, jugador, codigo, [])
 
     assert resultado is None
     assert jugador.destino == estado.pelota.posicion

@@ -34,3 +34,12 @@ class PartidoNoEncontrado(Exception):
 
 class PartidoNoDisponible(Exception):
     pass
+
+class AmistosoNoEncontrado(Exception):
+    pass
+
+class IniciarNoPermitido(Exception):
+    pass
+
+class AmistosoNoPuedeIniciar(Exception):
+    pass
