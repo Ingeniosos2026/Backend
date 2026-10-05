@@ -10,6 +10,52 @@ class AdministradorConexiones:
         # mantiene las conexiones activas por partido_id (usuarios conectados a un partido)
         self.conexiones_activas: Dict[int, List[WebSocket]] = {}
 
+        # conexiones para lobby de amistosos
+        self.conexiones_lobby: Dict[int, List[WebSocket]] = {}
+
+    # lobby de amistosos
+    async def conectar_lobby(self, websocket: WebSocket, partido_id: int):
+        await websocket.accept()
+
+        if partido_id not in self.conexiones_lobby:
+            self.conexiones_lobby[partido_id] = []
+
+        self.conexiones_lobby[partido_id].append(websocket)
+
+    def desconectar_lobby(self, websocket: WebSocket, partido_id: int):
+        if partido_id in self.conexiones_lobby:
+            try:
+                self.conexiones_lobby[partido_id].remove(websocket)
+            except ValueError:
+                pass
+
+            if not self.conexiones_lobby[partido_id]:
+                del self.conexiones_lobby[partido_id]
+
+    async def emitir_lobby(self, partido_id: int, accion: str, payload: dict):
+        if partido_id not in self.conexiones_lobby:
+            return
+
+        mensaje = {"action": accion, "payload": payload}
+
+        for conexion in list(self.conexiones_lobby[partido_id]):
+            try:
+                await conexion.send_json(mensaje)
+            except RuntimeError:
+                self.desconectar_lobby(conexion, partido_id)
+
+    async def cerrar_lobby(self, partido_id: int):
+        if partido_id not in self.conexiones_lobby:
+            return
+
+        for conexion in list(self.conexiones_lobby[partido_id]):
+            try:
+                await conexion.close()
+            except RuntimeError:
+                pass
+
+        self.conexiones_lobby.pop(partido_id, None)
+    
     # --- METODOS PARA PARTIDOS --- 
 
     async def conectar(self, websocket: WebSocket, partido_id: int):

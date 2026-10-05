@@ -1,13 +1,14 @@
 from sqlalchemy import CheckConstraint, Column, Integer, String, Table, ForeignKey, Enum as SQLenum
 from sqlalchemy.orm import relationship, synonym
-from enum import Enum, IntEnum
+from enum import Enum
 from app.capa_0_definicion_bd.base_datos_sqlalchemy import Base
 
-class Formacion(IntEnum):
-    FORMACION_1 = 1
-    FORMACION_2 = 2
-    FORMACION_3 = 3
-    FORMACION_4 = 4
+class Formacion(str, Enum):
+    OFENSIVA = "ofensiva"
+    DEFENSIVA = "defensiva"
+    C = "c"
+    D = "d"
+
 
 class TipoPartido(str, Enum):
     AMISTOSO = "amistoso"
@@ -21,9 +22,6 @@ class EstadoPartido(str, Enum):
 
 class Partido(Base):
     __tablename__ = "partidos"
-    __table_args__ = (
-        CheckConstraint("formacion BETWEEN 1 AND 4", name="check_partido_formacion"),
-    )
 
     id_partido = Column(Integer, primary_key=True, autoincrement=True)
     id_usuario_1 = Column(Integer, ForeignKey("usuarios.id_usuario", ondelete="CASCADE"), nullable=False)
@@ -31,7 +29,8 @@ class Partido(Base):
     id_equipo_1 = Column(Integer, ForeignKey("equipos.id_equipo", ondelete="CASCADE"), nullable=False)
     id_equipo_2 = Column(Integer, ForeignKey("equipos.id_equipo", ondelete="CASCADE"), nullable=True)
     duracion_partido = Column(Integer, nullable=False)
-    formacion = Column(Integer, nullable=False)
+    formacion_1 = Column(SQLenum(Formacion), nullable=False)
+    formacion_2 = Column(SQLenum(Formacion), nullable=True)
     tipo_partido = Column(SQLenum(TipoPartido), nullable=False)
     estado_partido = Column(SQLenum(EstadoPartido), nullable=False, default=EstadoPartido.DISPONIBLE)
 

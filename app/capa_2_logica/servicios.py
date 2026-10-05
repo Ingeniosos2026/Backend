@@ -22,6 +22,7 @@ class _RepoUsuariosProtocol(Protocol):
 class _RepoJugadoresProtocol(Protocol):
     def crear(self, jugador: JugadorModelo) -> JugadorModelo: ...
     def obtener_por_id(self, id_jugador: int) -> JugadorModelo | None: ...
+    def contar_jugadores_usuario(self, id_usuario: int) -> int: ...
     def obtener_jugadores_disponibles(self, id_usuario: int) -> list[JugadorModelo]: ...
 
 class _RepoComportamientosProtocol(Protocol):
@@ -31,6 +32,8 @@ class _RepoComportamientosProtocol(Protocol):
 class _RepoPartidosProtocol(Protocol):
     def crear(self, partido: PartidoModelo) -> PartidoModelo: ...
     def obtener_amistosos_disponibles(self) -> list[PartidoModelo]: ...
+    def obtener_por_id(self, id_partido: int) -> PartidoModelo | None: ...
+    def actualizar(self, partido: PartidoModelo) -> PartidoModelo: ...
 
 class _RepoEquiposProtocol(Protocol):
     def crear(self, equipo: EquipoModelo) -> EquipoModelo: ...
@@ -140,7 +143,7 @@ class Servicios:
         return ListarComportamientosResultado(comportamientos=comportamientos)
 
 
-    def crear_amistoso(self, usuario_id: int, duracion: int, jugadores_comportamientos: list[tuple[int, int]], formacion: int) -> CrearPartidoResultado:
+    def crear_amistoso(self, usuario_id: int, duracion: int, jugadores_comportamientos: list[tuple[int, int]], formacion: Formacion) -> CrearPartidoResultado:
         if duracion <= 0:
             raise DatosInvalidos()
 
@@ -187,7 +190,8 @@ class Servicios:
             id_equipo_1=equipo.id_equipo,
             id_equipo_2=None,
             duracion_partido=duracion,
-            formacion=formacion,
+            formacion_1=formacion,
+            formacion_2=None,
             tipo_partido=TipoPartido.AMISTOSO,
             estado_partido=EstadoPartido.DISPONIBLE
         )
@@ -231,6 +235,72 @@ class Servicios:
     def listar_amistosos_disponibles(self) -> ListarAmistososResultado:
         amistosos = self.partidos.obtener_partidos_amistosos_disponibles()
         return ListarAmistososResultado(amistosos=amistosos)
+
+    def unirse_amistoso(self, partido_id: int, usuario_id: int, jugadores_comportamientos: list[tuple[int, int]], formacion: Formacion) -> UnirseAmistosoResultado:
+        try:
+            formacion = Formacion(formacion)
+        except (TypeError, ValueError) as error:
+            raise DatosInvalidos() from error
+
+        partido = self.partidos.obtener_por_id(partido_id)
+
+        if partido is None:
+            raise PartidoNoEncontrado()
+
+        if partido.tipo_partido != TipoPartido.AMISTOSO:
+            raise DatosInvalidos()
+
+        if partido.estado_partido != EstadoPartido.DISPONIBLE:
+            raise PartidoNoDisponible()
+
+        if partido.id_usuario_2 is not None:
+            raise PartidoNoDisponible()
+
+        usuario = self.usuarios.obtener_por_id(usuario_id)
+        if usuario is None:
+            raise UsuarioNoEncontrado()
+
+        cantidad_jugadores = self.jugadores.contar_jugadores_usuario(usuario_id)
+
+        if cantidad_jugadores < 6:
+            raise JugadoresInsuficientes()
+
+        if len(jugadores_comportamientos) != 6:
+            raise DatosInvalidos()
+
+        id_jugadores = [id_jugador for id_jugador, _ in jugadores_comportamientos]
+
+        if len(set(id_jugadores)) != 6:
+            raise DatosInvalidos()
+
+        jugadores = []
+
+        for id_jugador, id_comportamiento in jugadores_comportamientos:
+            jugador = self.jugadores.obtener_por_id(id_jugador)
+
+            if jugador is None or jugador.id_usuario != usuario_id:
+                raise JugadorNoEncontrado()
+
+            comportamiento = (self.comportamientos.obtener_comportamiento_por_id_y_usuario(id_comportamiento, usuario_id))
+
+            if comportamiento is None:
+                raise ComportamientoNoEncontrado()
+            jugadores.append((jugador, comportamiento))
+
+        equipo = self.equipos.crear(EquipoModelo(id_usuario=usuario_id))
+
+        for jugador, comportamiento in jugadores:
+            jugador.comportamiento = comportamiento
+            equipo = self.equipos.agregar_jugador(equipo, jugador)
+
+        partido.id_usuario_2 = usuario_id
+        partido.id_equipo_2 = equipo.id_equipo
+        partido.formacion_2 = formacion
+        partido.estado_partido = EstadoPartido.PENDIENTE
+
+        partido = self.partidos.actualizar(partido)
+
+        return UnirseAmistosoResultado(partido=partido, usuario_unido=usuario)
     
     def listar_jugadores_disponibles(self, usuario_id: int) -> ListarJugadoresResultado:
         jugadores = self.jugadores.obtener_jugadores_disponibles(usuario_id)

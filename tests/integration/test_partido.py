@@ -40,7 +40,8 @@ def test_crear_partido_exitoso(db_test):
         id_equipo_1=e1.id_equipo,
         id_equipo_2=e2.id_equipo,
         duracion_partido=10,
-        formacion=Formacion.FORMACION_1,
+        formacion_1=Formacion.OFENSIVA,
+        formacion_2=Formacion.DEFENSIVA,
         tipo_partido=TipoPartido.AMISTOSO,
         estado_partido=EstadoPartido.PENDIENTE
     )
