@@ -1,11 +1,13 @@
 from .estados import EstadoPartido, Coordenada, Cancha, JugadorEstado, PelotaEstado
 from .auxiliares import *
+from .evento import EventoJugador
 
 class Primitivas:
-    def __init__(self,estado: EstadoPartido, id_usuario: int ,id_jugador: int):
+    def __init__(self,estado: EstadoPartido, id_usuario: int ,id_jugador: int, eventos: list[EventoJugador]):
         self.estado = estado
         self.id_usuario = id_usuario
         self.id_jugador = id_jugador
+        self.eventos = eventos
 
 
     def correr(self, destino: Coordenada) -> None:
@@ -48,6 +50,9 @@ class Primitivas:
         potencia = calcular_potencia(jugador.poder)
         pelota.velocidad = Coordenada(x=direccion_pelota.x * potencia, y=direccion_pelota.y * potencia)
         jugador.ultimo_pateo = self.estado.tiempo
+
+        # Registramos que el jugador pateó en este tick 
+        self.eventos.append(EventoJugador(id_jugador=self.id_jugador, id_usuario=self.id_usuario, accion="pateando"))
 
         return True
 

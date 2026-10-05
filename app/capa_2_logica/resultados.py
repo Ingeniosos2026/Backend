@@ -45,6 +45,7 @@ class UnirseAmistosoResultado:
 class ListarJugadoresResultado:
     jugadores: List[JugadorModelo]
 
+@dataclass(slots=True)
 class PartidoResultado:
     partido: PartidoModelo
 
