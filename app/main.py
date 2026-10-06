@@ -13,7 +13,9 @@ from app.capa_3_api.api import api_router
 app = FastAPI()
 
 origins = [
-    "http://localhost:5173"
+    "http://localhost:5173",
+    "http://localhost:5174",
+    "http://localhost:5175"
 ]
 
 app.include_router(api_router)
