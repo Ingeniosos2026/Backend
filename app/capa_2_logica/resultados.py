@@ -3,6 +3,7 @@ from app.capa_0_definicion_bd.models.jugadores_modelos import Jugador as Jugador
 from app.capa_0_definicion_bd.models.equipo_modelos import Equipo as EquipoModelo
 from app.capa_0_definicion_bd.models.partidos_modelos import Partido as PartidoModelo
 from app.capa_0_definicion_bd.models.comportamientos_modelos import Comportamiento as ComportamientoModelo
+from app.capa_0_definicion_bd.models.liga_modelos import Liga as LigaModelo
 from dataclasses import dataclass
 from typing import List
 
@@ -49,3 +50,6 @@ class ListarJugadoresResultado:
 class PartidoResultado:
     partido: PartidoModelo
 
+@dataclass(slots=True)
+class CrearLigaResultado:
+    liga: LigaModelo

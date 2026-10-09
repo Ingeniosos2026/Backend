@@ -7,6 +7,7 @@ from app.capa_0_definicion_bd.models.jugadores_modelos import Jugador as Jugador
 from app.capa_0_definicion_bd.models.comportamientos_modelos import Comportamiento as ComportamientoModelo
 from app.capa_0_definicion_bd.models.equipo_modelos import Equipo as EquipoModelo
 from app.capa_0_definicion_bd.models.partidos_modelos import Partido as PartidoModelo, TipoPartido, EstadoPartido, Formacion
+from app.capa_0_definicion_bd.models.liga_modelos import Liga as LigaModelo
 from app.partido.comportamientos import COMPORTAMIENTOS_PREDETERMINADOS
 from sqlalchemy.exc import IntegrityError
 from .errores import *
@@ -40,15 +41,19 @@ class _RepoEquiposProtocol(Protocol):
     def obtener_por_id(self, id_equipo: int) -> EquipoModelo | None: ...
     def agregar_jugador(self, equipo: EquipoModelo, jugador: JugadorModelo) -> EquipoModelo: ...
 
+class _RepoLigasProtocol(Protocol):
+    def crear(self, liga: LigaModelo) -> LigaModelo: ...
+
 class Servicios:
     """" Servicios que implementan la logica del juego """
 
-    def __init__(self, usuarios: _RepoUsuariosProtocol, jugadores: _RepoJugadoresProtocol = None, comportamientos: _RepoComportamientosProtocol = None, partidos: _RepoPartidosProtocol = None, equipos: _RepoEquiposProtocol = None):
+    def __init__(self, usuarios: _RepoUsuariosProtocol, jugadores: _RepoJugadoresProtocol = None, comportamientos: _RepoComportamientosProtocol = None, partidos: _RepoPartidosProtocol = None, equipos: _RepoEquiposProtocol = None, ligas: _RepoLigasProtocol = None):
         self.usuarios = usuarios
         self.jugadores = jugadores
         self.comportamientos = comportamientos
         self.partidos = partidos
         self.equipos = equipos
+        self.ligas = ligas
     
     def email_valido(self, email: str) -> bool:
         patron = r"^[a-zA-Z0-9._%+-]+@(gmail|hotmail|outlook)\.com$"
@@ -324,3 +329,34 @@ class Servicios:
         self.partidos.actualizar(partido)
 
         return PartidoResultado(partido=partido)
+
+    def crear_liga(self, usuario_id: int, nombre: str, contraseña: str | None, min_jugadores: int, max_jugadores: int, duracion_partido: int) -> CrearLigaResultado:
+
+        if not nombre.strip():
+            raise DatosLigaInvalidos()
+
+        if min_jugadores < 3 or max_jugadores < 3:
+            raise DatosLigaInvalidos()
+
+        if min_jugadores > max_jugadores:
+            raise DatosLigaInvalidos()
+
+        if duracion_partido <= 0:
+            raise DatosLigaInvalidos()
+
+        usuario = self.usuarios.obtener_por_id(usuario_id)
+        if usuario is None:
+            raise UsuarioNoEncontrado()
+
+        nueva_liga = LigaModelo(
+            id_usuario=usuario_id,
+            nombre=nombre.strip(),
+            contraseña=contraseña,
+            min_jugadores=min_jugadores,
+            max_jugadores=max_jugadores,
+            duracion_partido=duracion_partido,
+        )
+
+        liga = self.ligas.crear(nueva_liga)
+
+        return CrearLigaResultado(liga=liga)
