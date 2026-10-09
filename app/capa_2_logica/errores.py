@@ -8,6 +8,9 @@ class EmailRegistrado(Exception):
 class DatosInvalidos(Exception):
     pass
 
+class DatosLigaInvalidos(DatosInvalidos):
+    pass
+
 class CredencialesInvalidas(Exception):
     pass
 

@@ -7,6 +7,7 @@ from app.capa_0_definicion_bd.models.jugadores_modelos import Jugador
 from app.capa_0_definicion_bd.models.equipo_modelos import Equipo
 from app.capa_0_definicion_bd.models.comportamientos_modelos import Comportamiento
 from app.capa_0_definicion_bd.models.partidos_modelos import Partido, TipoPartido, EstadoPartido, Formacion
+from app.capa_0_definicion_bd.models.liga_modelos import Liga, EstadoLiga
 from app.capa_2_logica.errores import *
 from app.capa_2_logica.servicios import Servicios, password_hash
 from app.capa_2_logica.resultados import *
@@ -1103,3 +1104,141 @@ def test_iniciar_partido_lanza_error_si_no_esta_pendiente():
         servicio.iniciar_partido(partido_id=1, usuario_id=1)
 
     repositorio_partidos.actualizar.assert_not_called()
+
+
+
+#helper
+@pytest.fixture
+def repositorios():
+    usuarios = Mock()
+    ligas = Mock()
+
+    usuarios.obtener_por_id.return_value = Usuario(id_usuario=1)
+
+    liga_creada = Liga(
+        id=10,
+        id_usuario=1,
+        nombre="Liga de prueba",
+        contraseña="asd123",
+        min_jugadores=3,
+        max_jugadores=10,
+        duracion_partido=5,
+        estado=EstadoLiga.DISPONIBLE,
+    )
+    ligas.crear.return_value = liga_creada
+
+    servicio = Servicios(
+        usuarios=usuarios,
+        ligas=ligas,
+    )
+
+    return servicio, usuarios, ligas
+
+
+def test_crear_liga_correctamente(repositorios):
+    servicio, usuarios, ligas = repositorios
+
+    resultado = servicio.crear_liga(
+        usuario_id=1,
+        nombre="Liga de prueba",
+        contraseña="asd123",
+        min_jugadores=3,
+        max_jugadores=10,
+        duracion_partido=5,
+    )
+
+    assert resultado.liga.id == 10
+    assert resultado.liga.id_usuario == 1
+    assert resultado.liga.nombre == "Liga de prueba"
+    assert resultado.liga.min_jugadores == 3
+    assert resultado.liga.max_jugadores == 10
+    assert resultado.liga.duracion_partido == 5
+    assert resultado.liga.estado == EstadoLiga.DISPONIBLE
+
+    usuarios.obtener_por_id.assert_called_once_with(1)
+    ligas.crear.assert_called_once()
+
+
+@pytest.mark.parametrize(
+    ("min_jugadores", "max_jugadores"),
+    [(2, 5),(3, 11),(8, 7),(11, 11),(2, 2)]
+)
+def test_crear_liga_rechaza_cantidad_de_jugadores_invalida(repositorios,min_jugadores,max_jugadores):
+    servicio, _, ligas = repositorios
+
+    with pytest.raises(DatosLigaInvalidos):
+        servicio.crear_liga(
+            usuario_id=1,
+            nombre="Liga de prueba",
+            contraseña=None,
+            min_jugadores=min_jugadores,
+            max_jugadores=max_jugadores,
+            duracion_partido=5,
+        )
+
+    ligas.crear.assert_not_called()
+
+
+def test_crear_liga_rechaza_duracion_invalida(repositorios):
+    servicio, _, ligas = repositorios
+
+    with pytest.raises(DatosLigaInvalidos):
+        servicio.crear_liga(
+            usuario_id=1,
+            nombre="Liga de prueba",
+            contraseña=None,
+            min_jugadores=3,
+            max_jugadores=10,
+            duracion_partido=0,
+        )
+
+    ligas.crear.assert_not_called()
+
+
+def test_crear_liga_rechaza_nombre_vacio(repositorios):
+    servicio, _, ligas = repositorios
+
+    with pytest.raises(DatosLigaInvalidos):
+        servicio.crear_liga(
+            usuario_id=1,
+            nombre="   ",
+            contraseña=None,
+            min_jugadores=3,
+            max_jugadores=10,
+            duracion_partido=5,
+        )
+
+    ligas.crear.assert_not_called()
+
+
+def test_crear_liga_usuario_inexistente(repositorios):
+    servicio, usuarios, ligas = repositorios
+    usuarios.obtener_por_id.return_value = None
+
+    with pytest.raises(UsuarioNoEncontrado):
+        servicio.crear_liga(
+            usuario_id=999,
+            nombre="Liga de prueba",
+            contraseña=None,
+            min_jugadores=3,
+            max_jugadores=10,
+            duracion_partido=5,
+        )
+
+    ligas.crear.assert_not_called()
+
+
+def test_crear_liga_sin_contrasena(repositorios):
+    servicio, _, ligas = repositorios
+
+    resultado = servicio.crear_liga(
+        usuario_id=1,
+        nombre="Liga abierta",
+        contraseña=None,
+        min_jugadores=3,
+        max_jugadores=10,
+        duracion_partido=5,
+    )
+
+    assert resultado.liga is not None
+    ligas.crear.assert_called_once()
