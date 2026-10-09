@@ -335,10 +335,7 @@ class Servicios:
         if not nombre.strip():
             raise DatosLigaInvalidos()
 
-        if min_jugadores < 3 or min_jugadores > 10:
-            raise DatosLigaInvalidos()
-
-        if max_jugadores < 3 or max_jugadores > 10:
+        if min_jugadores < 3 or max_jugadores < 3:
             raise DatosLigaInvalidos()
 
         if min_jugadores > max_jugadores:

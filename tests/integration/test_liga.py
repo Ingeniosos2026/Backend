@@ -65,20 +65,6 @@ def test_min_jugadores_no_puede_ser_menor_a_3(db_test):
             duracion_partido=10,
         )
 
-def test_max_jugadores_no_puede_ser_mayor_a_10(db_test):
-    usuario = create_usuario(db_test)
-    servicio = create_servicio(db_test)
-
-    with pytest.raises(DatosLigaInvalidos):
-        servicio.crear_liga(
-            usuario_id=usuario.id_usuario,
-            nombre="Liga inválida",
-            contraseña="1234",
-            min_jugadores=3,
-            max_jugadores=11,
-            duracion_partido=10,
-        )
-
 def test_liga_sin_contraseña_es_valida(db_test):
     usuario = create_usuario(db_test)
 

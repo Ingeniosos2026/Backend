@@ -1161,7 +1161,7 @@ def test_crear_liga_correctamente(repositorios):
 
 @pytest.mark.parametrize(
     ("min_jugadores", "max_jugadores"),
-    [(2, 5),(3, 11),(8, 7),(11, 11),(2, 2)]
+    [(2, 5),(8, 7),(2, 2)]
 )
 def test_crear_liga_rechaza_cantidad_de_jugadores_invalida(repositorios,min_jugadores,max_jugadores):
     servicio, _, ligas = repositorios
