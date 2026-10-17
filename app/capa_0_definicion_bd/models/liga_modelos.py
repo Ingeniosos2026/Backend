@@ -26,7 +26,15 @@ class Liga(Base):
     min_jugadores = Column(Integer, nullable=False)
     max_jugadores = Column(Integer, nullable=False)
     duracion_partido = Column(Integer, nullable=False)
+
     usuario = relationship(
         "Usuario",
         back_populates="ligas",
     )
+
+    participantes = relationship(
+        "Usuario",
+        secondary= "liga_participantes",
+        back_populates= "ligas_unidas",
+    )
+

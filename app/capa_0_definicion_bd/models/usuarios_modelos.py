@@ -42,3 +42,9 @@ class Usuario(Base):
         foreign_keys="[Partido.id_usuario_2]",
         back_populates="usuario_2"
     )
+
+    ligas_unidas = relationship(
+        "Liga",
+        secondary="liga_participantes",
+        back_populates="participantes"
+    )
