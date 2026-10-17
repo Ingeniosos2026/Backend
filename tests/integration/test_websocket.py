@@ -82,3 +82,33 @@ def test_lobby_se_elimina_al_desconectarse_todos():
         assert partido_id in admin_conexiones.conexiones_lobby
 
     assert partido_id not in admin_conexiones.conexiones_lobby
+
+
+def test_lobby_liga_acepta_varios_usuarios_y_aisla_ids_de_amistosos():
+    client = TestClient(app)
+    liga_id = 1913
+
+    with client.websocket_connect(f"/ws/liga/{liga_id}") as ws1, client.websocket_connect(
+        f"/ws/liga/{liga_id}"
+    ) as ws2, client.websocket_connect(f"/ws/amistoso/{liga_id}"):
+        clave_liga = ("liga", liga_id)
+        assert len(admin_conexiones.conexiones_lobby[clave_liga]) == 2
+        assert len(admin_conexiones.conexiones_lobby[liga_id]) == 1
+
+        asyncio.run(
+            admin_conexiones.emitir_lobby_liga(
+                liga_id,
+                "usuario_unido",
+                {"usuario_id": 2},
+            )
+        )
+
+        mensaje_esperado = {
+            "action": "usuario_unido",
+            "payload": {"usuario_id": 2},
+        }
+        assert ws1.receive_json() == mensaje_esperado
+        assert ws2.receive_json() == mensaje_esperado
+
+    assert ("liga", liga_id) not in admin_conexiones.conexiones_lobby
+    assert liga_id not in admin_conexiones.conexiones_lobby

@@ -3,6 +3,7 @@ from fastapi.responses import JSONResponse
 
 from app.capa_2_logica.servicios import Servicios
 from app.capa_2_logica.errores import DatosInvalidos, UsuarioNoEncontrado
+from app.capa_3_api.websockets.admin_conexiones import admin_conexiones
 from app.capa_3_api.dtos.ligas import CrearLiga
 from app.capa_3_api.dependencias import obtener_servicio
 
@@ -10,7 +11,7 @@ liga_router = APIRouter()
 
 
 @liga_router.post("/liga/{usuario_id}", status_code=status.HTTP_201_CREATED)
-def crear_liga(usuario_id: int, datos: CrearLiga, servicio: Servicios = Depends(obtener_servicio)):
+async def crear_liga(usuario_id: int, datos: CrearLiga, servicio: Servicios = Depends(obtener_servicio)):
     try:
         resultado = servicio.crear_liga(
             usuario_id=usuario_id,
@@ -22,6 +23,15 @@ def crear_liga(usuario_id: int, datos: CrearLiga, servicio: Servicios = Depends(
         )
 
         liga = resultado.liga
+
+        await admin_conexiones.difundir("liga creada",
+            {
+                "id_liga": liga.id,
+                "duracion": liga.duracion_partido,
+                "nombre": liga.nombre,
+                "min_jugadores": liga.min_jugadores,
+                "max_jugadores": liga.max_jugadores,
+            })
 
         return {
             "id": liga.id,
