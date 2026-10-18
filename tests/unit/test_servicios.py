@@ -1242,3 +1242,86 @@ def test_crear_liga_sin_contrasena(repositorios):
 
     assert resultado.liga is not None
     ligas.crear.assert_called_once()
+
+def crear_escenario_unirse_liga():
+    repo_usuarios = Mock()
+    repo_jugadores = Mock()
+    repo_ligas = Mock()
+
+    usuario = Usuario(id_usuario=2, nombre="Tomas")
+    liga = Liga(
+        id=10,
+        id_usuario=1,
+        nombre="Liga de tomas",
+        contraseña=None,
+        min_jugadores=3,
+        max_jugadores=5,
+        duracion_partido=10,
+        estado=EstadoLiga.DISPONIBLE,
+    )
+    liga.participantes = []
+
+    repo_ligas.obtener_por_id.return_value = liga
+    repo_usuarios.obtener_por_id.return_value = usuario
+    repo_jugadores.contar_jugadores_usuario.return_value = 6
+
+    def agregar_participante_mock(liga_obj, usuario_obj):
+        liga_obj.participantes.append(usuario_obj)
+        return liga_obj
+
+    repo_ligas.agregar_participante.side_effect = agregar_participante_mock
+
+    servicio = Servicios(
+        usuarios=repo_usuarios,
+        jugadores=repo_jugadores,
+        ligas=repo_ligas,
+    )
+    return servicio, repo_usuarios, repo_jugadores, repo_ligas, liga, usuario
+
+def test_unirse_liga_privada_con_contraseña_correcta():
+    servicio, _, _, repo_ligas, liga, usuario = crear_escenario_unirse_liga()
+    liga.contraseña = "hola123"
+
+    resultado = servicio.unirse_liga(liga_id = 10, usuario_id = 2, contraseña = "hola123")
+
+    assert resultado.liga == liga
+    assert resultado.usuario_unido == usuario
+    repo_ligas.agregar_participante.assert_called_once_with(liga, usuario)
+
+def test_unirse_liga_contraseña_incorrecta():
+    servicio, _, _, repo_ligas, liga, _ = crear_escenario_unirse_liga()
+    liga.contraseña = "hola123"
+
+    with pytest.raises(ContraseñaLigaIncorrecta):
+        servicio.unirse_liga(liga_id = 10, usuario_id= 2, contraseña= "niideacapo")
+
+    repo_ligas.agregar_participante.assert_not_called()
+
+def test_unirse_liga_llena():
+    servicio, _, _, repo_ligas, liga, _ = crear_escenario_unirse_liga()
+    liga.max_jugadores = 3
+    liga.participantes = [Usuario(id_usuario=3), Usuario(id_usuario=4), Usuario(id_usuario=193)]
+
+    with pytest.raises(LigaLlena):
+        servicio.unirse_liga(liga_id = 10, usuario_id = 2)
+
+    repo_ligas.agregar_participante.assert_not_called()
+
+def test_unirse_liga_usuario_es_creador():
+    servicio, repo_usuarios, _, repo_ligas, liga, _ = crear_escenario_unirse_liga()
+    creador = Usuario(id_usuario=1)
+    repo_usuarios.obtener_por_id.return_value = creador
+
+    with pytest.raises(UsuarioEsCreadorDeLiga):
+        servicio.unirse_liga(liga_id = 10, usuario_id = 1)
+
+    repo_ligas.agregar_participante.assert_not_called()
+
+def test_unirse_liga_jugadores_insuficientes():
+    servicio, _, repo_jugadores, repo_ligas, _, _ = crear_escenario_unirse_liga()
+    repo_jugadores.contar_jugadores_usuario.return_value = 5
+
+    with pytest.raises(JugadoresInsuficientes):
+        servicio.unirse_liga(liga_id = 10, usuario_id = 2)
+
+    repo_ligas.agregar_participante.assert_not_called()

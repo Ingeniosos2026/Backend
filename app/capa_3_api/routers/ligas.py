@@ -63,7 +63,7 @@ async def crear_liga(usuario_id: int, datos: CrearLiga, servicio: Servicios = De
         )
     
 @liga_router.put("/liga/{liga_id}/unirse/{usuario_id}", status_code=status.HTTP_200_OK)
-def unirse_liga(liga_id: int,usuario_id: int, datos: UnirseLiga | None = None, servicio: Servicios = Depends(obtener_servicio)):
+async def unirse_liga(liga_id: int,usuario_id: int, datos: UnirseLiga | None = None, servicio: Servicios = Depends(obtener_servicio)):
     try:
         contraseña = datos.contraseña if datos else None
 
@@ -72,6 +72,21 @@ def unirse_liga(liga_id: int,usuario_id: int, datos: UnirseLiga | None = None, s
             usuario_id=usuario_id, 
             contraseña=contraseña
         )
+
+        await admin_conexiones.emitir_lobby_liga(
+            liga_id=liga_id,
+            accion="usuario_unido_liga",
+            payload={
+                "usuario_unido": {
+                    "id": resultado.usuario_unido.id_usuario,
+                    "nombre": resultado.usuario_unido.nombre,
+                    "club": resultado.usuario_unido.nombre_club
+                }
+            }
+        )
+
+
+
         return {
             "id_liga": resultado.liga.id,
             "id_usuario": resultado.usuario_unido.id_usuario,
