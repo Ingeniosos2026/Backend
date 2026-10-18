@@ -58,3 +58,8 @@ class CrearLigaResultado:
 class UnirseLigaResultado:
     liga: LigaModelo
     usuario_unido: UsuarioModelo
+    
+@dataclass(slots=True)
+class AbandonarLigaResultado:
+    liga: LigaModelo
+    usuario_abandonado: UsuarioModelo

@@ -45,7 +45,7 @@ class _RepoLigasProtocol(Protocol):
     def crear(self, liga: LigaModelo) -> LigaModelo: ...
     def obtener_por_id(self, id_liga: int) -> LigaModelo | None: ...
     def agregar_participante(self, liga: LigaModelo, usuario: UsuarioModelo) -> LigaModelo: ...
-
+    def eliminar_participante(self, liga: LigaModelo, usuario: UsuarioModelo) -> LigaModelo: ...
 
 
 class Servicios:
@@ -398,3 +398,24 @@ class Servicios:
         liga_actualizada = self.ligas.agregar_participante(liga, usuario)
 
         return UnirseLigaResultado(liga=liga_actualizada, usuario_unido=usuario)
+    
+    def abandonar_liga(self, liga_id: int, usuario_id: int) -> AbandonarLigaResultado:
+        liga = self.ligas.obtener_por_id(liga_id)
+
+        if liga is None:
+            raise LigaNoEncontrada()
+
+        usuario = self.usuarios.obtener_por_id(usuario_id)
+        if usuario is None:
+            raise UsuarioNoEncontrado()
+
+        if not any(u.id_usuario == usuario_id for u in liga.participantes):
+            raise UsuarioNoExisteEnLiga()
+        
+        if liga.estado != EstadoLiga.DISPONIBLE:
+            raise LigaIniciada()
+
+
+        liga_actualizada = self.ligas.eliminar_participante(liga, usuario)
+
+        return AbandonarLigaResultado(liga=liga_actualizada, usuario_abandonado=usuario)

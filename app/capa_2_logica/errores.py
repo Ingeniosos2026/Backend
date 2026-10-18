@@ -64,3 +64,9 @@ class UsuarioYaEnLiga(Exception):
 
 class UsuarioEsCreadorDeLiga(Exception): 
     pass
+
+class LigaIniciada (Exception): 
+    pass
+
+class UsuarioNoExisteEnLiga(Exception): 
+    pass
