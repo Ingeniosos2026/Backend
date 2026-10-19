@@ -16,3 +16,9 @@ class ComportamientoRepositorio:
 
     def obtener_comportamientos_usuario(self, usuario_id: int) -> List[ComportamientoModelo]:
         return (self.db.query(ComportamientoModelo).filter(ComportamientoModelo.id_usuario == usuario_id).all())
+
+    def crear(self, comportamiento: ComportamientoModelo) -> ComportamientoModelo:
+        self.db.add(comportamiento)
+        self.db.commit()
+        self.db.refresh(comportamiento)
+        return comportamiento

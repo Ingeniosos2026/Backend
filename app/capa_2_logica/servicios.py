@@ -8,6 +8,7 @@ from app.capa_0_definicion_bd.models.comportamientos_modelos import Comportamien
 from app.capa_0_definicion_bd.models.equipo_modelos import Equipo as EquipoModelo
 from app.capa_0_definicion_bd.models.partidos_modelos import Partido as PartidoModelo, TipoPartido, EstadoPartido, Formacion
 from app.capa_0_definicion_bd.models.liga_modelos import Liga as LigaModelo
+from app.partido.validador import CodigoComportamientoInvalido, validar_codigo_comportamiento
 from app.partido.comportamientos import COMPORTAMIENTOS_PREDETERMINADOS
 from sqlalchemy.exc import IntegrityError
 from .errores import *
@@ -29,6 +30,7 @@ class _RepoJugadoresProtocol(Protocol):
 class _RepoComportamientosProtocol(Protocol):
     def obtener_comportamiento_por_id_y_usuario(self, comp_id: int, usuario_id: int) -> ComportamientoModelo | None: ...
     def obtener_comportamientos_usuario(self, usuario_id: int) -> List[ComportamientoModelo]: ...
+    def crear(self, comportamiento: ComportamientoModelo) -> ComportamientoModelo: ...
 
 class _RepoPartidosProtocol(Protocol):
     def crear(self, partido: PartidoModelo) -> PartidoModelo: ...
@@ -360,3 +362,25 @@ class Servicios:
         liga = self.ligas.crear(nueva_liga)
 
         return CrearLigaResultado(liga=liga)
+
+    def crear_comportamiento(self, usuario_id: int, nombre: str, codigo: str) -> CrearComportamientoResultado:
+        if not nombre.strip():
+            raise DatosInvalidos()
+
+        if len(nombre) > 50:
+            raise DatosInvalidos()
+
+        usuario = self.usuarios.obtener_por_id(usuario_id)
+
+        if usuario is None:
+            raise UsuarioNoEncontrado()
+
+        try:
+            codigo_sanitizado = validar_codigo_comportamiento(codigo)
+        except CodigoComportamientoInvalido as exc:
+            raise DatosInvalidos() from exc
+
+        nuevo_comportamiento = ComportamientoModelo(id_usuario = usuario_id, nombre= nombre.strip(), codigo= codigo_sanitizado)
+        comportamiento = self.comportamientos.crear(nuevo_comportamiento)
+
+        return CrearComportamientoResultado(comportamiento=comportamiento)

@@ -82,6 +82,61 @@ def test_crear_usuario_club_vacio():
     repositorio.obtener_por_email.assert_not_called()
     repositorio.crear.assert_not_called()
 
+
+def test_crear_comportamiento_con_repositorios_simulados():
+    def devolver_comportamiento(comportamiento):
+        return comportamiento
+
+    usuarios = Mock()
+    usuarios.obtener_por_id.return_value = Mock()
+    comportamientos = Mock()
+    comportamientos.crear.side_effect = devolver_comportamiento
+    servicio = Servicios(usuarios=usuarios, comportamientos=comportamientos)
+    codigo = "def comportamiento(primitivas):\n primitivas.correr((1, 2))"
+
+    resultado = servicio.crear_comportamiento(usuario_id=7, nombre="Defensa", codigo=codigo)
+
+    assert resultado.comportamiento.id_usuario == 7
+    assert resultado.comportamiento.nombre == "Defensa"
+    assert resultado.comportamiento.codigo == codigo
+    usuarios.obtener_por_id.assert_called_once_with(7)
+    comportamientos.crear.assert_called_once()
+
+
+@pytest.mark.parametrize("nombre", ["", "   ", "x" * 1000])
+def test_crear_comportamiento_rechaza_nombre_invalido(nombre):
+    usuarios = Mock()
+    comportamientos = Mock()
+    servicio = Servicios(usuarios=usuarios, comportamientos=comportamientos)
+
+    with pytest.raises(DatosInvalidos):
+        servicio.crear_comportamiento(usuario_id=7, nombre=nombre, codigo="def comportamiento(primitivas):\n pass")
+    usuarios.obtener_por_id.assert_not_called()
+    comportamientos.crear.assert_not_called()
+
+
+def test_crear_comportamiento_rechaza_usuario_inexistente():
+    usuarios = Mock()
+    usuarios.obtener_por_id.return_value = None
+    comportamientos = Mock()
+    servicio = Servicios(usuarios=usuarios, comportamientos=comportamientos)
+
+    with pytest.raises(UsuarioNoEncontrado):
+        servicio.crear_comportamiento(usuario_id=7, nombre="Defensa", codigo="def comportamiento(primitivas):\n pass")
+    comportamientos.crear.assert_not_called()
+
+
+def test_crear_comportamiento_rechaza_codigo_invalido():
+    usuarios = Mock()
+    usuarios.obtener_por_id.return_value = Mock()
+    comportamientos = Mock()
+    servicio = Servicios(usuarios=usuarios, comportamientos=comportamientos)
+
+    with pytest.raises(DatosInvalidos):
+        servicio.crear_comportamiento(usuario_id=7,nombre="Defensa", codigo="def comportamiento(primitivas):\n open()")
+    comportamientos.crear.assert_not_called()
+
+
 def test_crear_usuario_email_registrado():
 
     repositorio = Mock()

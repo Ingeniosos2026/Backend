@@ -53,3 +53,7 @@ class PartidoResultado:
 @dataclass(slots=True)
 class CrearLigaResultado:
     liga: LigaModelo
+
+@dataclass(slots=True)
+class CrearComportamientoResultado:
+    comportamiento: ComportamientoModelo
