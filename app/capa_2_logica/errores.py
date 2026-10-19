@@ -46,3 +46,21 @@ class IniciarNoPermitido(Exception):
 
 class AmistosoNoPuedeIniciar(Exception):
     pass
+
+class LigaNoEncontrada(Exception): 
+    pass
+
+class LigaNoDisponible(Exception): 
+    pass
+
+class LigaLlena(Exception): 
+    pass
+
+class ContraseñaLigaIncorrecta(Exception): 
+    pass
+
+class UsuarioYaEnLiga(Exception): 
+    pass
+
+class UsuarioEsCreadorDeLiga(Exception): 
+    pass
