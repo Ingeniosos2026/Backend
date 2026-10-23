@@ -1,5 +1,7 @@
 from fastapi import WebSocket
-from typing import Dict, List
+from typing import Dict, List, Tuple, Union
+
+ClaveLobby = Union[int, Tuple[str, int]]            # esto fue necesario para que amistoso y liga no se pisen las conexiones
 
 class AdministradorConexiones:
     def __init__(self):
@@ -11,50 +13,94 @@ class AdministradorConexiones:
         self.conexiones_activas: Dict[int, List[WebSocket]] = {}
 
         # conexiones para lobby de amistosos
-        self.conexiones_lobby: Dict[int, List[WebSocket]] = {}
+        self.conexiones_lobby: Dict[ClaveLobby, List[WebSocket]] = {}
 
     # lobby de amistosos
     async def conectar_lobby(self, websocket: WebSocket, partido_id: int):
+        await self._conectar_a_lobby(websocket, partido_id, self.conexiones_lobby)
+
+    async def conectar_lobby_liga(self, websocket: WebSocket, liga_id: int):
+        await self._conectar_a_lobby(websocket, ("liga", liga_id), self.conexiones_lobby)
+
+    async def _conectar_a_lobby(
+        self,
+        websocket: WebSocket,
+        lobby_id: ClaveLobby,
+        conexiones: Dict[ClaveLobby, List[WebSocket]],
+    ):
         await websocket.accept()
 
-        if partido_id not in self.conexiones_lobby:
-            self.conexiones_lobby[partido_id] = []
+        if lobby_id not in conexiones:
+            conexiones[lobby_id] = []
 
-        self.conexiones_lobby[partido_id].append(websocket)
+        conexiones[lobby_id].append(websocket)
 
     def desconectar_lobby(self, websocket: WebSocket, partido_id: int):
-        if partido_id in self.conexiones_lobby:
+        self._desconectar_de_lobby(websocket, partido_id, self.conexiones_lobby)
+
+    def desconectar_lobby_liga(self, websocket: WebSocket, liga_id: int):
+        self._desconectar_de_lobby(websocket, ("liga", liga_id), self.conexiones_lobby)
+
+    def _desconectar_de_lobby(
+        self,
+        websocket: WebSocket,
+        lobby_id: ClaveLobby,
+        conexiones: Dict[ClaveLobby, List[WebSocket]],
+    ):
+        if lobby_id in conexiones:
             try:
-                self.conexiones_lobby[partido_id].remove(websocket)
+                conexiones[lobby_id].remove(websocket)
             except ValueError:
                 pass
 
-            if not self.conexiones_lobby[partido_id]:
-                del self.conexiones_lobby[partido_id]
+            if not conexiones[lobby_id]:
+                del conexiones[lobby_id]
 
     async def emitir_lobby(self, partido_id: int, accion: str, payload: dict):
-        if partido_id not in self.conexiones_lobby:
+        await self._emitir_en_lobby(partido_id, accion, payload, self.conexiones_lobby)
+
+    async def emitir_lobby_liga(self, liga_id: int, accion: str, payload: dict):
+        await self._emitir_en_lobby(("liga", liga_id), accion, payload, self.conexiones_lobby)
+
+    async def _emitir_en_lobby(
+        self,
+        lobby_id: ClaveLobby,
+        accion: str,
+        payload: dict,
+        conexiones: Dict[ClaveLobby, List[WebSocket]],
+    ):
+        if lobby_id not in conexiones:
             return
 
         mensaje = {"action": accion, "payload": payload}
 
-        for conexion in list(self.conexiones_lobby[partido_id]):
+        for conexion in list(conexiones[lobby_id]):
             try:
                 await conexion.send_json(mensaje)
             except RuntimeError:
-                self.desconectar_lobby(conexion, partido_id)
+                self._desconectar_de_lobby(conexion, lobby_id, conexiones)
 
     async def cerrar_lobby(self, partido_id: int):
-        if partido_id not in self.conexiones_lobby:
+        await self._cerrar_lobby(partido_id, self.conexiones_lobby)
+
+    async def cerrar_lobby_liga(self, liga_id: int):
+        await self._cerrar_lobby(("liga", liga_id), self.conexiones_lobby)
+
+    async def _cerrar_lobby(
+        self,
+        lobby_id: ClaveLobby,
+        conexiones: Dict[ClaveLobby, List[WebSocket]],
+    ):
+        if lobby_id not in conexiones:
             return
 
-        for conexion in list(self.conexiones_lobby[partido_id]):
+        for conexion in list(conexiones[lobby_id]):
             try:
                 await conexion.close()
             except RuntimeError:
                 pass
 
-        self.conexiones_lobby.pop(partido_id, None)
+        conexiones.pop(lobby_id, None)
     
     # --- METODOS PARA PARTIDOS --- 
 

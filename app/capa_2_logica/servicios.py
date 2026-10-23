@@ -9,6 +9,7 @@ from app.capa_0_definicion_bd.models.equipo_modelos import Equipo as EquipoModel
 from app.capa_0_definicion_bd.models.partidos_modelos import Partido as PartidoModelo, TipoPartido, EstadoPartido, Formacion
 from app.capa_0_definicion_bd.models.liga_modelos import Liga as LigaModelo
 from app.partido.validador import CodigoComportamientoInvalido, validar_codigo_comportamiento
+from app.capa_0_definicion_bd.models.liga_modelos import EstadoLiga, Liga as LigaModelo
 from app.partido.comportamientos import COMPORTAMIENTOS_PREDETERMINADOS
 from sqlalchemy.exc import IntegrityError
 from .errores import *
@@ -45,6 +46,10 @@ class _RepoEquiposProtocol(Protocol):
 
 class _RepoLigasProtocol(Protocol):
     def crear(self, liga: LigaModelo) -> LigaModelo: ...
+    def obtener_por_id(self, id_liga: int) -> LigaModelo | None: ...
+    def agregar_participante(self, liga: LigaModelo, usuario: UsuarioModelo) -> LigaModelo: ...
+
+
 
 class Servicios:
     """" Servicios que implementan la logica del juego """
@@ -384,3 +389,37 @@ class Servicios:
         comportamiento = self.comportamientos.crear(nuevo_comportamiento)
 
         return CrearComportamientoResultado(comportamiento=comportamiento)
+    
+    def unirse_liga(self,liga_id: int,usuario_id: int, contraseña: str | None = None,) -> UnirseLigaResultado:
+        
+        liga = self.ligas.obtener_por_id(liga_id)
+
+        if liga is None:
+            raise LigaNoEncontrada()
+
+        if liga.estado != EstadoLiga.DISPONIBLE:
+            raise LigaNoDisponible()
+
+        if len(liga.participantes) >= liga.max_jugadores:
+            raise LigaLlena()
+
+        if liga.contraseña is not None and liga.contraseña.strip() != "":
+            if contraseña != liga.contraseña:
+                raise ContraseñaLigaIncorrecta()
+
+        usuario = self.usuarios.obtener_por_id(usuario_id)
+        if usuario is None:
+            raise UsuarioNoEncontrado()
+
+        if any(u.id_usuario == usuario_id for u in liga.participantes):
+            raise UsuarioYaEnLiga()
+        
+        if liga.id_usuario == usuario_id:
+            raise UsuarioEsCreadorDeLiga()
+
+        if self.jugadores.contar_jugadores_usuario(usuario_id) < 6:
+            raise JugadoresInsuficientes()
+
+        liga_actualizada = self.ligas.agregar_participante(liga, usuario)
+
+        return UnirseLigaResultado(liga=liga_actualizada, usuario_unido=usuario)

@@ -17,6 +17,17 @@ async def websocket_amistoso(websocket: WebSocket, partido_id: int):
     except WebSocketDisconnect:
         admin_conexiones.desconectar_lobby(websocket, partido_id)
 
+@ws_router.websocket("/ws/liga/{liga_id}")
+async def websocket_liga(websocket: WebSocket, liga_id: int):
+    await admin_conexiones.conectar_lobby_liga(websocket, liga_id)
+
+    try:
+        while True:
+            await websocket.receive_text()
+
+    except WebSocketDisconnect:
+        admin_conexiones.desconectar_lobby_liga(websocket, liga_id)
+
 @ws_router.websocket("/ws/partido/{partido_id}")
 async def websocket_endpoint(websocket: WebSocket, partido_id: int):
     await admin_conexiones.conectar(websocket, partido_id) 
