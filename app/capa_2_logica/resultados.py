@@ -55,6 +55,10 @@ class CrearLigaResultado:
     liga: LigaModelo
 
 @dataclass(slots=True)
+class CrearComportamientoResultado:
+    comportamiento: ComportamientoModelo
+
+@dataclass(slots=True)
 class UnirseLigaResultado:
     liga: LigaModelo
     usuario_unido: UsuarioModelo
