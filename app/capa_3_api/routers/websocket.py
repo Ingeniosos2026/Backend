@@ -1,31 +1,75 @@
-from fastapi import APIRouter, WebSocket, WebSocketDisconnect
+from fastapi import APIRouter, Depends, WebSocket, WebSocketDisconnect
 
 from app.capa_3_api.websockets.admin_conexiones import admin_conexiones
+from app.capa_3_api.dependencias import obtener_servicio
+from app.capa_2_logica.servicios import Servicios
 from app.partido.administrar_partidos import administrador_partidas 
 from app.partido.convertidor import estado_a_dict
 
 ws_router = APIRouter()
 
 @ws_router.websocket("/ws/amistoso/{partido_id}")
-async def websocket_amistoso(websocket: WebSocket, partido_id: int):
+async def websocket_amistoso(websocket: WebSocket, partido_id: int, servicio: Servicios = Depends(obtener_servicio)):
     await admin_conexiones.conectar_lobby(websocket, partido_id)
-
     try:
+        partido = servicio.partidos.obtener_por_id(partido_id)
+        if partido is not None:
+            competidores = [
+                {
+                    "id": partido.usuario_1.id_usuario,
+                    "nombre": partido.usuario_1.nombre,
+                    "club": partido.usuario_1.nombre_club}]
+            if partido.usuario_2 is not None:
+                competidores.append({
+                    "id": partido.usuario_2.id_usuario,
+                    "nombre": partido.usuario_2.nombre,
+                    "club": partido.usuario_2.nombre_club})
+
+            try:
+                await websocket.send_json({
+                    "action": "estado_inicial_lobby",
+                    "payload": {"competidores": competidores}})
+            except RuntimeError:
+                return
+
         while True:
             await websocket.receive_text()
 
     except WebSocketDisconnect:
+        pass
+    finally:
         admin_conexiones.desconectar_lobby(websocket, partido_id)
 
 @ws_router.websocket("/ws/liga/{liga_id}")
-async def websocket_liga(websocket: WebSocket, liga_id: int):
+async def websocket_liga(websocket: WebSocket, liga_id: int, servicio: Servicios = Depends(obtener_servicio)):
     await admin_conexiones.conectar_lobby_liga(websocket, liga_id)
 
     try:
+        liga = servicio.ligas.obtener_por_id(liga_id)
+        if liga is not None:
+            participantes = {
+                usuario.id_usuario: usuario
+                for usuario in [liga.usuario, *liga.participantes]}
+            for participante in participantes.values():
+                try:
+                    await websocket.send_json({
+                        "action": "usuario_unido_liga",
+                        "payload": {
+                            "usuario_unido": {
+                                "id": participante.id_usuario,
+                                "nombre": participante.nombre,
+                                "club": participante.nombre_club}
+                        }
+                    })
+                except RuntimeError:
+                    return
+
         while True:
             await websocket.receive_text()
 
     except WebSocketDisconnect:
+        pass
+    finally:
         admin_conexiones.desconectar_lobby_liga(websocket, liga_id)
 
 @ws_router.websocket("/ws/partido/{partido_id}")
