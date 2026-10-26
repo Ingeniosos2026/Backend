@@ -3,7 +3,7 @@ from typing import Protocol
 from pwdlib import PasswordHash
 
 from app.capa_0_definicion_bd.models.usuarios_modelos import Usuario as UsuarioModelo
-from app.capa_0_definicion_bd.models.jugadores_modelos import Jugador as JugadorModelo
+from app.capa_0_definicion_bd.models.jugadores_modelos import Jugador as JugadorModelo, EstadoJugador
 from app.capa_0_definicion_bd.models.comportamientos_modelos import Comportamiento as ComportamientoModelo
 from app.capa_0_definicion_bd.models.equipo_modelos import Equipo as EquipoModelo
 from app.capa_0_definicion_bd.models.partidos_modelos import Partido as PartidoModelo, TipoPartido, EstadoPartido, Formacion
@@ -187,7 +187,8 @@ class Servicios:
         resultado_equipo = self.crear_equipo(usuario_id=usuario_id)
         equipo = resultado_equipo.equipo
 
-        for jugador, id_comportamiento in jugadores:
+        for indice, (jugador, id_comportamiento) in enumerate(jugadores):
+            jugador.estado = (EstadoJugador.TITULAR if indice < 3 else EstadoJugador.SUPLENTE)
             resultado_equipo = self.agregar_jugador_a_equipo(
                 usuario_id=usuario_id,
                 id_equipo=equipo.id_equipo,
@@ -301,7 +302,8 @@ class Servicios:
 
         equipo = self.equipos.crear(EquipoModelo(id_usuario=usuario_id))
 
-        for jugador, comportamiento in jugadores:
+        for indice, (jugador, comportamiento) in enumerate(jugadores):
+            jugador.estado = (EstadoJugador.TITULAR if indice < 3 else EstadoJugador.SUPLENTE)
             jugador.comportamiento = comportamiento
             equipo = self.equipos.agregar_jugador(equipo, jugador)
 

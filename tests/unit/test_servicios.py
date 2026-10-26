@@ -3,7 +3,7 @@ from unittest.mock import Mock
 import pytest
 
 from app.capa_0_definicion_bd.models.usuarios_modelos import Usuario
-from app.capa_0_definicion_bd.models.jugadores_modelos import Jugador
+from app.capa_0_definicion_bd.models.jugadores_modelos import Jugador, EstadoJugador
 from app.capa_0_definicion_bd.models.equipo_modelos import Equipo
 from app.capa_0_definicion_bd.models.comportamientos_modelos import Comportamiento
 from app.capa_0_definicion_bd.models.partidos_modelos import Partido, TipoPartido, EstadoPartido, Formacion
@@ -392,6 +392,13 @@ def test_crear_amistoso_correctamente():
     assert partido_nuevo.tipo == TipoPartido.AMISTOSO
     assert partido_nuevo.estado == EstadoPartido.DISPONIBLE
     assert equipo.jugadores_amistosos == jugadores
+    assert [jugador.estado for jugador in jugadores] == [
+        EstadoJugador.TITULAR,
+        EstadoJugador.TITULAR,
+        EstadoJugador.TITULAR,
+        EstadoJugador.SUPLENTE,
+        EstadoJugador.SUPLENTE,
+        EstadoJugador.SUPLENTE]
 
     repo_usuarios.obtener_por_id.assert_called_once_with(1)
     repo_equipos.crear.assert_called_once()
@@ -792,6 +799,13 @@ def test_unirse_amistoso_correctamente():
     assert partido.estado_partido == EstadoPartido.PENDIENTE
 
     assert equipo.jugadores_amistosos == jugadores
+    assert [jugador.estado for jugador in jugadores] == [
+        EstadoJugador.TITULAR,
+        EstadoJugador.TITULAR,
+        EstadoJugador.TITULAR,
+        EstadoJugador.SUPLENTE,
+        EstadoJugador.SUPLENTE,
+        EstadoJugador.SUPLENTE]
 
     repo_partidos.obtener_por_id.assert_called_once_with(1)
     repo_usuarios.obtener_por_id.assert_called_once_with(2)

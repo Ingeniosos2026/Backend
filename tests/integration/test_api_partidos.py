@@ -1,7 +1,7 @@
 from unittest.mock import AsyncMock, Mock
 import pytest
 
-from app.capa_0_definicion_bd.models.jugadores_modelos import Jugador
+from app.capa_0_definicion_bd.models.jugadores_modelos import Jugador, EstadoJugador
 from app.capa_0_definicion_bd.models.equipo_modelos import Equipo
 from app.capa_0_definicion_bd.models.comportamientos_modelos import Comportamiento
 from app.capa_0_definicion_bd.models.partidos_modelos import (EstadoPartido, Formacion, TipoPartido, Partido)
@@ -89,7 +89,13 @@ def test_crear_amistoso(client, db_test, monkeypatch):
         jugador.id_comportamiento == comportamiento.id
         for jugador in equipo.jugadores_amistosos
     )
-    # Verificar que se notificó a todos los usuarios conectados 
+    assert {jugador.id_jugador: jugador.estado for jugador in equipo.jugadores_amistosos} == {
+        jugador.id_jugador: (
+            EstadoJugador.TITULAR if indice < 3 else EstadoJugador.SUPLENTE
+        )
+        for indice, jugador in enumerate(jugadores)
+    }
+
     difundir.assert_awaited_once_with("amistoso_creado", 
             {"id_partido": datos["id_partido"], 
             "duracion": 5, 
