@@ -135,3 +135,64 @@ def test_unirse_liga_jugadores_insuficientes(client, db_test):
 
     response = client.put(f"/liga/{liga.id}/unirse/{usuario['id']}")
     assert response.status_code == 400
+
+def test_abandonar_liga(client, db_test):
+    creador = create_usuario(db_test)
+    usuario = client.post("/usuario", json={
+        "email": "crack@gmail.com", "nombre": "tomas", "avatar": 1, "contraseña": "1", "club": "talleres"
+    }).json()
+    crear_jugadores_bd(db_test, usuario["id"], cantidad = 6)
+
+    liga = Liga(
+        id_usuario = creador.id_usuario,
+        nombre = "chiqui league",
+        estado = EstadoLiga.DISPONIBLE,
+        min_jugadores = 3,
+        max_jugadores = 5,
+        duracion_partido = 10,
+    )
+    db_test.add(liga)
+    db_test.commit()
+    db_test.refresh(liga)
+
+    res_unirse = client.put(f"/liga/{liga.id}/unirse/{usuario['id']}")
+    assert res_unirse.status_code == 200
+    db_test.refresh(liga)
+    assert len(liga.participantes) == 1
+
+    res_abandonar = client.put(f"/liga/{liga.id}/abandonar/{usuario['id']}")
+    assert res_abandonar.status_code == 200
+    assert res_abandonar.json()["id_liga"] == liga.id
+    assert res_abandonar.json()["id_usuario"] == usuario["id"]
+
+    db_test.refresh(liga)
+    assert len(liga.participantes) == 0
+
+
+def test_abandonar_liga_rechaza_si_liga_ya_iniciada(client, db_test):
+    creador = create_usuario(db_test)
+    usuario_bd = Usuario(
+        email = "crack@gmail.com", nombre = "Tomas", id_avatar = 1, contraseña = "1", nombre_club = "Talleres"
+    )
+    db_test.add(usuario_bd)
+    db_test.commit()
+
+    liga = Liga(
+        id_usuario = creador.id_usuario,
+        nombre = "chiqui league",
+        estado = EstadoLiga.EN_JUEGO,
+        min_jugadores = 3,
+        max_jugadores = 5,
+        duracion_partido = 10,
+    )
+    liga.participantes.append(usuario_bd)
+    db_test.add(liga)
+    db_test.commit()
+    db_test.refresh(liga)
+
+    response = client.put(f"/liga/{liga.id}/abandonar/{usuario_bd.id_usuario}")
+    assert response.status_code == 409
+    assert response.json()["error"] == "LIGA_INICIADA"
+
+    db_test.refresh(liga)
+    assert len(liga.participantes) == 1
