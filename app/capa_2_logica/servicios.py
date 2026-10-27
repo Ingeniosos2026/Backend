@@ -48,6 +48,7 @@ class _RepoLigasProtocol(Protocol):
     def crear(self, liga: LigaModelo) -> LigaModelo: ...
     def obtener_por_id(self, id_liga: int) -> LigaModelo | None: ...
     def agregar_participante(self, liga: LigaModelo, usuario: UsuarioModelo) -> LigaModelo: ...
+    def obtener_ligas_disponibles(self) -> list[LigaModelo]: ...
 
 
 
@@ -425,3 +426,7 @@ class Servicios:
         liga_actualizada = self.ligas.agregar_participante(liga, usuario)
 
         return UnirseLigaResultado(liga=liga_actualizada, usuario_unido=usuario)
+
+    def listar_ligas_disponibles(self) -> ListarLigasResultado:
+        ligas = self.ligas.obtener_ligas_disponibles()
+        return ListarLigasResultado(ligas=ligas)

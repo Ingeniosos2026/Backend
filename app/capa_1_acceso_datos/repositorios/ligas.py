@@ -1,6 +1,6 @@
 from sqlalchemy.orm import Session
 
-from app.capa_0_definicion_bd.models.liga_modelos import Liga as LigaModelo
+from app.capa_0_definicion_bd.models.liga_modelos import Liga as LigaModelo, EstadoLiga
 from app.capa_0_definicion_bd.models.usuarios_modelos import Usuario as UsuarioModelo
 
 
@@ -25,4 +25,9 @@ class LigaRepositorio:
         self.db.commit()
         self.db.refresh(liga)
         return liga
-    
+
+    def obtener_ligas_disponibles(self) -> list[LigaModelo]:
+        return(self.db.query(LigaModelo)
+               .filter(LigaModelo.estado == EstadoLiga.DISPONIBLE)
+               .all()
+        )
