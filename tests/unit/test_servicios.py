@@ -3,7 +3,7 @@ from unittest.mock import Mock
 import pytest
 
 from app.capa_0_definicion_bd.models.usuarios_modelos import Usuario
-from app.capa_0_definicion_bd.models.jugadores_modelos import Jugador
+from app.capa_0_definicion_bd.models.jugadores_modelos import Jugador, EstadoJugador
 from app.capa_0_definicion_bd.models.equipo_modelos import Equipo
 from app.capa_0_definicion_bd.models.comportamientos_modelos import Comportamiento
 from app.capa_0_definicion_bd.models.partidos_modelos import Partido, TipoPartido, EstadoPartido, Formacion
@@ -81,6 +81,61 @@ def test_crear_usuario_club_vacio():
 
     repositorio.obtener_por_email.assert_not_called()
     repositorio.crear.assert_not_called()
+
+
+def test_crear_comportamiento_con_repositorios_simulados():
+    def devolver_comportamiento(comportamiento):
+        return comportamiento
+
+    usuarios = Mock()
+    usuarios.obtener_por_id.return_value = Mock()
+    comportamientos = Mock()
+    comportamientos.crear.side_effect = devolver_comportamiento
+    servicio = Servicios(usuarios=usuarios, comportamientos=comportamientos)
+    codigo = "def comportamiento(primitivas):\n primitivas.correr((1, 2))"
+
+    resultado = servicio.crear_comportamiento(usuario_id=7, nombre="Defensa", codigo=codigo)
+
+    assert resultado.comportamiento.id_usuario == 7
+    assert resultado.comportamiento.nombre == "Defensa"
+    assert resultado.comportamiento.codigo == codigo
+    usuarios.obtener_por_id.assert_called_once_with(7)
+    comportamientos.crear.assert_called_once()
+
+
+@pytest.mark.parametrize("nombre", ["", "   ", "x" * 1000])
+def test_crear_comportamiento_rechaza_nombre_invalido(nombre):
+    usuarios = Mock()
+    comportamientos = Mock()
+    servicio = Servicios(usuarios=usuarios, comportamientos=comportamientos)
+
+    with pytest.raises(DatosInvalidos):
+        servicio.crear_comportamiento(usuario_id=7, nombre=nombre, codigo="def comportamiento(primitivas):\n pass")
+    usuarios.obtener_por_id.assert_not_called()
+    comportamientos.crear.assert_not_called()
+
+
+def test_crear_comportamiento_rechaza_usuario_inexistente():
+    usuarios = Mock()
+    usuarios.obtener_por_id.return_value = None
+    comportamientos = Mock()
+    servicio = Servicios(usuarios=usuarios, comportamientos=comportamientos)
+
+    with pytest.raises(UsuarioNoEncontrado):
+        servicio.crear_comportamiento(usuario_id=7, nombre="Defensa", codigo="def comportamiento(primitivas):\n pass")
+    comportamientos.crear.assert_not_called()
+
+
+def test_crear_comportamiento_rechaza_codigo_invalido():
+    usuarios = Mock()
+    usuarios.obtener_por_id.return_value = Mock()
+    comportamientos = Mock()
+    servicio = Servicios(usuarios=usuarios, comportamientos=comportamientos)
+
+    with pytest.raises(DatosInvalidos):
+        servicio.crear_comportamiento(usuario_id=7,nombre="Defensa", codigo="def comportamiento(primitivas):\n open()")
+    comportamientos.crear.assert_not_called()
+
 
 def test_crear_usuario_email_registrado():
 
@@ -337,6 +392,13 @@ def test_crear_amistoso_correctamente():
     assert partido_nuevo.tipo == TipoPartido.AMISTOSO
     assert partido_nuevo.estado == EstadoPartido.DISPONIBLE
     assert equipo.jugadores_amistosos == jugadores
+    assert [jugador.estado for jugador in jugadores] == [
+        EstadoJugador.TITULAR,
+        EstadoJugador.TITULAR,
+        EstadoJugador.TITULAR,
+        EstadoJugador.SUPLENTE,
+        EstadoJugador.SUPLENTE,
+        EstadoJugador.SUPLENTE]
 
     repo_usuarios.obtener_por_id.assert_called_once_with(1)
     repo_equipos.crear.assert_called_once()
@@ -737,6 +799,13 @@ def test_unirse_amistoso_correctamente():
     assert partido.estado_partido == EstadoPartido.PENDIENTE
 
     assert equipo.jugadores_amistosos == jugadores
+    assert [jugador.estado for jugador in jugadores] == [
+        EstadoJugador.TITULAR,
+        EstadoJugador.TITULAR,
+        EstadoJugador.TITULAR,
+        EstadoJugador.SUPLENTE,
+        EstadoJugador.SUPLENTE,
+        EstadoJugador.SUPLENTE]
 
     repo_partidos.obtener_por_id.assert_called_once_with(1)
     repo_usuarios.obtener_por_id.assert_called_once_with(2)

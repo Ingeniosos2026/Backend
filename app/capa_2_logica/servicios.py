@@ -3,10 +3,12 @@ from typing import Protocol
 from pwdlib import PasswordHash
 
 from app.capa_0_definicion_bd.models.usuarios_modelos import Usuario as UsuarioModelo
-from app.capa_0_definicion_bd.models.jugadores_modelos import Jugador as JugadorModelo
+from app.capa_0_definicion_bd.models.jugadores_modelos import Jugador as JugadorModelo, EstadoJugador
 from app.capa_0_definicion_bd.models.comportamientos_modelos import Comportamiento as ComportamientoModelo
 from app.capa_0_definicion_bd.models.equipo_modelos import Equipo as EquipoModelo
 from app.capa_0_definicion_bd.models.partidos_modelos import Partido as PartidoModelo, TipoPartido, EstadoPartido, Formacion
+from app.capa_0_definicion_bd.models.liga_modelos import Liga as LigaModelo
+from app.partido.validador import CodigoComportamientoInvalido, validar_codigo_comportamiento
 from app.capa_0_definicion_bd.models.liga_modelos import EstadoLiga, Liga as LigaModelo
 from app.partido.comportamientos import COMPORTAMIENTOS_PREDETERMINADOS
 from sqlalchemy.exc import IntegrityError
@@ -29,6 +31,7 @@ class _RepoJugadoresProtocol(Protocol):
 class _RepoComportamientosProtocol(Protocol):
     def obtener_comportamiento_por_id_y_usuario(self, comp_id: int, usuario_id: int) -> ComportamientoModelo | None: ...
     def obtener_comportamientos_usuario(self, usuario_id: int) -> List[ComportamientoModelo]: ...
+    def crear(self, comportamiento: ComportamientoModelo) -> ComportamientoModelo: ...
 
 class _RepoPartidosProtocol(Protocol):
     def crear(self, partido: PartidoModelo) -> PartidoModelo: ...
@@ -46,6 +49,8 @@ class _RepoLigasProtocol(Protocol):
     def obtener_por_id(self, id_liga: int) -> LigaModelo | None: ...
     def agregar_participante(self, liga: LigaModelo, usuario: UsuarioModelo) -> LigaModelo: ...
     def eliminar_participante(self, liga: LigaModelo, usuario: UsuarioModelo) -> LigaModelo: ...
+    def obtener_ligas_disponibles(self) -> list[LigaModelo]: ...
+
 
 
 class Servicios:
@@ -184,7 +189,8 @@ class Servicios:
         resultado_equipo = self.crear_equipo(usuario_id=usuario_id)
         equipo = resultado_equipo.equipo
 
-        for jugador, id_comportamiento in jugadores:
+        for indice, (jugador, id_comportamiento) in enumerate(jugadores):
+            jugador.estado = (EstadoJugador.TITULAR if indice < 3 else EstadoJugador.SUPLENTE)
             resultado_equipo = self.agregar_jugador_a_equipo(
                 usuario_id=usuario_id,
                 id_equipo=equipo.id_equipo,
@@ -298,7 +304,8 @@ class Servicios:
 
         equipo = self.equipos.crear(EquipoModelo(id_usuario=usuario_id))
 
-        for jugador, comportamiento in jugadores:
+        for indice, (jugador, comportamiento) in enumerate(jugadores):
+            jugador.estado = (EstadoJugador.TITULAR if indice < 3 else EstadoJugador.SUPLENTE)
             jugador.comportamiento = comportamiento
             equipo = self.equipos.agregar_jugador(equipo, jugador)
 
@@ -364,6 +371,28 @@ class Servicios:
         liga = self.ligas.crear(nueva_liga)
 
         return CrearLigaResultado(liga=liga)
+
+    def crear_comportamiento(self, usuario_id: int, nombre: str, codigo: str) -> CrearComportamientoResultado:
+        if not nombre.strip():
+            raise DatosInvalidos()
+
+        if len(nombre) > 50:
+            raise DatosInvalidos()
+
+        usuario = self.usuarios.obtener_por_id(usuario_id)
+
+        if usuario is None:
+            raise UsuarioNoEncontrado()
+
+        try:
+            codigo_sanitizado = validar_codigo_comportamiento(codigo)
+        except CodigoComportamientoInvalido as exc:
+            raise DatosInvalidos() from exc
+
+        nuevo_comportamiento = ComportamientoModelo(id_usuario = usuario_id, nombre= nombre.strip(), codigo= codigo_sanitizado)
+        comportamiento = self.comportamientos.crear(nuevo_comportamiento)
+
+        return CrearComportamientoResultado(comportamiento=comportamiento)
     
     def unirse_liga(self,liga_id: int,usuario_id: int, contraseña: str | None = None,) -> UnirseLigaResultado:
         
@@ -419,3 +448,7 @@ class Servicios:
         liga_actualizada = self.ligas.eliminar_participante(liga, usuario)
 
         return AbandonarLigaResultado(liga=liga_actualizada, usuario_abandonado=usuario)
+
+    def listar_ligas_disponibles(self) -> ListarLigasResultado:
+        ligas = self.ligas.obtener_ligas_disponibles()
+        return ListarLigasResultado(ligas=ligas)

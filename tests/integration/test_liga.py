@@ -85,6 +85,31 @@ def test_liga_sin_contraseña_es_valida(db_test):
     assert liga.id is not None
     assert liga.contraseña is None
 
+def test_servicio_lista_solo_ligas_disponibles(db_test):
+    usuario = create_usuario(db_test)
+    liga_disponible = Liga(
+        id_usuario=usuario.id_usuario,
+        nombre="premier league",
+        estado=EstadoLiga.DISPONIBLE,
+        min_jugadores=3,
+        max_jugadores=10,
+        duracion_partido=10,
+    )
+    liga_en_juego = Liga(
+        id_usuario=usuario.id_usuario,
+        nombre="superlgia",
+        estado=EstadoLiga.EN_JUEGO,
+        min_jugadores=3,
+        max_jugadores=10,
+        duracion_partido=10,
+    )
+    db_test.add_all([liga_disponible, liga_en_juego])
+    db_test.commit()
+
+    resultado = create_servicio(db_test).listar_ligas_disponibles()
+
+    assert resultado.ligas == [liga_disponible]
+
 def crear_jugadores_bd(db_test, usuario_id, cantidad=6):
     jugadores = [
         Jugador(id_usuario=usuario_id, nombre_jugador=f"Jug {i}", poder=60, agilidad=60, control=60, velocidad=60, fuerza=60)

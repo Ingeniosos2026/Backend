@@ -180,3 +180,30 @@ async def abandonar_liga(liga_id: int, usuario_id: int, servicio: Servicios = De
         return JSONResponse(
             status_code=500, 
             content={"error": "ERROR_INTERNO", "mensaje": "Ocurrió un error interno del servidor"})
+@liga_router.get("/ligas", status_code=status.HTTP_200_OK)
+def listar_ligas(servicio: Servicios = Depends(obtener_servicio)):
+    try:
+        resultado = servicio.listar_ligas_disponibles()
+
+        return [
+            {
+                "id_liga": liga.id,
+                "id_usuario": liga.id_usuario,
+                "nombre": liga.nombre,
+                "estado": liga.estado.value,
+                "min_jugadores": liga.min_jugadores,
+                "max_jugadores": liga.max_jugadores,
+                "duracion_partido": liga.duracion_partido,
+                "es_privada": bool(liga.contraseña)
+            }
+            for liga in resultado.ligas
+        ]
+
+    except Exception:
+        return JSONResponse(
+            status_code=500,
+            content={
+                "error": "ERROR_INTERNO",
+                "mensaje": "Ocurrió un error interno del servidor",
+            },
+        )

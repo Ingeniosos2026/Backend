@@ -109,3 +109,49 @@ def test_endpoint_listar_comportamientos_no_existentes(client, db_test):
 
     assert response.status_code == 404
     assert response.json() == {"error": "COMPORTAMIENTOS_NO_ENCONTRADOS", "mensaje": "No hay comportamientos disponibles"}
+
+
+def test_endpoint_crear_comportamiento_persiste(client, db_test):
+    usuario = Usuario(
+        email="Pepito@gmail.com",
+        nombre="Pepito",
+        id_avatar=1,
+        contraseña="ads123",
+        nombre_club="Boca"
+    )
+    db_test.add(usuario)
+    db_test.commit()
+    db_test.refresh(usuario)
+    codigo = "def comportamiento(primitivas):\n primitivas.correr((1, 2))"
+
+    response = client.post(f"/comportamiento/{usuario.id_usuario}", json={"nombre": "Defensa", "codigo": codigo})
+
+    assert response.status_code == 201
+    datos = response.json()
+    assert datos["id"] is not None
+    assert datos["id_usuario"] == usuario.id_usuario
+    assert datos["nombre"] == "Defensa"
+    assert datos["codigo"] == codigo
+
+    comportamiento_guardado = db_test.query(Comportamiento).filter_by(id=datos["id"]).one()
+    assert comportamiento_guardado.id_usuario == usuario.id_usuario
+    assert comportamiento_guardado.nombre == "Defensa"
+    assert comportamiento_guardado.codigo == codigo
+
+
+def test_endpoint_crear_comportamiento_codigo_invalido(client, db_test):
+    usuario, _ = create_datos_prueba(db_test)
+
+    response = client.post(f"/comportamiento/{usuario.id_usuario}", json={"nombre": "Defensa", "codigo": "def comportamiento(primitivas):\n open()"})
+
+    assert response.status_code == 400
+    assert response.json() == {"error": "DATOS_INVALIDOS", "mensaje": "El nombre o los datos del comportamiento no son validos"}
+    assert db_test.query(Comportamiento).count() == 1
+
+
+def test_endpoint_crear_comportamiento_usuario_inexistente(client, db_test):
+    response = client.post("/comportamiento/999", json={"nombre": "Defensa", "codigo": "def comportamiento(primitivas):\n    primitivas.correr((1, 2))"})
+
+    assert response.status_code == 404
+    assert response.json() == {"error": "USUARIO_NO_ENCONTRADO", "mensaje": "El usaurio no existe"}
+    assert db_test.query(Comportamiento).count() == 0
