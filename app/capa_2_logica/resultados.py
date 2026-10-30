@@ -62,3 +62,7 @@ class CrearComportamientoResultado:
 class UnirseLigaResultado:
     liga: LigaModelo
     usuario_unido: UsuarioModelo
+
+@dataclass(slots=True)
+class ListarLigasResultado:
+    ligas: List[LigaModelo]
