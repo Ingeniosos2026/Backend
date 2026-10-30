@@ -3,7 +3,7 @@ from fastapi.responses import JSONResponse
 from typing import Optional
 
 from app.capa_2_logica.servicios import Servicios
-from app.capa_2_logica.errores import DatosInvalidos, UsuarioNoEncontrado, UsuarioEsCreadorDeLiga ,LigaNoDisponible, LigaNoEncontrada, LigaLlena, UsuarioYaEnLiga, ContraseñaLigaIncorrecta, JugadoresInsuficientes
+from app.capa_2_logica.errores import DatosInvalidos, UsuarioNoEncontrado, UsuarioEsCreadorDeLiga ,LigaNoDisponible, LigaNoEncontrada, LigaLlena, UsuarioYaEnLiga, ContraseñaLigaIncorrecta, JugadoresInsuficientes, UsuarioNoExisteEnLiga, LigaIniciada
 from app.capa_3_api.dtos.ligas import CrearLiga, UnirseLiga
 from app.capa_3_api.websockets.admin_conexiones import admin_conexiones
 from app.capa_3_api.dependencias import obtener_servicio
@@ -136,6 +136,50 @@ async def unirse_liga(liga_id: int,usuario_id: int, datos: UnirseLiga | None = N
             status_code=500, 
             content={"error": "ERROR_INTERNO", "mensaje": "Ocurrió un error interno"})
 
+@liga_router.put("/liga/{liga_id}/abandonar/{usuario_id}", status_code=status.HTTP_200_OK)    
+async def abandonar_liga(liga_id: int, usuario_id: int, servicio: Servicios = Depends(obtener_servicio)):
+    try:
+        resultado = servicio.abandonar_liga(
+            liga_id=liga_id, 
+            usuario_id=usuario_id
+        )
+
+        await admin_conexiones.emitir_lobby_liga(
+            liga_id=liga_id,
+            accion="usuario_abandono_liga",
+            payload={
+                "usuario_abandono": {
+                    "id": resultado.usuario_abandonado.id_usuario,
+                    "nombre": resultado.usuario_abandonado.nombre,
+                    "club": resultado.usuario_abandonado.nombre_club
+                }
+            }
+        )
+
+        return {
+            "id_liga": resultado.liga.id,
+            "id_usuario": resultado.usuario_abandonado.id_usuario,
+        }
+
+    except LigaNoEncontrada:
+        return JSONResponse(
+            status_code=404, 
+            content={"error": "LIGA_NO_ENCONTRADA", "mensaje": "La liga no existe"})
+    
+    except UsuarioNoExisteEnLiga:
+        return JSONResponse(
+            status_code=404, 
+            content={"error": "USUARIO_NO_EXISTE_EN_LIGA", "mensaje": "El usuario no pertenece a esta liga"})
+    
+    except LigaIniciada:
+        return JSONResponse(
+            status_code=409, 
+            content={"error": "LIGA_INICIADA", "mensaje": "No se puede abandonar una liga que ya ha iniciado"})
+
+    except Exception:
+        return JSONResponse(
+            status_code=500, 
+            content={"error": "ERROR_INTERNO", "mensaje": "Ocurrió un error interno del servidor"})
 @liga_router.get("/ligas", status_code=status.HTTP_200_OK)
 def listar_ligas(servicio: Servicios = Depends(obtener_servicio)):
     try:

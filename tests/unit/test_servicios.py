@@ -1394,3 +1394,58 @@ def test_unirse_liga_jugadores_insuficientes():
         servicio.unirse_liga(liga_id = 10, usuario_id = 2)
 
     repo_ligas.agregar_participante.assert_not_called()
+
+def test_abandonar_liga():
+    repo_ligas = Mock()
+    repo_usuarios = Mock()
+
+    usuario = Usuario(id_usuario = 2, nombre = "Tomas")
+    liga = Liga(
+        id = 1,
+        id_usuario = 1,
+        nombre = "chiqui league",
+        estado = EstadoLiga.DISPONIBLE,
+        min_jugadores = 3,
+        max_jugadores = 10,
+        duracion_partido = 5,
+    )
+    liga.participantes = [usuario]
+
+    repo_ligas.obtener_por_id.return_value = liga
+    repo_usuarios.obtener_por_id.return_value = usuario
+    repo_ligas.eliminar_participante.return_value = liga
+
+
+    servicio = Servicios(usuarios=repo_usuarios, ligas=repo_ligas)
+    resultado = servicio.abandonar_liga(liga_id = 1, usuario_id = 2)
+
+    assert resultado.liga == liga
+    assert resultado.usuario_abandonado == usuario
+    repo_ligas.eliminar_participante.assert_called_once_with(liga, usuario)
+
+
+def test_abandonar_liga_lanza_error_si_liga_comenzo():
+    repo_ligas = Mock()
+    repo_usuarios = Mock()
+
+    usuario = Usuario(id_usuario=2)
+    liga = Liga(
+        id = 1,
+        id_usuario = 1,
+        nombre = "chiqui league",
+        estado = EstadoLiga.EN_JUEGO,
+        min_jugadores = 3,
+        max_jugadores = 10,
+        duracion_partido = 5,
+    )
+    liga.participantes = [usuario]
+
+    repo_ligas.obtener_por_id.return_value = liga
+    repo_usuarios.obtener_por_id.return_value = usuario
+
+    servicio = Servicios(usuarios = repo_usuarios, ligas = repo_ligas)
+
+    with pytest.raises(LigaIniciada):
+        servicio.abandonar_liga(liga_id = 1, usuario_id = 2)
+
+    repo_ligas.eliminar_participante.assert_not_called()
