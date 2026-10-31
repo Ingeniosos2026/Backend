@@ -25,6 +25,13 @@ class LigaRepositorio:
         self.db.commit()
         self.db.refresh(liga)
         return liga
+    
+    def eliminar_participante(self, liga: LigaModelo, usuario: UsuarioModelo) -> LigaModelo:
+        liga.participantes.remove(usuario)
+        self.db.commit()
+        self.db.refresh(liga)
+        return liga
+    
 
     def obtener_ligas_disponibles(self) -> list[LigaModelo]:
         return(self.db.query(LigaModelo)
