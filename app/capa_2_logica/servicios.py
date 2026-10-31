@@ -330,9 +330,6 @@ class Servicios:
 
         if partido is None:
             raise AmistosoNoEncontrado()
-        
-        print("Estado actual:", partido.estado_partido)
-        print("Estado esperado:", EstadoPartido.PENDIENTE)
 
         if partido.id_usuario_1 != usuario_id:
             raise IniciarNoPermitido()
