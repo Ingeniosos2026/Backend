@@ -86,10 +86,7 @@ def test_crear_amistoso(client, db_test, monkeypatch):
     equipo = db_test.get(Equipo, datos["id_equipo_1"])
     assert equipo.id_usuario == usuario_id
     assert len(equipo.jugadores) == 6
-    assert all(
-    asociacion.jugador.id_comportamiento == comportamiento.id
-    for asociacion in equipo.jugadores
-    )
+    assert all(asociacion.comportamiento.id == comportamiento.id for asociacion in equipo.jugadores)
     assert {jugador.id_jugador: jugador.estado for jugador in equipo.jugadores} == {
         jugador.id_jugador: (
             EstadoJugador.TITULAR if indice < 3 else EstadoJugador.SUPLENTE

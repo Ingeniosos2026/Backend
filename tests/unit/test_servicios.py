@@ -331,7 +331,6 @@ def test_crear_amistoso_correctamente():
         Jugador(
             id_jugador=id_jugador,
             id_usuario=1,
-            id_comportamiento=7,
             nombre_jugador=f"Jugador {id_jugador}",
             poder=60,
             agilidad=60,
@@ -513,8 +512,13 @@ def test_crear_amistoso_formacion_invalida():
     repo_partidos.crear.assert_not_called()
 
     
-def agregar_jugador(equipo, jugador, estado):
-    EquipoJugador(equipo=equipo, jugador=jugador, estado=estado)
+def agregar_jugador(equipo, jugador, estado, comportamiento=None):
+    EquipoJugador(
+        equipo=equipo,
+        jugador=jugador,
+        estado=estado,
+        comportamiento=comportamiento,
+    )
     return equipo
 
   
@@ -561,15 +565,14 @@ def test_agregar_jugador_a_equipo_correctamente():
     )
 
     assert resultado.equipo == equipo
-    assert jugador.comportamiento is comportamiento
     assert len(equipo.jugadores) == 1
     assert equipo.jugadores[0].jugador == jugador
     assert equipo.jugadores[0].estado == EstadoJugador.SUPLENTE
+    assert equipo.jugadores[0].comportamiento is comportamiento
 
     repo_equipos.obtener_por_id.assert_called_once_with(1)
     repo_jugadores.obtener_por_id.assert_called_once_with(1)
-    repo_equipos.agregar_jugador.assert_called_once_with(equipo, jugador, EstadoJugador.SUPLENTE)
-
+    repo_equipos.agregar_jugador.assert_called_once_with(equipo, jugador, EstadoJugador.SUPLENTE, comportamiento)
     
 def test_agregar_jugador_a_equipo_equipo_no_encontrado():
     repo_equipos = Mock()
@@ -678,13 +681,12 @@ def test_agregar_jugador_a_equipo_con_comportamiento():
     )
 
     assert resultado.equipo == equipo
-    assert jugador.comportamiento is comportamiento
     assert len(equipo.jugadores) == 1
     assert equipo.jugadores[0].jugador == jugador
     assert equipo.jugadores[0].estado == EstadoJugador.SUPLENTE
+    assert equipo.jugadores[0].comportamiento is comportamiento
     repo_comportamientos.obtener_comportamiento_por_id_y_usuario.assert_called_once_with(7, 1)
-    repo_equipos.agregar_jugador.assert_called_once_with(equipo, jugador, EstadoJugador.SUPLENTE)
-
+    repo_equipos.agregar_jugador.assert_called_once_with(equipo, jugador, EstadoJugador.SUPLENTE, comportamiento)
     
 def test_agregar_jugador_a_equipo_comportamiento_no_encontrado():
     repo_equipos = Mock()
@@ -729,7 +731,6 @@ def test_unirse_amistoso_correctamente():
         Jugador(
             id_jugador=id_jugador,
             id_usuario=2,
-            id_comportamiento=7,
             nombre_jugador=f"Jugador {id_jugador}",
             poder=60,
             agilidad=60,
@@ -813,6 +814,7 @@ def test_unirse_amistoso_correctamente():
         EstadoJugador.SUPLENTE,
         EstadoJugador.SUPLENTE
     ]
+    assert all(asociacion.comportamiento is comportamiento for asociacion in equipo.jugadores)
 
     repo_partidos.obtener_por_id.assert_called_once_with(1)
     repo_usuarios.obtener_por_id.assert_called_once_with(2)

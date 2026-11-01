@@ -21,6 +21,6 @@ class Comportamiento(Base):
         "Usuario",
         back_populates="comportamientos",
     )
-    jugadores = relationship(
-        "Jugador", 
+    equipos_jugadores = relationship(
+        "EquipoJugador",
         back_populates="comportamiento")

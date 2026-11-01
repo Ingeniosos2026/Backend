@@ -2,6 +2,7 @@ from sqlalchemy.orm import Session
 from app.capa_0_definicion_bd.models.equipo_modelos import Equipo as EquipoModelo
 from app.capa_0_definicion_bd.models.jugadores_modelos import Jugador as JugadorModelo
 from app.capa_0_definicion_bd.models.equipos_jugadores_modelos import EquipoJugador, EstadoJugador
+from app.capa_0_definicion_bd.models.comportamientos_modelos import Comportamiento
 
 class EquipoRepositorio:
     def __init__(self, db: Session):
@@ -20,8 +21,8 @@ class EquipoRepositorio:
             .first()
         )
 
-    def agregar_jugador(self, equipo: EquipoModelo, jugador: JugadorModelo, estado: EstadoJugador) -> EquipoModelo:
-        j = EquipoJugador(id_equipo=equipo.id_equipo, id_jugador=jugador.id_jugador, estado=estado)
+    def agregar_jugador(self, equipo: EquipoModelo, jugador: JugadorModelo, estado: EstadoJugador, comportamiento: Comportamiento | None = None) -> EquipoModelo:
+        j = EquipoJugador(id_equipo=equipo.id_equipo, id_jugador=jugador.id_jugador, estado=estado, comportamiento=comportamiento)
         self.db.add(j)
         self.db.commit()
         self.db.refresh(j)

@@ -73,7 +73,7 @@ def obtener_posiciones_formacion(formacion: Formacion, lado: str, cancha: Cancha
 
 
 def crear_jugadores_estado(jugadores: list[EquipoJugador], id_usuario: int, id_equipo: int, posiciones: list[Coordenada]):
-    titulares = [jugador.jugador for jugador in jugadores
+    titulares = [jugador for jugador in jugadores
         if jugador.estado == EstadoJugador.TITULAR]
         
     if len(titulares) != 3:
@@ -83,7 +83,8 @@ def crear_jugadores_estado(jugadores: list[EquipoJugador], id_usuario: int, id_e
     resultado_comportamientos = {}
 
     # el zip combina elementos de dos iterables agrupandolos en pares dentro de un iterador de tuplas (la primera vez que escuho del zip, muy util parece)
-    for jugador, posicion in zip(titulares, posiciones):
+    for equipo_jugador, posicion in zip(titulares, posiciones):
+        jugador = equipo_jugador.jugador
         jugador_estado = JugadorEstado(
             id_jugador=jugador.id_jugador,
             id_equipo=id_equipo,
@@ -99,10 +100,10 @@ def crear_jugadores_estado(jugadores: list[EquipoJugador], id_usuario: int, id_e
         clave = (id_usuario, jugador.id_jugador)
         resultado_jugadores[clave] = jugador_estado
 
-        if jugador.comportamiento is None:
+        if equipo_jugador.comportamiento is None:
             raise ValueError("El jugador no tiene un comportamiento asignado")
 
-        resultado_comportamientos[clave] = jugador.comportamiento.codigo
+        resultado_comportamientos[clave] = equipo_jugador.comportamiento.codigo
 
     return resultado_jugadores, resultado_comportamientos
 

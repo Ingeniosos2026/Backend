@@ -14,6 +14,7 @@ class EquipoJugador(Base):
 
     id_equipo = Column(Integer, ForeignKey("equipos.id_equipo", ondelete="CASCADE"), primary_key=True)
     id_jugador = Column(Integer, ForeignKey("jugadores.id_jugador", ondelete="CASCADE"), primary_key=True)
+    id_comportamiento = Column(Integer, ForeignKey("comportamientos.id", ondelete="RESTRICT"), nullable=True)
     estado = Column(SQLenum(EstadoJugador), nullable=False, default=EstadoJugador.SUPLENTE)
 
     equipo = relationship(
@@ -23,3 +24,7 @@ class EquipoJugador(Base):
     jugador = relationship(
         "Jugador",
         back_populates="equipos")
+
+    comportamiento = relationship(
+        "Comportamiento",
+        back_populates="equipos_jugadores")
