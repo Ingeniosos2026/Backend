@@ -1,5 +1,6 @@
 from app.capa_0_definicion_bd.models.jugadores_modelos import *
 from app.capa_0_definicion_bd.models.partidos_modelos import Formacion
+from app.capa_0_definicion_bd.models.equipos_jugadores_modelos import EquipoJugador, EstadoJugador
 from .estados import *
 
 ANCHO_CANCHA = 100
@@ -71,12 +72,9 @@ def obtener_posiciones_formacion(formacion: Formacion, lado: str, cancha: Cancha
     raise ValueError("Formacion no valida")
 
 
-def crear_jugadores_estado(jugadores: list[Jugador], id_usuario: int, id_equipo: int, posiciones: list[Coordenada]):
-    titulares = [jugador for jugador in jugadores
+def crear_jugadores_estado(jugadores: list[EquipoJugador], id_usuario: int, id_equipo: int, posiciones: list[Coordenada]):
+    titulares = [jugador.jugador for jugador in jugadores
         if jugador.estado == EstadoJugador.TITULAR]
-
-    if not titulares and all(jugador.estado == EstadoJugador.NINGUNO for jugador in jugadores):
-        titulares = jugadores[:3]
         
     if len(titulares) != 3:
         raise ValueError("un equipo debe tener exactamente 3 jugadores titulares")
@@ -130,13 +128,13 @@ def crear_estado_partido(partido) -> EstadoPartido:
     posiciones_2 = obtener_posiciones_formacion(partido.formacion_2, "derecho", cancha)
 
     jugadores_1, comportamientos_1 = crear_jugadores_estado(
-        jugadores=partido.equipo_1.jugadores_amistosos,
+        jugadores=partido.equipo_1.jugadores,
         id_usuario=partido.id_usuario_1,
         id_equipo=partido.id_equipo_1,
         posiciones=posiciones_1)
 
     jugadores_2, comportamientos_2 = crear_jugadores_estado(
-        jugadores=partido.equipo_2.jugadores_amistosos,
+        jugadores=partido.equipo_2.jugadores,
         id_usuario=partido.id_usuario_2,
         id_equipo=partido.id_equipo_2,
         posiciones=posiciones_2)

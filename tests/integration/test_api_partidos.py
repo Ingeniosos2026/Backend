@@ -1,8 +1,9 @@
 from unittest.mock import AsyncMock, Mock
 import pytest
 
-from app.capa_0_definicion_bd.models.jugadores_modelos import Jugador, EstadoJugador
+from app.capa_0_definicion_bd.models.jugadores_modelos import Jugador
 from app.capa_0_definicion_bd.models.equipo_modelos import Equipo
+from app.capa_0_definicion_bd.models.equipos_jugadores_modelos import EstadoJugador
 from app.capa_0_definicion_bd.models.comportamientos_modelos import Comportamiento
 from app.capa_0_definicion_bd.models.partidos_modelos import (EstadoPartido, Formacion, TipoPartido, Partido)
 from app.capa_2_logica.errores import *
@@ -84,12 +85,12 @@ def test_crear_amistoso(client, db_test, monkeypatch):
     assert datos["estado"] == "DISPONIBLE"
     equipo = db_test.get(Equipo, datos["id_equipo_1"])
     assert equipo.id_usuario == usuario_id
-    assert len(equipo.jugadores_amistosos) == 6
+    assert len(equipo.jugadores) == 6
     assert all(
-        jugador.id_comportamiento == comportamiento.id
-        for jugador in equipo.jugadores_amistosos
+    asociacion.jugador.id_comportamiento == comportamiento.id
+    for asociacion in equipo.jugadores
     )
-    assert {jugador.id_jugador: jugador.estado for jugador in equipo.jugadores_amistosos} == {
+    assert {jugador.id_jugador: jugador.estado for jugador in equipo.jugadores} == {
         jugador.id_jugador: (
             EstadoJugador.TITULAR if indice < 3 else EstadoJugador.SUPLENTE
         )
