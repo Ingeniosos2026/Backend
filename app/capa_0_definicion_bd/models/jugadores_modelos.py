@@ -9,7 +9,6 @@ class Jugador(Base):
 
     id_jugador = Column(Integer, primary_key=True, autoincrement=True)
     id_usuario = Column(Integer, ForeignKey("usuarios.id_usuario", ondelete="CASCADE"), nullable=False)
-    id_comportamiento = Column(Integer, ForeignKey("comportamientos.id", ondelete="RESTRICT"), nullable=True)
     nombre_jugador = Column(String(50), nullable=False)
     control = Column(Integer, nullable=False)
     agilidad = Column(Integer, nullable=False)
@@ -22,11 +21,6 @@ class Jugador(Base):
         back_populates="jugadores"
     )
     
-    comportamiento = relationship(
-        "Comportamiento", 
-         back_populates="jugadores"
-    )
-
     equipos = relationship(
         "EquipoJugador",
         back_populates="jugador"

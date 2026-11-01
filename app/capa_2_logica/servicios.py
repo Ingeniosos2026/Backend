@@ -43,7 +43,7 @@ class _RepoPartidosProtocol(Protocol):
 class _RepoEquiposProtocol(Protocol):
     def crear(self, equipo: EquipoModelo) -> EquipoModelo: ...
     def obtener_por_id(self, id_equipo: int) -> EquipoModelo | None: ...
-    def agregar_jugador(self, equipo: EquipoModelo, jugador: JugadorModelo, estado: EstadoJugador) -> EquipoModelo: ...
+    def agregar_jugador(self, equipo: EquipoModelo, jugador: JugadorModelo, estado: EstadoJugador, comportamiento: ComportamientoModelo | None = None) -> EquipoModelo: ...
 
 class _RepoLigasProtocol(Protocol):
     def crear(self, liga: LigaModelo) -> LigaModelo: ...
@@ -244,9 +244,7 @@ class Servicios:
         )
         if comportamiento is None:
             raise ComportamientoNoEncontrado()
-        jugador.comportamiento = comportamiento
-
-        equipo_actualizado = self.equipos.agregar_jugador(equipo, jugador, estado)
+        equipo_actualizado = self.equipos.agregar_jugador(equipo, jugador, estado, comportamiento)
         return CrearEquipoResultado(equipo=equipo_actualizado)
 
     def listar_amistosos_disponibles(self) -> ListarAmistososResultado:
@@ -308,8 +306,7 @@ class Servicios:
 
         for indice, (jugador, comportamiento) in enumerate(jugadores):
             estado = (EstadoJugador.TITULAR if indice < 3 else EstadoJugador.SUPLENTE)
-            jugador.comportamiento = comportamiento
-            equipo = self.equipos.agregar_jugador(equipo, jugador, estado)
+            equipo = self.equipos.agregar_jugador(equipo, jugador, estado, comportamiento)
 
         partido.id_usuario_2 = usuario_id
         partido.id_equipo_2 = equipo.id_equipo
