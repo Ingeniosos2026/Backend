@@ -73,3 +73,6 @@ class UsuarioNoExisteEnLiga(Exception):
 
 class NoEsPosibleIniciarLiga (Exception): 
     pass
+
+class NoSeEncontraronLasTablas (Exception): 
+    pass

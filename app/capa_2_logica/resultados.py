@@ -29,7 +29,7 @@ class ListarComportamientosResultado:
 
 @dataclass(slots=True)
 class CrearPartidoResultado:
-    partido: PartidoModelo
+    partido: PartidoModelo | None
 
 @dataclass(slots=True)
 class CrearEquipoResultado:
@@ -80,3 +80,13 @@ class IniciarLigaResultado:
     partido: PartidoModelo
     fixture: list[FixtureLiga]
     tabla: list[TablaLiga]
+
+@dataclass(slots=True)
+class RegistrarResultadoPartidoLiga:
+    fixture: FixtureLiga
+    tabla_izq: TablaLiga
+    tabla_der: TablaLiga
+
+@dataclass(slots=True)
+class FinalizarLigaResultado:
+    liga: LigaModelo

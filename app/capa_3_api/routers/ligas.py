@@ -11,7 +11,7 @@ from app.capa_3_api.dependencias import obtener_servicio
 from app.partido.administrar_partidos import administrador_partidas
 from app.partido.inicializacion import crear_estado_partido, crear_cancha
 from app.partido.motor import MotorPartido
-from app.partido.ejecutor import EjecutorPartido
+from app.partido.ejecutorliga import EjecutorLiga
 from app.partido.convertidor import tabla_a_dict, fixture_a_dict
 
 liga_router = APIRouter()
@@ -228,7 +228,7 @@ async def iniciar_liga(liga_id: int, usuario_id: int, servicio: Servicios = Depe
         fixture = [fixture_a_dict(fix) for fix in resultado.fixture]
         tabla = [tabla_a_dict(tab) for tab in resultado.tabla]
 
-        ejecutor = EjecutorPartido(partido_id=partido.id_partido, motor=motor, duracion=duracion_segundos)
+        ejecutor = EjecutorLiga(liga_id=liga_id, partido_id=partido.id_partido, motor=motor, duracion=duracion_segundos, turno=1)
         asyncio.create_task(ejecutor.ejecutar())
 
     except LigaNoEncontrada:

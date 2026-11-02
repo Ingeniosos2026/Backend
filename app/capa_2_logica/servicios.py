@@ -60,8 +60,11 @@ class _RepoLigasProtocol(Protocol):
     def guardar_inicio_liga(self, liga: LigaModelo, tabla: list[TablaLiga], fixture: list[FixtureLiga],) -> None: ...
     def obtener_fixture_por_turno(self, id_liga: int, turno: int) -> FixtureLiga: ...
     def asignar_partido_fixture(self, fixture: FixtureLiga, partido_id: int) -> FixtureLiga: ...
-
-
+    def obtener_siguiente_fixture(self, id_liga: int) -> FixtureLiga | None: ...
+    def obtener_participante_por_equipo(self, id_liga: int, id_equipo: int) -> LigaParticipante | None: ...
+    def obtener_registro_tabla(self, id_liga: int, id_equipo: int) -> TablaLiga | None: ...
+    def finalizar_liga(self, liga: LigaModelo) -> LigaModelo: ...
+    def actualizar(self) -> None: ...
 
 class Servicios:
     """" Servicios que implementan la logica del juego """
@@ -531,3 +534,96 @@ class Servicios:
         self.ligas.guardar_inicio_liga(liga=liga, tabla=tabla, fixture=fixture)
 
         return IniciarLigaResultado(liga=liga, partido=partido, fixture=fixture, tabla=tabla)
+    
+
+    def crear_siguiente_partido_liga(self, id_liga: int) -> CrearPartidoResultado:
+        liga = self.ligas.obtener_por_id(id_liga)
+
+        if liga is None:
+            raise LigaNoEncontrada()
+
+        fixture = self.ligas.obtener_siguiente_fixture(id_liga)
+
+        if fixture is None:
+            return CrearPartidoResultado(partido=None)
+
+        equipo1 = self.ligas.obtener_participante_por_equipo(id_liga, fixture.id_equipo_izq)
+        equipo2 = self.ligas.obtener_participante_por_equipo(id_liga, fixture.id_equipo_der)
+
+        if equipo1 is None or equipo2 is None:
+            raise NoEsPosibleIniciarLiga()
+
+        nuevo_partido = PartidoModelo(
+            id_usuario_1=equipo1.id_usuario,
+            id_usuario_2=equipo2.id_usuario,
+            id_equipo_1=equipo1.id_equipo,
+            id_equipo_2=equipo2.id_equipo,
+            duracion_partido=liga.duracion_partido,
+            formacion_1=equipo1.formacion,
+            formacion_2=equipo2.formacion,
+            tipo_partido=TipoPartido.LIGA,
+            estado_partido=EstadoPartido.EN_CURSO)
+
+        partido = self.partidos.crear(nuevo_partido)
+
+        self.ligas.asignar_partido_fixture(fixture=fixture, partido_id=partido.id_partido)
+        self.ligas.actualizar()
+
+        return CrearPartidoResultado(partido=partido)
+    
+
+    def registrar_resultado_partido_liga(self, id_liga: int, turno: int, goles_izq: int, goles_der: int) -> RegistrarResultadoPartidoLiga:
+        fixture = self.ligas.obtener_fixture_por_turno(id_liga, turno)
+
+        tabla_izq = self.ligas.obtener_registro_tabla(id_liga, fixture.id_equipo_izq)
+        tabla_der = self.ligas.obtener_registro_tabla(id_liga, fixture.id_equipo_der)
+
+        partido = self.partidos.obtener_por_id(fixture.id_partido)
+
+        if partido is None:
+            raise PartidoNoEncontrado()
+
+        if tabla_izq is None or tabla_der is None:
+            raise NoSeEncontraronLasTablas()
+
+        # guardo los goles en el fixture
+        fixture.goles_equipo_izq = goles_izq
+        fixture.goles_equipo_der = goles_der
+
+        # actualizo los goles de ambos equipos
+        tabla_izq.goles_a_favor += goles_izq
+        tabla_izq.goles_en_contra += goles_der
+
+        tabla_der.goles_a_favor += goles_der
+        tabla_der.goles_en_contra += goles_izq
+
+        # actualizo el resultado del partido
+        if goles_izq > goles_der:
+            tabla_izq.partidos_ganados += 1
+            tabla_izq.puntos += 3
+            tabla_der.partidos_perdidos += 1
+
+        elif goles_der > goles_izq:
+            tabla_der.partidos_ganados += 1
+            tabla_der.puntos += 3
+            tabla_izq.partidos_perdidos += 1
+
+        else:
+            tabla_izq.partidos_empatados += 1
+            tabla_der.partidos_empatados += 1
+            tabla_izq.puntos += 1
+            tabla_der.puntos += 1
+
+        self.ligas.actualizar()
+
+        return RegistrarResultadoPartidoLiga(fixture=fixture, tabla_izq=tabla_izq, tabla_der=tabla_der)
+    
+    def finalizar_liga(self, id_liga: int):
+        liga = self.ligas.obtener_por_id(id_liga)
+
+        if liga is None:
+            raise LigaNoEncontrada()
+
+        liga_finalizada = self.ligas.finalizar_liga(liga)
+        
+        return FinalizarLigaResultado(liga=liga_finalizada)

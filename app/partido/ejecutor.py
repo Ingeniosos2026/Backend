@@ -2,7 +2,12 @@ import asyncio
 
 from .motor import MotorPartido, T
 from .convertidor import estado_a_dict, estados_jugadores_a_dict, eventos_a_dict, cancha_a_dict
+from app.capa_0_definicion_bd.base_datos_sqlalchemy import SessionLocal
+from app.capa_0_definicion_bd.models.partidos_modelos import EstadoPartido
 from app.capa_3_api.websockets.admin_conexiones import admin_conexiones
+from app.capa_3_api.dependencias import crear_servicio
+from .administrar_partidos import AdministradorPartidas 
+
 
 
 class EjecutorPartido:
@@ -33,6 +38,25 @@ class EjecutorPartido:
             # esperamos hasta el proximo tick, esto es para que no se ejecuten instantaneamente varios ticks
             if self.motor.estado.tiempo < self.duracion:
                 await asyncio.sleep(T)
+        
+        # obtenemos el resultado final del partido
+        goles_izquierdo = self.motor.estado.goles_izquierdo
+        goles_derecho = self.motor.estado.goles_derecho
+
+        # se actualiza el estado del partido en la base de datos
+        db = SessionLocal()
+        try:
+            servicio = crear_servicio(db)
+            partido = servicio.partidos.obtener_por_id(self.partido_id)
+
+            if partido is None:
+                raise ValueError("No se encontró el partido")
+
+            partido.estado_partido = EstadoPartido.TERMINADO
+            servicio.partidos.actualizar(partido)
+
+        finally:
+                db.close()
 
         # avisamos que el partido termino
         await admin_conexiones.emitir_partido(
@@ -42,3 +66,7 @@ class EjecutorPartido:
                 "tiempo": self.motor.estado.tiempo,
                 "goles": {"izquierdo": self.motor.estado.goles_izquierdo,
                           "derecho": self.motor.estado.goles_derecho}})
+        
+        AdministradorPartidas.eliminar(self.partido_id)
+        
+        return {"goles_izquierdo": goles_izquierdo, "goles_derecho": goles_derecho}
