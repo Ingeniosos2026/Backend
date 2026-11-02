@@ -74,5 +74,8 @@ class UsuarioNoExisteEnLiga(Exception):
 class NoEsPosibleIniciarLiga (Exception): 
     pass
 
-class NoSeEncontraronLasTablas (Exception): 
+class NoSeEncontraronLasTablas (Exception):
+    pass
+  
+class ComportamientoNoEditable(Exception):
     pass

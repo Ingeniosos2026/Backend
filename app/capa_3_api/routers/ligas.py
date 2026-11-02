@@ -27,10 +27,12 @@ async def crear_liga(usuario_id: int, datos: CrearLiga, servicio: Servicios = De
             min_jugadores=datos.min_jugadores,
             max_jugadores=datos.max_jugadores,
             duracion_partido=datos.duracion_partido,
+            jugadores_comportamientos=[(j.id_jugador, j.id_comportamiento) for j in datos.jugadores],
+            formacion=datos.formacion
         )
 
         liga = resultado.liga
-
+        participacion = resultado.participacion
         await admin_conexiones.difundir("liga creada",
             {
                 "id_liga": liga.id,
@@ -48,6 +50,8 @@ async def crear_liga(usuario_id: int, datos: CrearLiga, servicio: Servicios = De
             "max_jugadores": liga.max_jugadores,
             "duracion_partido": liga.duracion_partido,
             "estado": liga.estado.name,
+            "id_equipo": participacion.id_equipo,
+            "formacion": participacion.formacion.value
         }
 
     except DatosInvalidos:
@@ -61,6 +65,18 @@ async def crear_liga(usuario_id: int, datos: CrearLiga, servicio: Servicios = De
             status_code=404,
             content={"error": "USUARIO_NO_ENCONTRADO", "mensaje": "El usuario no existe"}
         )
+    
+    except JugadoresInsuficientes:
+        return JSONResponse(
+            status_code=400,
+            content={"error": "JUGADORES_INSUFICIENTES", "mensaje": "Tenes que tener al menos 6 jugadores"},
+        )
+    
+    except ComportamientoNoEncontrado:
+        return JSONResponse(
+            status_code=404,
+            content={"error": "COMPORTAMIENTO_NO_ENCONTRADO", "mensaje": "El jugador no tiene un comportamiento válido"},
+        )
 
     except Exception:
         return JSONResponse(
@@ -69,15 +85,19 @@ async def crear_liga(usuario_id: int, datos: CrearLiga, servicio: Servicios = De
         )
     
 @liga_router.put("/liga/{liga_id}/unirse/{usuario_id}", status_code=status.HTTP_200_OK)
-async def unirse_liga(liga_id: int,usuario_id: int, datos: UnirseLiga | None = None, servicio: Servicios = Depends(obtener_servicio)):
+async def unirse_liga(liga_id: int,usuario_id: int, datos: UnirseLiga, servicio: Servicios = Depends(obtener_servicio)):
     try:
         contraseña = datos.contraseña if datos else None
 
         resultado = servicio.unirse_liga(
             liga_id=liga_id, 
             usuario_id=usuario_id, 
-            contraseña=contraseña
+            contraseña=contraseña,
+            jugadores_comportamientos=[(j.id_jugador, j.id_comportamiento) for j in datos.jugadores],
+            formacion=datos.formacion
         )
+
+        participacion = resultado.participacion
 
         await admin_conexiones.emitir_lobby_liga(
             liga_id=liga_id,
@@ -86,16 +106,18 @@ async def unirse_liga(liga_id: int,usuario_id: int, datos: UnirseLiga | None = N
                 "usuario_unido": {
                     "id": resultado.usuario_unido.id_usuario,
                     "nombre": resultado.usuario_unido.nombre,
-                    "club": resultado.usuario_unido.nombre_club
+                    "club": resultado.usuario_unido.nombre_club,
+                    "id_equipo": participacion.id_equipo,
+                    "formacion": participacion.formacion.value
                 }
             }
         )
 
-
-
         return {
             "id_liga": resultado.liga.id,
             "id_usuario": resultado.usuario_unido.id_usuario,
+            "id_equipo": participacion.id_equipo,
+            "formacion": participacion.formacion.value
         }
     except LigaNoEncontrada:
         return JSONResponse(
@@ -137,6 +159,12 @@ async def unirse_liga(liga_id: int,usuario_id: int, datos: UnirseLiga | None = N
             status_code= 400, 
             content={"error": "USUARIO_ES_CREADOR_DE_LIGA", "mensaje": "El creador de la liga no puede unirse a su propia liga"})
     
+    except ComportamientoNoEncontrado:
+        return JSONResponse(
+            status_code=404,
+            content={"error": "COMPORTAMIENTO_NO_ENCONTRADO", "mensaje": "El jugador no tiene un comportamiento válido"},
+        )
+            
     except Exception:
         return JSONResponse(
             status_code=500, 

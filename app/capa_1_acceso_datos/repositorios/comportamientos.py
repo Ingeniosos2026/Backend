@@ -22,3 +22,8 @@ class ComportamientoRepositorio:
         self.db.commit()
         self.db.refresh(comportamiento)
         return comportamiento
+
+    def actualizar(self, comportamiento: ComportamientoModelo) -> ComportamientoModelo:
+        self.db.commit()
+        self.db.refresh(comportamiento)
+        return comportamiento

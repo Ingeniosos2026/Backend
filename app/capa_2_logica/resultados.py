@@ -6,6 +6,7 @@ from app.capa_0_definicion_bd.models.comportamientos_modelos import Comportamien
 from app.capa_0_definicion_bd.models.liga_modelos import Liga as LigaModelo
 from app.capa_0_definicion_bd.models.fixture_liga_modelos import FixtureLiga
 from app.capa_0_definicion_bd.models.tabla_liga_modelos import TablaLiga
+from app.capa_0_definicion_bd.models.liga_participantes_modelos import LigaParticipante
 from dataclasses import dataclass
 from typing import List
 
@@ -55,6 +56,7 @@ class PartidoResultado:
 @dataclass(slots=True)
 class CrearLigaResultado:
     liga: LigaModelo
+    participacion: LigaParticipante
 
 @dataclass(slots=True)
 class CrearComportamientoResultado:
@@ -64,6 +66,7 @@ class CrearComportamientoResultado:
 class UnirseLigaResultado:
     liga: LigaModelo
     usuario_unido: UsuarioModelo
+    participacion: LigaParticipante
     
 @dataclass(slots=True)
 class AbandonarLigaResultado:
@@ -90,3 +93,8 @@ class RegistrarResultadoPartidoLiga:
 @dataclass(slots=True)
 class FinalizarLigaResultado:
     liga: LigaModelo
+
+@dataclass(slots=True)
+class EditarComportamientoResultado:
+    comportamiento: ComportamientoModelo
+
