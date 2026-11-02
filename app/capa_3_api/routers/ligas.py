@@ -247,6 +247,7 @@ async def iniciar_liga(liga_id: int, usuario_id: int, servicio: Servicios = Depe
         liga_id=liga_id,
         accion="liga_iniciada",
         payload={
+            "accion": "primer_partido_iniciado",
             "estado": "EN_JUEGO",
             "id_partido_actual": partido.id_partido,
             "fixture": fixture,
