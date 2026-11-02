@@ -13,7 +13,7 @@ class EstadoLiga(str, Enum):
     EN_JUEGO = "En juego"
     EN_ESPERA = "En espera"
 
-
+ 
 class Liga(Base):
     __tablename__ = "ligas"
 
@@ -33,8 +33,7 @@ class Liga(Base):
     )
 
     participantes = relationship(
-        "Usuario",
-        secondary= "liga_participantes",
-        back_populates= "ligas_unidas",
+        "LigaParticipante",
+        back_populates= "liga",
+        cascade = "all, delete-orphan"
     )
-

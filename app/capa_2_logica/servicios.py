@@ -49,10 +49,9 @@ class _RepoEquiposProtocol(Protocol):
 class _RepoLigasProtocol(Protocol):
     def crear(self, liga: LigaModelo) -> LigaModelo: ...
     def obtener_por_id(self, id_liga: int) -> LigaModelo | None: ...
-    def agregar_participante(self, liga: LigaModelo, usuario: UsuarioModelo) -> LigaModelo: ...
+    def agregar_participante(self, liga: LigaModelo, usuario: UsuarioModelo, id_equipo: int, formacion: Formacion) -> LigaParticipante: ...
     def eliminar_participante(self, liga: LigaModelo, usuario: UsuarioModelo) -> LigaModelo: ...
     def obtener_ligas_disponibles(self) -> list[LigaModelo]: ...
-
 
 
 class Servicios:
@@ -341,7 +340,7 @@ class Servicios:
 
         return PartidoResultado(partido=partido)
 
-    def crear_liga(self, usuario_id: int, nombre: str, contraseña: str | None, min_jugadores: int, max_jugadores: int, duracion_partido: int) -> CrearLigaResultado:
+    def crear_liga(self, usuario_id: int, nombre: str, contraseña: str | None, min_jugadores: int, max_jugadores: int, duracion_partido: int, jugadores_comportamientos: list[tuple[int, int]], formacion: Formacion) -> CrearLigaResultado:
 
         if not nombre.strip():
             raise DatosLigaInvalidos()
@@ -358,6 +357,35 @@ class Servicios:
         usuario = self.usuarios.obtener_por_id(usuario_id)
         if usuario is None:
             raise UsuarioNoEncontrado()
+        
+        cantidad_jugadores = self.jugadores.contar_jugadores_usuario(usuario_id)
+        if cantidad_jugadores < 6:
+            raise JugadoresInsuficientes()
+        
+        if len(jugadores_comportamientos) != 6:
+            raise DatosInvalidos()
+        
+        jugadores = []
+        for id_jugador, id_comportamiento in jugadores_comportamientos:
+            jugador = self.jugadores.obtener_por_id(id_jugador)
+
+            if jugador is None or jugador.id_usuario != usuario_id:
+                raise JugadorNoEncontrado()
+            
+            comportamiento = self.comportamientos.obtener_comportamiento_por_id_y_usuario(id_comportamiento, usuario_id)
+            if comportamiento is None:
+                raise ComportamientoNoEncontrado()
+            
+            jugadores.append((jugador, id_comportamiento))
+
+        resultado_equipo = self.crear_equipo(usuario_id=usuario_id)
+        equipo = resultado_equipo.equipo
+        for indice, (jugador, id_comportamiento) in enumerate(jugadores):
+            estado = (EstadoJugador.TITULAR if indice < 3 else EstadoJugador.SUPLENTE)
+            self.agregar_jugador_a_equipo(
+                usuario_id=usuario_id, id_equipo=equipo.id_equipo, id_jugador=jugador.id_jugador,
+                id_comportamiento=id_comportamiento, estado=estado
+            ) # el for es para agregar los jugadores al equipo del usuario que crea la liga
 
         nueva_liga = LigaModelo(
             id_usuario=usuario_id,
@@ -370,7 +398,10 @@ class Servicios:
 
         liga = self.ligas.crear(nueva_liga)
 
-        return CrearLigaResultado(liga=liga)
+        #ahora directamente agrego al owner de la liga como participante, con su equipo y formacion
+        participacion = self.ligas.agregar_participante(liga, usuario, equipo.id_equipo, formacion)
+
+        return CrearLigaResultado(liga=liga, participacion=participacion)
 
     def crear_comportamiento(self, usuario_id: int, nombre: str, codigo: str) -> CrearComportamientoResultado:
         if not nombre.strip():
@@ -394,7 +425,7 @@ class Servicios:
 
         return CrearComportamientoResultado(comportamiento=comportamiento)
     
-    def unirse_liga(self,liga_id: int,usuario_id: int, contraseña: str | None = None,) -> UnirseLigaResultado:
+    def unirse_liga(self, liga_id: int, usuario_id: int, jugadores_comportamientos: list[tuple[int, int]], formacion: Formacion, contraseña: str | None = None) -> UnirseLigaResultado:
         
         liga = self.ligas.obtener_por_id(liga_id)
 
@@ -423,10 +454,38 @@ class Servicios:
 
         if self.jugadores.contar_jugadores_usuario(usuario_id) < 6:
             raise JugadoresInsuficientes()
+        
+        if len(jugadores_comportamientos) != 6:
+            raise DatosInvalidos()
+        
+        id_jugadores = [id_jugador for id_jugador, _ in jugadores_comportamientos]
+        if len(set(id_jugadores)) != 6:
+            raise DatosInvalidos()
+        
+        jugadores = []
+        for id_jugador, id_comportamiento in jugadores_comportamientos:
+            jugador = self.jugadores.obtener_por_id(id_jugador)
 
-        liga_actualizada = self.ligas.agregar_participante(liga, usuario)
+            if jugador is None or jugador.id_usuario != usuario_id:
+                raise JugadorNoEncontrado()
+            
+            comportamiento = self.comportamientos.obtener_comportamiento_por_id_y_usuario(id_comportamiento, usuario_id)
+            if comportamiento is None:
+                raise ComportamientoNoEncontrado()
+            
+            jugadores.append((jugador, id_comportamiento))
 
-        return UnirseLigaResultado(liga=liga_actualizada, usuario_unido=usuario)
+        resultado_equipo = self.crear_equipo(usuario_id=usuario_id)
+        equipo = resultado_equipo.equipo
+        for indice, (jugador, id_comportamiento) in enumerate(jugadores):
+            estado = (EstadoJugador.TITULAR if indice < 3 else EstadoJugador.SUPLENTE)
+            self.agregar_jugador_a_equipo(
+                usuario_id=usuario_id, id_equipo=equipo.id_equipo, id_jugador=jugador.id_jugador,
+                id_comportamiento=id_comportamiento, estado=estado
+            ) # el for es para agregar los jugadores al equipo del usuario que crea la liga
+
+        participacion = self.ligas.agregar_participante(liga, usuario, equipo.id_equipo, formacion)
+        return UnirseLigaResultado(liga=liga, usuario_unido=usuario, participacion=participacion)
     
     def abandonar_liga(self, liga_id: int, usuario_id: int) -> AbandonarLigaResultado:
         liga = self.ligas.obtener_por_id(liga_id)

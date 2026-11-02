@@ -2,6 +2,8 @@ from sqlalchemy.orm import Session
 
 from app.capa_0_definicion_bd.models.liga_modelos import Liga as LigaModelo, EstadoLiga
 from app.capa_0_definicion_bd.models.usuarios_modelos import Usuario as UsuarioModelo
+from app.capa_0_definicion_bd.models.liga_participantes_modelos import LigaParticipante
+from app.capa_0_definicion_bd.models.partidos_modelos import Formacion
 
 
 class LigaRepositorio:
@@ -20,16 +22,20 @@ class LigaRepositorio:
         .first()
         )
 
-    def agregar_participante(self, liga: LigaModelo, usuario: UsuarioModelo) -> LigaModelo:
-        liga.participantes.append(usuario)
+    def agregar_participante(self, liga: LigaModelo, usuario: UsuarioModelo, id_equipo: int, formacion: Formacion) -> LigaParticipante:
+        participacion = LigaParticipante(id_liga=liga.id, id_usuario=usuario.id_usuario, id_equipo=id_equipo, formacion=formacion)
+        self.db.add(participacion)
         self.db.commit()
         self.db.refresh(liga)
-        return liga
+        self.db.refresh(participacion)
+        return participacion
     
     def eliminar_participante(self, liga: LigaModelo, usuario: UsuarioModelo) -> LigaModelo:
-        liga.participantes.remove(usuario)
-        self.db.commit()
-        self.db.refresh(liga)
+        participacion = self.db.query(LigaParticipante).filter_by(id_liga=liga.id, id_usuario=usuario.id_usuario).first()
+        if participacion:
+            self.db.delete(participacion)
+            self.db.commit()
+            self.db.refresh(liga)
         return liga
     
 
