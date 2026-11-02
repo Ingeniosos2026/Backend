@@ -1,12 +1,18 @@
 from fastapi import APIRouter, Depends, status
 from fastapi.responses import JSONResponse
 from typing import Optional
+import asyncio
 
 from app.capa_2_logica.servicios import Servicios
-from app.capa_2_logica.errores import DatosInvalidos, UsuarioNoEncontrado, UsuarioEsCreadorDeLiga ,LigaNoDisponible, LigaNoEncontrada, LigaLlena, UsuarioYaEnLiga, ContraseñaLigaIncorrecta, JugadoresInsuficientes, UsuarioNoExisteEnLiga, LigaIniciada
+from app.capa_2_logica.errores import *
 from app.capa_3_api.dtos.ligas import CrearLiga, UnirseLiga
 from app.capa_3_api.websockets.admin_conexiones import admin_conexiones
 from app.capa_3_api.dependencias import obtener_servicio
+from app.partido.administrar_partidos import administrador_partidas
+from app.partido.inicializacion import crear_estado_partido, crear_cancha
+from app.partido.motor import MotorPartido
+from app.partido.ejecutor import EjecutorPartido
+from app.partido.convertidor import tabla_a_dict, fixture_a_dict
 
 liga_router = APIRouter()
 
@@ -207,3 +213,46 @@ def listar_ligas(servicio: Servicios = Depends(obtener_servicio)):
                 "mensaje": "Ocurrió un error interno del servidor",
             },
         )
+
+@liga_router.put("/liga/{liga_id}/{usuario_id}", status_code=status.HTTP_200_OK)
+async def iniciar_liga(liga_id: int, usuario_id: int, servicio: Servicios = Depends(obtener_servicio)):
+    try:
+        resultado = servicio.iniciar_liga(id_liga=liga_id, usuario_id=usuario_id)
+
+        partido = resultado.partido
+        estado = crear_estado_partido(partido)
+        duracion_segundos = partido.duracion_partido * 60
+        motor = MotorPartido(estado=estado)
+        administrador_partidas.agregar(partido_id=partido.id_partido, motor=motor)
+
+        fixture = [fixture_a_dict(fix) for fix in resultado.fixture]
+        tabla = [tabla_a_dict(tab) for tab in resultado.tabla]
+
+        ejecutor = EjecutorPartido(partido_id=partido.id_partido, motor=motor, duracion=duracion_segundos)
+        asyncio.create_task(ejecutor.ejecutar())
+
+    except LigaNoEncontrada:
+        return JSONResponse(status_code=404, content={"error": "LIGA_NO_ENCONTRADA", "mensaje": "La liga no existe"})
+
+    except IniciarNoPermitido:
+        return JSONResponse(status_code=403, content={"error": "INICIAR_NO_PERMITIDO", "mensaje": "No se puede iniciar una liga que no creaste"})
+
+    except NoEsPosibleIniciarLiga:
+        return JSONResponse(status_code=409, content={"error": "LIGA_NO_PUEDE_INICIAR", "mensaje": "La liga no puede iniciarse en su estado actual"})
+
+    except Exception:
+        return JSONResponse(status_code=500, content={"error": "ERROR_INTERNO", "mensaje": "No se pudo iniciar la liga"})
+
+    await admin_conexiones.emitir_lobby_liga(
+        liga_id=liga_id,
+        accion="liga_iniciada",
+        payload={
+            "estado": "EN_JUEGO",
+            "id_partido_actual": partido.id_partido,
+            "fixture": fixture,
+            "tabla": tabla})
+
+    return {
+        "mensaje": "Liga iniciada",
+        "id_liga": liga_id,
+        "id_partido": partido.id_partido}

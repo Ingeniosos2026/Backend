@@ -12,6 +12,7 @@ class EstadoLiga(str, Enum):
     DISPONIBLE = "Disponible"
     EN_JUEGO = "En juego"
     EN_ESPERA = "En espera"
+    FINALIZADA = "Finalizada"
 
 
 class Liga(Base):

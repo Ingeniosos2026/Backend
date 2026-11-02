@@ -4,6 +4,8 @@ from app.capa_0_definicion_bd.models.equipo_modelos import Equipo as EquipoModel
 from app.capa_0_definicion_bd.models.partidos_modelos import Partido as PartidoModelo
 from app.capa_0_definicion_bd.models.comportamientos_modelos import Comportamiento as ComportamientoModelo
 from app.capa_0_definicion_bd.models.liga_modelos import Liga as LigaModelo
+from app.capa_0_definicion_bd.models.fixture_liga_modelos import FixtureLiga
+from app.capa_0_definicion_bd.models.tabla_liga_modelos import TablaLiga
 from dataclasses import dataclass
 from typing import List
 
@@ -76,3 +78,5 @@ class ListarLigasResultado:
 class IniciarLigaResultado:
     liga: LigaModelo
     partido: PartidoModelo
+    fixture: list[FixtureLiga]
+    tabla: list[TablaLiga]

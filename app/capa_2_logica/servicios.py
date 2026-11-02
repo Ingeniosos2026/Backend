@@ -530,4 +530,4 @@ class Servicios:
         self.ligas.asignar_partido_fixture(fixture=fixture[0], partido_id=partido.id_partido)
         self.ligas.guardar_inicio_liga(liga=liga, tabla=tabla, fixture=fixture)
 
-        return IniciarLigaResultado(liga=liga, partido=partido)
+        return IniciarLigaResultado(liga=liga, partido=partido, fixture=fixture, tabla=tabla)
