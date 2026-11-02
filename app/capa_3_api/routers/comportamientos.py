@@ -3,7 +3,7 @@ from fastapi.responses import JSONResponse
 from app.capa_2_logica.servicios import Servicios
 from app.capa_2_logica.errores import *
 from app.capa_3_api.dependencias import obtener_servicio
-from app.capa_3_api.dtos.comportamientos import CrearComportamiento
+from app.capa_3_api.dtos.comportamientos import CrearComportamiento, EditarComportamiento
 
 comportamiento_router = APIRouter()
 
@@ -93,3 +93,58 @@ def crear_comportamiento(usuario_id: int, datos: CrearComportamiento, servicio: 
                     "mensaje": "Ocurrio un error interno del servidor",
                 }
             )
+
+@comportamiento_router.put("/comportamiento/{usuario_id}/{comp_id}")
+def editar_comportamiento(usuario_id: int, comp_id: int, datos: EditarComportamiento, servicio: Servicios = Depends(obtener_servicio)):
+    try:
+        resultado = servicio.editar_comportamiento(
+            usuario_id=usuario_id,
+            comp_id=comp_id,
+            nombre=datos.nombre,
+            codigo=datos.codigo
+        )
+
+        comp = resultado.comportamiento
+
+        return {
+            "id": comp.id,
+            "id_usuario": comp.id_usuario,
+            "nombre": comp.nombre,
+            "codigo": comp.codigo
+        }
+
+    except DatosInvalidos:
+        return JSONResponse(
+            status_code=400,
+            content={
+                "error": "DATOS_INVALIDOS",
+                "mensaje": "El nombre o el código del comportamiento no son válidos"
+            }
+        )
+
+    except ComportamientoNoEncontrado:
+        return JSONResponse(
+            status_code=404,
+            content={
+                "error": "COMPORTAMIENTO_NO_ENCONTRADO",
+                "mensaje": "No existe el comportamiento para este usuario"
+            }
+        )
+
+    except ComportamientoNoEditable:
+        return JSONResponse(
+            status_code=403,
+            content={
+                "error": "COMPORTAMIENTO_NO_EDITABLE",
+                "mensaje": "No se pueden editar los comportamientos predeterminados"
+            }
+        )
+
+    except Exception:
+        return JSONResponse(
+            status_code=500,
+            content={
+                "error": "ERROR_INTERNO",
+                "mensaje": "Ocurrió un error interno del servidor"
+            }
+        )

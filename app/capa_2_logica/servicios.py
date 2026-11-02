@@ -33,6 +33,7 @@ class _RepoComportamientosProtocol(Protocol):
     def obtener_comportamiento_por_id_y_usuario(self, comp_id: int, usuario_id: int) -> ComportamientoModelo | None: ...
     def obtener_comportamientos_usuario(self, usuario_id: int) -> List[ComportamientoModelo]: ...
     def crear(self, comportamiento: ComportamientoModelo) -> ComportamientoModelo: ...
+    def actualizar(self, comportamiento: ComportamientoModelo) -> ComportamientoModelo: ...
 
 class _RepoPartidosProtocol(Protocol):
     def crear(self, partido: PartidoModelo) -> PartidoModelo: ...
@@ -451,3 +452,30 @@ class Servicios:
     def listar_ligas_disponibles(self) -> ListarLigasResultado:
         ligas = self.ligas.obtener_ligas_disponibles()
         return ListarLigasResultado(ligas=ligas)
+
+    def editar_comportamiento(self, usuario_id: int, comp_id: int, nombre: str, codigo: str) -> EditarComportamientoResultado:
+        if not nombre.strip():
+            raise DatosInvalidos()
+
+        if len(nombre.strip()) > 50:
+            raise DatosInvalidos()
+
+        comportamiento = self.comportamientos.obtener_comportamiento_por_id_y_usuario(comp_id, usuario_id)
+
+        if comportamiento is None:
+            raise ComportamientoNoEncontrado()
+
+        if (comportamiento.nombre, comportamiento.codigo) in COMPORTAMIENTOS_PREDETERMINADOS:
+            raise ComportamientoNoEditable()
+
+        try:
+            codigo_sanitizado = validar_codigo_comportamiento(codigo)
+        except CodigoComportamientoInvalido as exc:
+            raise DatosInvalidos() from exc
+
+        comportamiento.nombre = nombre.strip()
+        comportamiento.codigo = codigo_sanitizado
+
+        comportamiento = self.comportamientos.actualizar(comportamiento)
+
+        return EditarComportamientoResultado(comportamiento=comportamiento)
