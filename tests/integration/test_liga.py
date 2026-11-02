@@ -1,16 +1,21 @@
 import pytest
 
 from app.capa_0_definicion_bd.models.liga_modelos import Liga, EstadoLiga
+from app.capa_0_definicion_bd.models.liga_participantes_modelos import LigaParticipante
+from app.capa_0_definicion_bd.models.tabla_liga_modelos import TablaLiga
+from app.capa_0_definicion_bd.models.fixture_liga_modelos import FixtureLiga
 from app.capa_0_definicion_bd.models.usuarios_modelos import Usuario
 from app.capa_0_definicion_bd.models.jugadores_modelos import Jugador
+from app.capa_0_definicion_bd.models.equipo_modelos import Equipo
+from app.capa_0_definicion_bd.models.partidos_modelos import Formacion
 from app.capa_1_acceso_datos.repositorios.ligas import LigaRepositorio
 from app.capa_1_acceso_datos.repositorios.usuarios import UsuarioRepositorio
 from app.capa_2_logica.errores import DatosLigaInvalidos
 from app.capa_2_logica.servicios import Servicios
 
-def create_usuario(session):
+def create_usuario(session, email = "pepito@gmail.com"):
     usuario = Usuario(
-        email="pepito@gmail.com",
+        email=email,
         nombre="Pepito",
         id_avatar=1,
         contraseña="asd123",
@@ -21,6 +26,29 @@ def create_usuario(session):
     session.commit()
 
     return usuario
+
+def crear_equipo(session, usuario):
+    equipo = Equipo(id_usuario=usuario.id_usuario)
+
+    session.add(equipo)
+    session.commit()
+
+    return equipo
+
+def crear_liga(session, usuario):
+    liga = Liga(
+        id_usuario=usuario.id_usuario,
+        nombre="Liga de prueba",
+        contraseña="1234",
+        estado=EstadoLiga.DISPONIBLE,
+        min_jugadores=2,
+        max_jugadores=4,
+        duracion_partido=10)
+
+    session.add(liga)
+    session.commit()
+
+    return liga
 
 def create_servicio(session):
     return Servicios(
@@ -221,3 +249,191 @@ def test_abandonar_liga_rechaza_si_liga_ya_iniciada(client, db_test):
 
     db_test.refresh(liga)
     assert len(liga.participantes) == 1
+
+
+def test_obtener_participantes_liga(db_test):
+    usuario = create_usuario(db_test)
+    usuario2 = create_usuario(db_test, email="pepito2@gmail.com")
+    liga = crear_liga(db_test, usuario)
+
+    equipo_1 = crear_equipo(db_test, usuario)
+    equipo_2 = crear_equipo(db_test, usuario2)
+
+    participante_1 = LigaParticipante(
+        id_liga=liga.id,
+        id_usuario=usuario.id_usuario,
+        id_equipo=equipo_1.id_equipo,
+        formacion=Formacion.DEFENSIVA)
+
+    participante_2 = LigaParticipante(
+        id_liga=liga.id,
+        id_usuario=usuario2.id_usuario,
+        id_equipo=equipo_2.id_equipo,
+        formacion=Formacion.DEFENSIVA)
+
+    db_test.add_all([participante_1, participante_2])
+    db_test.commit()
+
+    repositorio = LigaRepositorio(db_test)
+
+    resultado = repositorio.obtener_participantes_liga(liga.id)
+
+    assert len(resultado) == 2
+    assert participante_1 in resultado
+    assert participante_2 in resultado
+
+def test_guardar_inicio_liga(db_test):
+    usuario = create_usuario(db_test)
+    usuario2 = create_usuario(db_test, email="pepito2@gmail.com")
+
+    liga = crear_liga(db_test, usuario)
+
+    equipo_1 = crear_equipo(db_test, usuario)
+    equipo_2 = crear_equipo(db_test, usuario2)
+
+    tabla_1 = TablaLiga(
+        id_liga=liga.id,
+        id_equipo=equipo_1.id_equipo,
+        id_usuario=usuario.id_usuario,
+        partidos_ganados=0,
+        partidos_empatados=0,
+        partidos_perdidos=0,
+        puntos=0,
+        goles_a_favor=0,
+        goles_en_contra=0)
+
+    tabla_2 = TablaLiga(
+        id_liga=liga.id,
+        id_equipo=equipo_2.id_equipo,
+        id_usuario=usuario2.id_usuario,
+        partidos_ganados=0,
+        partidos_empatados=0,
+        partidos_perdidos=0,
+        puntos=0,
+        goles_a_favor=0,
+        goles_en_contra=0)
+
+    fixture = FixtureLiga(
+        id_liga=liga.id,
+        id_equipo_izq=equipo_1.id_equipo,
+        id_equipo_der=equipo_2.id_equipo,
+        turno=1)
+
+    repositorio = LigaRepositorio(db_test)
+
+    repositorio.guardar_inicio_liga(liga, [tabla_1, tabla_2], [fixture])
+
+    assert liga.estado == EstadoLiga.EN_JUEGO
+
+    assert tabla_1 in db_test.query(TablaLiga).all()
+    assert tabla_2 in db_test.query(TablaLiga).all()
+    assert fixture in db_test.query(FixtureLiga).all()
+
+
+def test_obtener_fixture_por_turno(db_test):
+    usuario = create_usuario(db_test)
+    usuario2 = create_usuario(db_test, email="pepito2@gmail.com")
+
+    liga = crear_liga(db_test, usuario)
+
+    equipo_1 = crear_equipo(db_test, usuario)
+    equipo_2 = crear_equipo(db_test, usuario2)
+
+    fixture = FixtureLiga(
+        id_liga=liga.id,
+        id_equipo_izq=equipo_1.id_equipo,
+        id_equipo_der=equipo_2.id_equipo,
+        turno=1)
+
+    db_test.add(fixture)
+    db_test.commit()
+
+    repositorio = LigaRepositorio(db_test)
+
+    resultado = repositorio.obtener_fixture_por_turno(liga.id, 1)
+
+    assert resultado == fixture
+
+def test_asignar_partido_fixture(db_test):
+    usuario = create_usuario(db_test)
+    usuario2 = create_usuario(db_test, email="pepito2@gmail.com")
+
+    liga = crear_liga(db_test, usuario)
+
+    equipo_1 = crear_equipo(db_test, usuario)
+    equipo_2 = crear_equipo(db_test, usuario2)
+
+    fixture = FixtureLiga(
+        id_liga=liga.id,
+        id_equipo_izq=equipo_1.id_equipo,
+        id_equipo_der=equipo_2.id_equipo,
+        turno=1)
+
+    db_test.add(fixture)
+    db_test.commit()
+
+    repositorio = LigaRepositorio(db_test)
+
+    resultado = repositorio.asignar_partido_fixture(fixture, 10)
+
+    assert resultado == fixture
+    assert fixture.id_partido == 10                        
+
+def test_obtener_participante_por_equipo(db_test):
+    usuario = create_usuario(db_test)
+
+    liga = crear_liga(db_test, usuario)
+    equipo = crear_equipo(db_test, usuario)
+
+    participante = LigaParticipante(
+        id_liga=liga.id,
+        id_usuario=usuario.id_usuario,
+        id_equipo=equipo.id_equipo,
+        formacion=Formacion.DEFENSIVA)
+
+    db_test.add(participante)
+    db_test.commit()
+
+    repositorio = LigaRepositorio(db_test)
+
+    resultado = repositorio.obtener_participante_por_equipo(liga.id, equipo.id_equipo)
+
+    assert resultado == participante
+
+def test_obtener_registro_tabla(db_test):
+    usuario = create_usuario(db_test)
+
+    liga = crear_liga(db_test, usuario)
+    equipo = crear_equipo(db_test, usuario)
+
+    registro = TablaLiga(
+        id_liga=liga.id,
+        id_equipo=equipo.id_equipo,
+        id_usuario=usuario.id_usuario,
+        partidos_ganados=0,
+        partidos_empatados=0,
+        partidos_perdidos=0,
+        puntos=0,
+        goles_a_favor=0,
+        goles_en_contra=0)
+
+    db_test.add(registro)
+    db_test.commit()
+
+    repositorio = LigaRepositorio(db_test)
+
+    resultado = repositorio.obtener_registro_tabla(liga.id, equipo.id_equipo)
+
+    assert resultado == registro
+
+def test_finalizar_liga(db_test):
+    usuario = create_usuario(db_test)
+    liga = crear_liga(db_test, usuario)
+
+    repositorio = LigaRepositorio(db_test)
+
+    resultado = repositorio.finalizar_liga(liga)
+
+    assert resultado == liga
+    assert resultado.estado == EstadoLiga.FINALIZADA
+    

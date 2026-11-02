@@ -45,7 +45,7 @@ class EjecutorLiga:
                         "fixture": fixture_a_dict(fixture),
                         "tabla_actualizada": [tabla_a_dict(tabla_izq), tabla_a_dict(tabla_der)]})
 
-                # buscamos y reamos el siguiente partido
+                # buscamos y creamos el siguiente partido
                 siguiente = servicio.crear_siguiente_partido_liga(id_liga=self.liga_id)
 
                 # si no quedan partidos, finaliza la liga
@@ -70,6 +70,11 @@ class EjecutorLiga:
                 estado = crear_estado_partido(partido)
                 self.motor = MotorPartido(estado=estado)
                 administrador_partidas.agregar(partido_id=partido.id_partido, motor=self.motor)
+
+                await admin_conexiones.emitir_lobby_liga(
+                        liga_id=self.liga_id,
+                        accion="proximo_partido",
+                        payload={"id_proximo_partido": self.partido_id})
 
         finally:
             db.close()
