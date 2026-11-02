@@ -250,7 +250,8 @@ async def iniciar_liga(liga_id: int, usuario_id: int, servicio: Servicios = Depe
             "estado": "EN_JUEGO",
             "id_partido_actual": partido.id_partido,
             "fixture": fixture,
-            "tabla": tabla})
+            "tabla": tabla,
+            "turno": 1})
 
     return {
         "mensaje": "Liga iniciada",

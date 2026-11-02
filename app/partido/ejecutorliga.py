@@ -74,7 +74,7 @@ class EjecutorLiga:
                 await admin_conexiones.emitir_lobby_liga(
                         liga_id=self.liga_id,
                         accion="proximo_partido",
-                        payload={"id_proximo_partido": self.partido_id})
+                        payload={"id_proximo_partido": self.partido_id, "turno":self.turno})
 
         finally:
             db.close()
