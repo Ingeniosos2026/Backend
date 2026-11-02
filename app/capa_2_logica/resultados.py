@@ -71,3 +71,8 @@ class AbandonarLigaResultado:
 @dataclass(slots=True)
 class ListarLigasResultado:
     ligas: List[LigaModelo]
+
+@dataclass(slots=True)
+class IniciarLigaResultado:
+    liga: LigaModelo
+    partido: PartidoModelo

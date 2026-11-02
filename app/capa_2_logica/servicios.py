@@ -1,6 +1,8 @@
 import re
 from typing import Protocol
 from pwdlib import PasswordHash
+import random
+from itertools import combinations
 
 from app.capa_0_definicion_bd.models.usuarios_modelos import Usuario as UsuarioModelo
 from app.capa_0_definicion_bd.models.jugadores_modelos import Jugador as JugadorModelo
@@ -11,6 +13,9 @@ from app.capa_0_definicion_bd.models.partidos_modelos import Partido as PartidoM
 from app.capa_0_definicion_bd.models.liga_modelos import Liga as LigaModelo
 from app.partido.validador import CodigoComportamientoInvalido, validar_codigo_comportamiento
 from app.capa_0_definicion_bd.models.liga_modelos import EstadoLiga, Liga as LigaModelo
+from app.capa_0_definicion_bd.models.liga_participantes_modelos import LigaParticipante
+from app.capa_0_definicion_bd.models.fixture_liga_modelos import FixtureLiga
+from app.capa_0_definicion_bd.models.tabla_liga_modelos import TablaLiga
 from app.partido.comportamientos import COMPORTAMIENTOS_PREDETERMINADOS
 from sqlalchemy.exc import IntegrityError
 from .errores import *
@@ -51,6 +56,10 @@ class _RepoLigasProtocol(Protocol):
     def agregar_participante(self, liga: LigaModelo, usuario: UsuarioModelo) -> LigaModelo: ...
     def eliminar_participante(self, liga: LigaModelo, usuario: UsuarioModelo) -> LigaModelo: ...
     def obtener_ligas_disponibles(self) -> list[LigaModelo]: ...
+    def obtener_participantes_liga(self, id_liga: int) -> list[LigaParticipante]: ...
+    def guardar_inicio_liga(self, liga: LigaModelo, tabla: list[TablaLiga], fixture: list[FixtureLiga],) -> None: ...
+    def obtener_fixture_por_turno(self, id_liga: int, turno: int) -> FixtureLiga: ...
+    def asignar_partido_fixture(self, fixture: FixtureLiga, partido_id: int) -> FixtureLiga: ...
 
 
 
@@ -451,3 +460,74 @@ class Servicios:
     def listar_ligas_disponibles(self) -> ListarLigasResultado:
         ligas = self.ligas.obtener_ligas_disponibles()
         return ListarLigasResultado(ligas=ligas)
+
+
+    def iniciar_liga(self, id_liga: int, usuario_id: int) -> IniciarLigaResultado:
+        liga = self.ligas.obtener_por_id(id_liga)
+
+        if liga is None:
+            raise LigaNoEncontrada()
+
+        if liga.id_usuario != usuario_id:
+            raise IniciarNoPermitido()
+
+        if liga.estado != EstadoLiga.DISPONIBLE:
+            raise NoEsPosibleIniciarLiga()
+        
+        participantes = self.ligas.obtener_participantes_liga(id_liga)
+        cantidad_participantes = len(participantes)
+
+        if cantidad_participantes < liga.min_jugadores:
+            raise NoEsPosibleIniciarLiga()
+        
+        if cantidad_participantes > liga.max_jugadores:
+            raise NoEsPosibleIniciarLiga()
+        
+        tabla = []
+
+        for participante in participantes:
+            registro = TablaLiga(
+                id_liga=liga.id,
+                id_equipo=participante.id_equipo,
+                id_usuario=participante.id_usuario,
+                partidos_ganados=0,
+                partidos_empatados=0,
+                partidos_perdidos=0,
+                puntos=0,
+                goles_a_favor=0,
+                goles_en_contra=0)
+
+            tabla.append(registro)
+
+        enfrentamientos = list(combinations(participantes, 2))
+        random.shuffle(enfrentamientos)
+
+        fixture = []
+        for turno, (equipo1, equipo2) in enumerate(enfrentamientos, start=1):
+            partido_fixture = FixtureLiga(
+                id_liga=liga.id,
+                id_equipo_izq=equipo1.id_equipo,
+                id_equipo_der=equipo2.id_equipo,
+                turno=turno)
+
+            fixture.append(partido_fixture)
+
+        equipo1, equipo2 = enfrentamientos[0]
+
+        nuevo_partido = PartidoModelo(
+            id_usuario_1=equipo1.id_usuario,
+            id_usuario_2=equipo2.id_usuario,
+            id_equipo_1=equipo1.id_equipo,
+            id_equipo_2=equipo2.id_equipo,
+            duracion_partido=liga.duracion_partido,
+            formacion_1=equipo1.formacion,
+            formacion_2=equipo2.formacion,
+            tipo_partido=TipoPartido.LIGA,
+            estado_partido=EstadoPartido.EN_CURSO)
+
+        partido = self.partidos.crear(nuevo_partido)
+
+        self.ligas.asignar_partido_fixture(fixture=fixture[0], partido_id=partido.id_partido)
+        self.ligas.guardar_inicio_liga(liga=liga, tabla=tabla, fixture=fixture)
+
+        return IniciarLigaResultado(liga=liga, partido=partido)

@@ -13,6 +13,8 @@ class FixtureLiga(Base):
     id_equipo_der = Column(Integer, ForeignKey("equipos.id_equipo"), nullable=False)
     id_partido = Column(Integer, ForeignKey("partidos.id_partido"), nullable=True, unique=True)
     turno = Column(Integer, nullable=False)
+    goles_equipo_izq = Column(Integer, nullable=True, default=None)
+    goles_equipo_der = Column(Integer, nullable=True, default=None)
 
     equipo_izq = relationship("Equipo", foreign_keys=[id_equipo_izq])
     equipo_der = relationship("Equipo", foreign_keys=[id_equipo_der])
