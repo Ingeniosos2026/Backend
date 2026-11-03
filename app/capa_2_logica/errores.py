@@ -79,3 +79,6 @@ class NoSeEncontraronLasTablas (Exception):
   
 class ComportamientoNoEditable(Exception):
     pass
+
+class ComportamientoEnUso(Exception):
+    pass

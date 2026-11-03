@@ -13,6 +13,7 @@ from app.capa_0_definicion_bd.models.fixture_liga_modelos import FixtureLiga
 from app.capa_2_logica.errores import *
 from app.capa_2_logica.servicios import Servicios, password_hash
 from app.capa_2_logica.resultados import *
+from app.partido.comportamientos import COMPORTAMIENTOS_PREDETERMINADOS
 
 def test_crear_usuario_datos_invalidos():
     repositorio = Mock()
@@ -1562,3 +1563,67 @@ def test_registrar_resultado_partido_liga_gana_izquierda():
     assert tabla_der.partidos_empatados == 0
     assert tabla_der.partidos_perdidos == 1
     assert tabla_der.puntos == 0
+
+def test_eliminar_comportamiento():
+    repo_comportamientos = Mock()
+    comportamiento = Comportamiento(
+        id=1,
+        id_usuario=1,
+        nombre="Defender",
+        codigo="def comportamiento(primitivas): pass")
+    repo_comportamientos.obtener_comportamiento_por_id_y_usuario.return_value = comportamiento
+    servicio = Servicios(usuarios=Mock(), comportamientos=repo_comportamientos)
+
+    resultado = servicio.eliminar_comportamiento(usuario_id=1, comp_id=1)
+
+    assert resultado is None
+    repo_comportamientos.obtener_comportamiento_por_id_y_usuario.assert_called_once_with(1, 1)
+    repo_comportamientos.eliminar.assert_called_once_with(comportamiento)
+
+def test_eliminar_comportamiento_no_encontrado():
+    repo_comportamientos = Mock()
+    repo_comportamientos.obtener_comportamiento_por_id_y_usuario.return_value = None
+    servicio = Servicios(usuarios=Mock(), comportamientos=repo_comportamientos)
+    with pytest.raises(ComportamientoNoEncontrado):
+        servicio.eliminar_comportamiento(usuario_id=1, comp_id=1)
+    repo_comportamientos.eliminar.assert_not_called()
+
+def test_eliminar_comportamiento_predeterminado_falla():
+    repo_comportamientos = Mock()
+    nombre, codigo = COMPORTAMIENTOS_PREDETERMINADOS[0]
+    comportamiento = Comportamiento(
+        id=1,
+        id_usuario=1,
+        nombre=nombre,
+        codigo=codigo
+    )
+    repo_comportamientos.obtener_comportamiento_por_id_y_usuario.return_value = comportamiento
+    servicio = Servicios(usuarios=Mock(), comportamientos=repo_comportamientos)
+    with pytest.raises(ComportamientoNoEditable):
+        servicio.eliminar_comportamiento(usuario_id=1, comp_id=1)
+    repo_comportamientos.eliminar.assert_not_called()
+
+def test_eliminar_comportamiento_en_uso_falla():
+    repo_comportamientos = Mock()
+    comportamiento = Comportamiento(
+        id=1,
+        id_usuario=1,
+        nombre="Correr",
+        codigo="def comportamiento(primitivas):\n    primitivas.correr((1, 2))"
+    )
+    equipo = Equipo(id_usuario=1)
+    jugador = Jugador(
+        id_usuario=1,
+        nombre_jugador="Messi",
+        control=60,
+        agilidad=60,
+        fuerza=60,
+        poder=60,
+        velocidad=60
+    )
+    EquipoJugador(equipo=equipo, jugador=jugador, comportamiento=comportamiento, estado=EstadoJugador.TITULAR)
+    repo_comportamientos.obtener_comportamiento_por_id_y_usuario.return_value = comportamiento
+    servicio = Servicios(usuarios=Mock(), comportamientos=repo_comportamientos)
+    with pytest.raises(ComportamientoEnUso):
+        servicio.eliminar_comportamiento(usuario_id=1, comp_id=1)
+    repo_comportamientos.eliminar.assert_not_called()
