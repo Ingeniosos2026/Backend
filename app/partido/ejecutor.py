@@ -6,7 +6,7 @@ from app.capa_0_definicion_bd.base_datos_sqlalchemy import SessionLocal
 from app.capa_0_definicion_bd.models.partidos_modelos import EstadoPartido
 from app.capa_3_api.websockets.admin_conexiones import admin_conexiones
 from app.capa_3_api.dependencias import crear_servicio
-from .administrar_partidos import AdministradorPartidas 
+from .administrar_partidos import administrador_partidas
 
 
 
@@ -67,6 +67,6 @@ class EjecutorPartido:
                 "goles": {"izquierdo": self.motor.estado.goles_izquierdo,
                           "derecho": self.motor.estado.goles_derecho}})
         
-        AdministradorPartidas.eliminar(self.partido_id)
+        administrador_partidas.eliminar(self.partido_id)
         
         return {"goles_izquierdo": goles_izquierdo, "goles_derecho": goles_derecho}
