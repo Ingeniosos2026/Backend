@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, status
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, Response
 from app.capa_2_logica.servicios import Servicios
 from app.capa_2_logica.errores import *
 from app.capa_3_api.dependencias import obtener_servicio
@@ -137,6 +137,48 @@ def editar_comportamiento(usuario_id: int, comp_id: int, datos: EditarComportami
             content={
                 "error": "COMPORTAMIENTO_NO_EDITABLE",
                 "mensaje": "No se pueden editar los comportamientos predeterminados"
+            }
+        )
+
+    except Exception:
+        return JSONResponse(
+            status_code=500,
+            content={
+                "error": "ERROR_INTERNO",
+                "mensaje": "Ocurrió un error interno del servidor"
+            }
+        )
+
+@comportamiento_router.delete("/comportamiento/{usuario_id}/{comp_id}", status_code=status.HTTP_204_NO_CONTENT)
+def eliminar_comportamiento(usuario_id: int, comp_id: int, servicio: Servicios = Depends(obtener_servicio)):
+    try:
+        servicio.eliminar_comportamiento(usuario_id=usuario_id, comp_id=comp_id)
+        return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+    except ComportamientoNoEncontrado:
+        return JSONResponse(
+            status_code=404,
+            content={
+                "error": "COMPORTAMIENTO_NO_ENCONTRADO",
+                "mensaje": "No existe el comportamiento para este usuario"
+            }
+        )
+
+    except ComportamientoNoEditable:
+        return JSONResponse(
+            status_code=403,
+            content={
+                "error": "COMPORTAMIENTO_NO_EDITABLE",
+                "mensaje": "No se pueden eliminar los comportamientos predeterminados"
+            }
+        )
+
+    except ComportamientoEnUso:
+        return JSONResponse(
+            status_code=400,
+            content={
+                "error": "COMPORTAMIENTO_EN_USO",
+                "mensaje": "No se puede eliminar un comportamiento que está en uso"
             }
         )
 

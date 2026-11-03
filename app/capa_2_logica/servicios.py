@@ -39,6 +39,7 @@ class _RepoComportamientosProtocol(Protocol):
     def obtener_comportamientos_usuario(self, usuario_id: int) -> List[ComportamientoModelo]: ...
     def crear(self, comportamiento: ComportamientoModelo) -> ComportamientoModelo: ...
     def actualizar(self, comportamiento: ComportamientoModelo) -> ComportamientoModelo: ...
+    def eliminar(self, comportamiento: ComportamientoModelo) -> None: ...
 
 class _RepoPartidosProtocol(Protocol):
     def crear(self, partido: PartidoModelo) -> PartidoModelo: ...
@@ -718,3 +719,16 @@ class Servicios:
 
         return EditarComportamientoResultado(comportamiento=comportamiento)
 
+    def eliminar_comportamiento(self, usuario_id: int, comp_id: int) -> None:
+        comportamiento = self.comportamientos.obtener_comportamiento_por_id_y_usuario(comp_id, usuario_id)
+
+        if comportamiento is None:
+            raise ComportamientoNoEncontrado()
+
+        if (comportamiento.nombre, comportamiento.codigo) in COMPORTAMIENTOS_PREDETERMINADOS:
+            raise ComportamientoNoEditable()
+        
+        if (comportamiento.equipos_jugadores):
+            raise ComportamientoEnUso()
+        
+        self.comportamientos.eliminar(comportamiento)
