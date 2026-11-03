@@ -4,7 +4,7 @@ from app.capa_3_api.websockets.admin_conexiones import admin_conexiones
 from app.capa_3_api.dependencias import obtener_servicio
 from app.capa_2_logica.servicios import Servicios
 from app.partido.administrar_partidos import administrador_partidas 
-from app.partido.convertidor import estado_a_dict
+from app.partido.convertidor import estado_a_dict, cancha_a_dict
 
 ws_router = APIRouter()
 
@@ -101,7 +101,13 @@ async def websocket_partido(websocket: WebSocket, partido_id: int):
 
         # si el partido ya comenzo, mandamos inmediatamente su estado actual
         if motor is not None:
-            await websocket.send_json({"action": "estado_partido", "payload": estado_a_dict(motor.estado)})
+            await websocket.send_json({"action": "estado_partido", "payload": {
+                    **estado_a_dict(motor.estado),
+                    "estados_jugadores": [],
+                    "acciones": [],
+                    "cancha": cancha_a_dict(motor.estado.cancha)
+                }
+            })
 
         # si todavia no comenzo, mantenemos la conexion abierta
         while True:

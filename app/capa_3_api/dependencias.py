@@ -10,7 +10,7 @@ from app.capa_1_acceso_datos.repositorios.ligas import LigaRepositorio
 from app.capa_2_logica.servicios import Servicios 
 
 
-def obtener_servicio(db: Session = Depends(get_db)) -> Servicios:
+def crear_servicio(db: Session) -> Servicios:
     repo_usuarios = UsuarioRepositorio(db) 
     repo_jugadores = JugadorRepositorio(db)
     repo_partidos = PartidoRepositorio(db)
@@ -18,3 +18,6 @@ def obtener_servicio(db: Session = Depends(get_db)) -> Servicios:
     repo_comportamientos = ComportamientoRepositorio(db)
     repo_ligas = LigaRepositorio(db)
     return Servicios(usuarios=repo_usuarios, jugadores=repo_jugadores, partidos=repo_partidos, equipos=repo_equipos, comportamientos=repo_comportamientos, ligas=repo_ligas)
+
+def obtener_servicio(db: Session = Depends(get_db)) -> Servicios:
+    return crear_servicio(db)

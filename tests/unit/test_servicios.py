@@ -7,6 +7,9 @@ from app.capa_0_definicion_bd.models.equipos_jugadores_modelos import EstadoJuga
 from app.capa_0_definicion_bd.models.comportamientos_modelos import Comportamiento
 from app.capa_0_definicion_bd.models.partidos_modelos import Partido, TipoPartido, EstadoPartido, Formacion
 from app.capa_0_definicion_bd.models.liga_modelos import Liga, EstadoLiga
+from app.capa_0_definicion_bd.models.liga_participantes_modelos import LigaParticipante
+from app.capa_0_definicion_bd.models.tabla_liga_modelos import TablaLiga
+from app.capa_0_definicion_bd.models.fixture_liga_modelos import FixtureLiga
 from app.capa_2_logica.errores import *
 from app.capa_2_logica.servicios import Servicios, password_hash
 from app.capa_2_logica.resultados import *
@@ -1312,4 +1315,250 @@ def test_abandonar_liga_lanza_error_si_liga_comenzo():
     servicio = Servicios(usuarios = repo_usuarios, ligas = repo_ligas)
     with pytest.raises(LigaIniciada):
         servicio.abandonar_liga(liga_id = 1, usuario_id = 2)
+
     repo_ligas.eliminar_participante.assert_not_called()
+
+def crear_servicio_liga():
+    repo_usuarios = Mock()
+    repo_ligas = Mock()
+    repo_partidos = Mock()
+
+    servicio = Servicios(usuarios=repo_usuarios, ligas=repo_ligas, partidos=repo_partidos)
+
+    return servicio, repo_usuarios, repo_ligas, repo_partidos
+
+def test_iniciar_liga_correctamente():
+    servicio, _, repo_ligas, repo_partidos = crear_servicio_liga()
+
+    liga = Liga(
+        id=10,
+        id_usuario=1,
+        nombre="Liga master",
+        contraseña=None,
+        min_jugadores=2,
+        max_jugadores=5,
+        duracion_partido=5,
+        estado=EstadoLiga.DISPONIBLE)
+
+    participante_1 = LigaParticipante(
+        id_liga=10,
+        id_usuario=1,
+        id_equipo=1,
+        formacion=Formacion.OFENSIVA)
+
+    participante_2 = LigaParticipante(
+        id_liga=10,
+        id_usuario=2,
+        id_equipo=2,
+        formacion=Formacion.DEFENSIVA)
+
+    partido = Partido(
+        id_partido=50,
+        id_usuario_1=1,
+        id_usuario_2=2,
+        id_equipo_1=1,
+        id_equipo_2=2,
+        duracion_partido=5,
+        formacion_1=Formacion.OFENSIVA,
+        formacion_2=Formacion.DEFENSIVA,
+        tipo_partido=TipoPartido.LIGA,
+        estado_partido=EstadoPartido.EN_CURSO)
+
+    repo_ligas.obtener_por_id.return_value = liga
+    repo_ligas.obtener_participantes_liga.return_value = [participante_1, participante_2]
+
+    repo_partidos.crear.return_value = partido
+    repo_ligas.asignar_partido_fixture.side_effect = (lambda fixture, partido_id: setattr(fixture, "id_partido", partido_id))
+
+    resultado = servicio.iniciar_liga(id_liga=10, usuario_id=1)
+
+    assert resultado.liga == liga
+    assert resultado.partido == partido
+
+    assert len(resultado.tabla) == 2
+    assert len(resultado.fixture) == 1
+
+    assert resultado.tabla[0].puntos == 0
+    assert resultado.tabla[1].puntos == 0
+
+    assert resultado.fixture[0].id_partido == 50
+    assert resultado.fixture[0].turno == 1
+
+def test_crear_siguiente_partido_liga_correctamente():
+    servicio, _, repo_ligas, repo_partidos = crear_servicio_liga()
+
+    liga = liga = Liga(
+        id=10,
+        id_usuario=1,
+        nombre="Liga master",
+        contraseña=None,
+        min_jugadores=2,
+        max_jugadores=5,
+        duracion_partido=5,
+        estado=EstadoLiga.DISPONIBLE)
+
+    fixture = FixtureLiga(
+        id_liga=10,
+        id_equipo_izq=1,
+        id_equipo_der=2,
+        turno=2)
+
+    participante_1 = LigaParticipante(
+        id_liga=10,
+        id_usuario=1,
+        id_equipo=1,
+        formacion=Formacion.OFENSIVA)
+
+    participante_2 = LigaParticipante(
+        id_liga=10,
+        id_usuario=2,
+        id_equipo=2,
+        formacion=Formacion.DEFENSIVA)
+
+    partido = Partido(
+        id_partido=51,
+        id_usuario_1=1,
+        id_usuario_2=2,
+        id_equipo_1=1,
+        id_equipo_2=2,
+        duracion_partido=5,
+        formacion_1=Formacion.OFENSIVA,
+        formacion_2=Formacion.DEFENSIVA,
+        tipo_partido=TipoPartido.LIGA,
+        estado_partido=EstadoPartido.EN_CURSO)
+
+    repo_ligas.obtener_por_id.return_value = liga
+    repo_ligas.obtener_siguiente_fixture.return_value = fixture
+
+    repo_ligas.obtener_participante_por_equipo.side_effect = [participante_1, participante_2]
+
+    repo_partidos.crear.return_value = partido
+
+    repo_ligas.asignar_partido_fixture.side_effect = (lambda fixture, partido_id: setattr(fixture, "id_partido", partido_id))
+
+    resultado = servicio.crear_siguiente_partido_liga(10)
+
+    assert resultado.partido == partido
+    assert fixture.id_partido == 51
+
+    partido_creado = repo_partidos.crear.call_args.args[0]
+
+    assert partido_creado.id_usuario_1 == 1
+    assert partido_creado.id_usuario_2 == 2
+    assert partido_creado.id_equipo_1 == 1
+    assert partido_creado.id_equipo_2 == 2
+    assert partido_creado.duracion_partido == 5
+    assert partido_creado.formacion_1 == Formacion.OFENSIVA
+    assert partido_creado.formacion_2 == Formacion.DEFENSIVA
+    assert partido_creado.tipo_partido == TipoPartido.LIGA
+    assert partido_creado.estado_partido == EstadoPartido.EN_CURSO
+
+def test_crear_siguiente_partido_liga_sin_fixtures_pendientes():
+    servicio, _, repo_ligas, _ = crear_servicio_liga()
+
+    liga = Liga(
+        id=10,
+        id_usuario=1,
+        nombre="Liga master",
+        contraseña=None,
+        min_jugadores=2,
+        max_jugadores=5,
+        duracion_partido=5,
+        estado=EstadoLiga.DISPONIBLE)
+
+    repo_ligas.obtener_por_id.return_value = liga
+    repo_ligas.obtener_siguiente_fixture.return_value = None
+
+    resultado = servicio.crear_siguiente_partido_liga(10)
+
+    assert resultado.partido is None
+
+    repo_ligas.obtener_por_id.assert_called_once_with(10)
+    repo_ligas.obtener_siguiente_fixture.assert_called_once_with(10)
+
+def test_crear_siguiente_partido_liga_no_encontrada():
+    servicio, _, repo_ligas, _ = crear_servicio_liga()
+
+    repo_ligas.obtener_por_id.return_value = None
+
+    with pytest.raises(LigaNoEncontrada):
+        servicio.crear_siguiente_partido_liga(10)
+
+    repo_ligas.obtener_por_id.assert_called_once_with(10)
+    repo_ligas.obtener_siguiente_fixture.assert_not_called()
+
+def test_registrar_resultado_partido_liga_gana_izquierda():
+    servicio, _, repo_ligas, repo_partidos = crear_servicio_liga()
+
+    fixture = FixtureLiga(
+        id_liga=10,
+        id_equipo_izq=1,
+        id_equipo_der=2,
+        id_partido=50,
+        turno=1)
+
+    tabla_izq = TablaLiga(
+        id_liga=10,
+        id_equipo=1,
+        id_usuario=1,
+        partidos_ganados=0,
+        partidos_empatados=0,
+        partidos_perdidos=0,
+        puntos=0,
+        goles_a_favor=0,
+        goles_en_contra=0)
+
+    tabla_der = TablaLiga(
+        id_liga=10,
+        id_equipo=2,
+        id_usuario=2,
+        partidos_ganados=0,
+        partidos_empatados=0,
+        partidos_perdidos=0,
+        puntos=0,
+        goles_a_favor=0,
+        goles_en_contra=0)
+
+    partido = Partido(
+        id_partido=50,
+        id_usuario_1=1,
+        id_usuario_2=2,
+        id_equipo_1=1,
+        id_equipo_2=2,
+        duracion_partido=5,
+        formacion_1=Formacion.OFENSIVA,
+        formacion_2=Formacion.DEFENSIVA,
+        tipo_partido=TipoPartido.LIGA,
+        estado_partido=EstadoPartido.TERMINADO)
+
+    repo_ligas.obtener_fixture_por_turno.return_value = fixture
+    repo_ligas.obtener_registro_tabla.side_effect = [tabla_izq, tabla_der]
+
+    repo_partidos.obtener_por_id.return_value = partido
+
+    resultado = servicio.registrar_resultado_partido_liga(
+        id_liga=10,
+        turno=1,
+        goles_izq=3,
+        goles_der=1)
+
+    assert resultado.fixture == fixture
+    assert resultado.tabla_izq == tabla_izq
+    assert resultado.tabla_der == tabla_der
+
+    assert fixture.goles_equipo_izq == 3
+    assert fixture.goles_equipo_der == 1
+
+    assert tabla_izq.goles_a_favor == 3
+    assert tabla_izq.goles_en_contra == 1
+    assert tabla_izq.partidos_ganados == 1
+    assert tabla_izq.partidos_empatados == 0
+    assert tabla_izq.partidos_perdidos == 0
+    assert tabla_izq.puntos == 3
+
+    assert tabla_der.goles_a_favor == 1
+    assert tabla_der.goles_en_contra == 3
+    assert tabla_der.partidos_ganados == 0
+    assert tabla_der.partidos_empatados == 0
+    assert tabla_der.partidos_perdidos == 1
+    assert tabla_der.puntos == 0

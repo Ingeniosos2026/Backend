@@ -1,7 +1,8 @@
 from sqlalchemy import Column, Integer, ForeignKey, Enum as SQLenum
+from app.capa_0_definicion_bd.models.partidos_modelos import Formacion
 from sqlalchemy.orm import relationship
 from app.capa_0_definicion_bd.base_datos_sqlalchemy import Base
-from app.capa_0_definicion_bd.models.partidos_modelos import Formacion
+
 
 class LigaParticipante(Base):
     __tablename__ = "liga_participantes"
@@ -20,3 +21,4 @@ class LigaParticipante(Base):
         back_populates="ligas_unidas")
     
     equipo = relationship("Equipo")
+
