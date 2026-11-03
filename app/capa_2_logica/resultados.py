@@ -104,4 +104,4 @@ class FixtureCompletoResultado:
 
 @dataclass(slots=True)
 class TablaCompletaResultado:
-    fixture: list[TablaLiga]
+    tabla: list[TablaLiga]
