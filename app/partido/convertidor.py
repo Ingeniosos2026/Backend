@@ -55,10 +55,12 @@ def fixture_a_dict(fixture: FixtureLiga) -> dict:
         "id_partido": fixture.id_partido,
         "equipo_izq": {
             "id_equipo": fixture.equipo_izq.id_equipo,
-            "nombre_club": fixture.equipo_izq.usuario.nombre_club},
+            "nombre_club": fixture.equipo_izq.usuario.nombre_club,
+            "id_usuario": fixture.equipo_izq.id_usuario},
         "equipo_der": {
             "id_equipo": fixture.equipo_der.id_equipo,
-            "nombre_club": fixture.equipo_der.usuario.nombre_club},
+            "nombre_club": fixture.equipo_der.usuario.nombre_club,
+            "id_usuario": fixture.equipo_der.id_usuario},
         "goles_izq": fixture.goles_equipo_izq,
         "goles_der": fixture.goles_equipo_der}
 

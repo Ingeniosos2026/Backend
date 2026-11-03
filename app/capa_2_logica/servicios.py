@@ -67,6 +67,8 @@ class _RepoLigasProtocol(Protocol):
     def obtener_registro_tabla(self, id_liga: int, id_equipo: int) -> TablaLiga | None: ...
     def finalizar_liga(self, liga: LigaModelo) -> LigaModelo: ...
     def actualizar(self) -> None: ...
+    def obtener_fixture_completo(self, id_liga: int) -> list[FixtureLiga]: ...
+    def obtener_tabla_completa(self, id_liga: int) -> list[TablaLiga]: ...
 
 
 class Servicios:
@@ -732,3 +734,35 @@ class Servicios:
             raise ComportamientoEnUso()
         
         self.comportamientos.eliminar(comportamiento)
+
+    def obtener_fixture(self, liga_id: int) -> FixtureCompletoResultado:
+        liga = self.ligas.obtener_por_id(liga_id)
+
+        if liga is None:
+            raise LigaNoEncontrada()
+
+        if liga.estado != EstadoLiga.EN_JUEGO:
+            raise NoEsPosibleVerElFixture()
+        
+        fixture = self.ligas.obtener_fixture_completo(liga_id)
+
+        if not fixture:
+            raise NoEsPosibleVerElFixture()
+        
+        return FixtureCompletoResultado(fixture=fixture)
+    
+    def obtener_tabla(self, liga_id: int) -> TablaCompletaResultado:
+        liga = self.ligas.obtener_por_id(liga_id)
+
+        if liga is None:
+            raise LigaNoEncontrada()
+
+        if liga.estado != EstadoLiga.EN_JUEGO:
+            raise NoEsPosibleVerLaTabla()
+        
+        tabla = self.ligas.obtener_tabla_completa(liga_id)
+
+        if not tabla:
+            raise NoEsPosibleVerLaTabla()
+        
+        return TablaCompletaResultado(tabla=tabla)
