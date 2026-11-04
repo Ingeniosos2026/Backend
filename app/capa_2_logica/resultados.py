@@ -98,3 +98,10 @@ class FinalizarLigaResultado:
 class EditarComportamientoResultado:
     comportamiento: ComportamientoModelo
 
+@dataclass(slots=True)
+class FixtureCompletoResultado:
+    fixture: list[FixtureLiga]
+
+@dataclass(slots=True)
+class TablaCompletaResultado:
+    tabla: list[TablaLiga]

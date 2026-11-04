@@ -84,3 +84,9 @@ class LigaRepositorio:
     
     def actualizar(self) -> None:
         self.db.commit()
+
+    def obtener_fixture_completo(self, id_liga: int) -> list[FixtureLiga]:
+        return (self.db.query(FixtureLiga).filter(FixtureLiga.id_liga == id_liga).order_by(FixtureLiga.turno).all())
+    
+    def obtener_tabla_completa(self, id_liga: int) -> list[TablaLiga]:
+        return (self.db.query(TablaLiga).filter(TablaLiga.id_liga == id_liga).all())

@@ -286,3 +286,39 @@ async def iniciar_liga(liga_id: int, usuario_id: int, servicio: Servicios = Depe
         "mensaje": "Liga iniciada",
         "id_liga": liga_id,
         "id_partido": partido.id_partido}
+
+
+@liga_router.get("/liga/{liga_id}/fixture", status_code=status.HTTP_200_OK)
+async def fixture(liga_id: int, servicio: Servicios = Depends(obtener_servicio)):
+    try:
+        resultado = servicio.obtener_fixture(liga_id=liga_id)
+        fixture = [fixture_a_dict(fix) for fix in resultado.fixture]
+    
+        return {"fixture": fixture}
+    
+    except LigaNoEncontrada:
+        return JSONResponse(status_code=404, content={"error": "LIGA_NO_ENCONTRADA", "mensaje": "La liga no existe"})
+
+    except NoEsPosibleVerElFixture:
+        return JSONResponse(status_code=409, content={"error": "LIGA_NO_DISPONIBLE", "mensaje": "La liga esta finalizada o no esta iniciada"})
+
+    except Exception:
+        return JSONResponse(status_code=500, content={"error": "ERROR_INTERNO", "mensaje": "No se pudo obtener el fixture de la liga"})
+    
+
+@liga_router.get("/liga/{liga_id}/tabla", status_code=status.HTTP_200_OK)
+async def tabla(liga_id: int, servicio: Servicios = Depends(obtener_servicio)):
+    try:
+        resultado = servicio.obtener_tabla(liga_id=liga_id)
+        tabla = [tabla_a_dict(tab) for tab in resultado.tabla]
+
+        return {"tabla": tabla}
+
+    except LigaNoEncontrada:
+        return JSONResponse(status_code=404, content={"error": "LIGA_NO_ENCONTRADA", "mensaje": "La liga no existe"})
+
+    except NoEsPosibleVerLaTabla:
+        return JSONResponse(status_code=409, content={"error": "LIGA_NO_DISPONIBLE", "mensaje": "La liga esta finalizada o no esta iniciada"})
+
+    except Exception:
+        return JSONResponse(status_code=500, content={"error": "ERROR_INTERNO", "mensaje": "No se pudo obtener la tabla de la liga"})

@@ -82,3 +82,9 @@ class ComportamientoNoEditable(Exception):
 
 class ComportamientoEnUso(Exception):
     pass
+
+class NoEsPosibleVerElFixture(Exception):
+    pass
+
+class NoEsPosibleVerLaTabla(Exception):
+    pass
