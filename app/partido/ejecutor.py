@@ -46,35 +46,15 @@ class EjecutorPartido:
 
             if (self.pausas_realizadas < len(self.tiempos_pausa) and self.motor.estado.tiempo < self.duracion and self.motor.estado.tiempo >= self.tiempos_pausa[self.pausas_realizadas]):
 
+                if (self.pausas_realizadas == 1):
+                    tiempo_pausa = self.duracion_pausa_entretiempo
+                else:
+                    tiempo_pausa = self.duracion_pausa_cooling_break
                 
-                if (self.motor.estado.tiempo >= self.tiempos_pausa[self.pausas_realizadas] and self.pausas_realizadas == 1):
-                    await self.pausar()
-                    await asyncio.sleep(self.duracion_pausa_entretiempo) 
-                    await self.reanudar()
-                    self.pausas_realizadas += 1
-
-                elif ((self.motor.estado.tiempo >= self.tiempos_pausa[self.pausas_realizadas] and self.pausas_realizadas ==  0) or 
-                    self.motor.estado.tiempo >= self.tiempos_pausa[self.pausas_realizadas] and self.pausas_realizadas ==  2):
-                    await self.pausar()
-                    await asyncio.sleep(self.duracion_pausa_cooling_break)
-                    await self.reanudar()
-                    self.pausas_realizadas += 1
-
-                
-                
-            # if (self.pausas_realizadas == 1 and self.motor.estado.tiempo >= self.tiempos_pausa[1] and self.motor.estado.tiempo < self.duracion):
-
-            #     self.pausas_realizadas += 1
-            #     await self.pausar()
-            #     await asyncio.sleep(self.duracion_pausa_entretiempo) 
-            #     await self.reanudar()
-            
-            # if (self.pausas_realizadas == (0 or 2) and self.motor.estado.tiempo >= self.tiempos_pausa[2] and self.motor.estado.tiempo < self.duracion): 
-        
-            #     self.pausas_realizadas += 1
-            #     await self.pausar()
-            #     await asyncio.sleep(self.duracion_pausa_cooling_break) 
-            #     await self.reanudar()
+                await self.pausar()
+                self.pausas_realizadas += 1
+                await asyncio.sleep(tiempo_pausa)
+                await self.reanudar()
 
             # esperamos hasta el proximo tick, esto es para que no se ejecuten instantaneamente varios ticks
             if self.motor.estado.tiempo < self.duracion: 
@@ -96,18 +76,15 @@ class EjecutorPartido:
         self.pausado = True
         
         if (self.pausas_realizadas == 1):
-            await self.admin.emitir_partido(
-            partido_id=self.partido_id, 
-            accion="partido_pausado", 
-            payload={"tiempo": self.motor.estado.tiempo, "numero_pausa": self.pausas_realizadas, "duracion_pausa" : self.duracion_pausa_entretiempo}
-            ) 
+            tiempo_espera = self.duracion_pausa_entretiempo
+        else:
+            tiempo_espera = self.duracion_pausa_cooling_break
 
-        if (self.pausas_realizadas == 0 or 3):
-            await self.admin.emitir_partido(
-            partido_id=self.partido_id, 
-            accion="partido_pausado", 
-            payload={"tiempo": self.motor.estado.tiempo, "numero_pausa": self.pausas_realizadas, "duracion_pausa" : self.duracion_pausa_cooling_break}
-            ) 
+        await self.admin.emitir_partido(
+        partido_id=self.partido_id, 
+        accion="partido_pausado", 
+        payload={"tiempo": self.motor.estado.tiempo, "numero_pausa": self.pausas_realizadas, "duracion_pausa" : tiempo_espera}
+        ) 
 
     async def reanudar(self): 
         if not self.pausado:

@@ -4,7 +4,7 @@ import pytest
 
 from app.partido.estados import Arco,Cancha, Coordenada, EstadoPartido, JugadorEstado, PelotaEstado
 from app.partido.motor import MotorPartido, T
-from app.partido.ejecutor import EjecutorPartido, DURACION_PAUSA
+from app.partido.ejecutor import EjecutorPartido, DURACION_PAUSA_ENTRETIEMPO, DURACION_PAUSA_COOLING_BREAK
 
 # helper para los websockets
 def ejecutar(coroutine):
@@ -44,7 +44,8 @@ def test_configuracion_inicial_de_pausas():
     motor = crear_motor_prueba()
     ejecutor = EjecutorPartido(partido_id=1, motor=motor, duracion=300)
 
-    assert ejecutor.duracion_pausa == DURACION_PAUSA
+    assert ejecutor.duracion_pausa_entretiempo == DURACION_PAUSA_ENTRETIEMPO
+    assert ejecutor.duracion_pausa_cooling_break == DURACION_PAUSA_COOLING_BREAK
     assert ejecutor.tiempos_pausa == [75.0, 150.0, 225.0]
     assert ejecutor.pausas_realizadas == 0
     assert ejecutor.pausado is False
@@ -54,7 +55,7 @@ def test_pausar_y_reanudar_emiten_eventos_ws():
     admin_mock = Mock()
     admin_mock.emitir_partido = AsyncMock()
 
-    ejecutor = EjecutorPartido(partido_id=10, motor=motor, duracion=100, admin=admin_mock)
+    ejecutor = EjecutorPartido(partido_id=10, motor=motor, duracion=100, duracion_pausa_cooling_break=10, duracion_pausa_entretiempo=20, admin=admin_mock)
 
     # pausamos el partido
     ejecutar(ejecutor.pausar())
@@ -62,7 +63,7 @@ def test_pausar_y_reanudar_emiten_eventos_ws():
     admin_mock.emitir_partido.assert_awaited_once_with(
         partido_id=10,
         accion="partido_pausado",
-        payload={"tiempo": 0.0, "numero_pausa": 0, "duracion_pausa": 30.0},
+        payload={"tiempo": 0.0, "numero_pausa": 0, "duracion_pausa": 10.0},
     )
 
     # reanudamos el partido
@@ -82,8 +83,9 @@ def test_ejecutor_realiza_exactamente_3_pausas_durante_el_partido():
     ejecutor = EjecutorPartido(
         partido_id=99,
         motor=motor,
-        duracion=4 * T,
-        duracion_pausa=0,
+        duracion= 4 * T,
+        duracion_pausa_entretiempo = 0,
+        duracion_pausa_cooling_break=0,
         admin=admin_mock,
     )
 
