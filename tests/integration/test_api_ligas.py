@@ -5,6 +5,8 @@ from app.capa_0_definicion_bd.models.liga_participantes_modelos import LigaParti
 from app.capa_0_definicion_bd.models.equipo_modelos import Equipo
 from app.capa_0_definicion_bd.models.partidos_modelos import Formacion
 from app.capa_0_definicion_bd.models.usuarios_modelos import Usuario
+from app.capa_0_definicion_bd.models.fixture_liga_modelos import FixtureLiga
+from app.capa_0_definicion_bd.models.tabla_liga_modelos import TablaLiga
 from app.capa_3_api.websockets.admin_conexiones import admin_conexiones
 
 
@@ -222,3 +224,256 @@ def test_iniciar_liga_no_existente(client, db_test):
 
     assert response.status_code == 404
     assert response.json()["error"] == "LIGA_NO_ENCONTRADA"
+
+def test_endpoint_obtener_fixture_correctamente(client, db_test):
+    usuario1 = Usuario(
+        email="jere@gmail.com",
+        nombre="jerito",
+        id_avatar=1,
+        contraseña="asd123",
+        nombre_club="belgrano")
+
+    usuario2 = Usuario(
+        email="tomas@gmail.com",
+        nombre="toma",
+        id_avatar=2,
+        contraseña="asd123",
+        nombre_club="talleres")
+
+    usuario3 = Usuario(
+        email="juan@gmail.com",
+        nombre="juan",
+        id_avatar=3,
+        contraseña="asd123",
+        nombre_club="instituto")
+
+    usuario4 = Usuario(
+        email="pedro@gmail.com",
+        nombre="pedro",
+        id_avatar=4,
+        contraseña="asd123",
+        nombre_club="river")
+
+    db_test.add_all([usuario1, usuario2, usuario3, usuario4])
+    db_test.commit()
+
+    equipo1 = Equipo(id_usuario=usuario1.id_usuario)
+    equipo2 = Equipo(id_usuario=usuario2.id_usuario)
+    equipo3 = Equipo(id_usuario=usuario3.id_usuario)
+    equipo4 = Equipo(id_usuario=usuario4.id_usuario)
+
+    db_test.add_all([equipo1, equipo2, equipo3, equipo4])
+    db_test.commit()
+
+    db_test.refresh(equipo1)
+    db_test.refresh(equipo2)
+    db_test.refresh(equipo3)
+    db_test.refresh(equipo4)
+
+    liga = Liga(
+        id_usuario=usuario1.id_usuario,
+        nombre="Liga 123",
+        estado=EstadoLiga.EN_JUEGO,
+        min_jugadores=2,
+        max_jugadores=10,
+        duracion_partido=10)
+
+    db_test.add(liga)
+    db_test.commit()
+    db_test.refresh(liga)
+
+    fixture1 = FixtureLiga(
+        id_liga=liga.id,
+        id_equipo_izq=equipo1.id_equipo,
+        id_equipo_der=equipo2.id_equipo,
+        turno=1)
+
+    fixture2 = FixtureLiga(
+        id_liga=liga.id,
+        id_equipo_izq=equipo3.id_equipo,
+        id_equipo_der=equipo4.id_equipo,
+        turno=2)
+
+    db_test.add_all([fixture1, fixture2])
+    db_test.commit()
+
+    response = client.get(f"/liga/{liga.id}/fixture")
+
+    assert response.status_code == 200
+
+    datos = response.json()
+
+    assert "fixture" in datos
+    assert len(datos["fixture"]) == 2
+
+    assert datos["fixture"][0]["turno"] == 1
+    assert datos["fixture"][0]["equipo_izq"]["id_equipo"] == equipo1.id_equipo
+    assert datos["fixture"][0]["equipo_izq"]["nombre_club"] == "belgrano"
+    assert datos["fixture"][0]["equipo_der"]["id_equipo"] == equipo2.id_equipo
+    assert datos["fixture"][0]["equipo_der"]["nombre_club"] == "talleres"
+
+    assert datos["fixture"][1]["turno"] == 2
+    assert datos["fixture"][1]["equipo_izq"]["id_equipo"] == equipo3.id_equipo
+    assert datos["fixture"][1]["equipo_izq"]["nombre_club"] == "instituto"
+    assert datos["fixture"][1]["equipo_der"]["id_equipo"] == equipo4.id_equipo
+    assert datos["fixture"][1]["equipo_der"]["nombre_club"] == "river"
+
+def test_endpoint_obtener_fixture_liga_no_existente(client):
+    response = client.get("/liga/111/fixture")
+    assert response.status_code == 404
+    datos = response.json()
+
+    assert datos["error"] == "LIGA_NO_ENCONTRADA"
+    assert datos["mensaje"] == "La liga no existe"
+
+def test_endpoint_obtener_fixture_liga_no_disponible(client, db_test):
+    usuario = Usuario(
+        email="jere@gmail.com",
+        nombre="jerito",
+        id_avatar=1,
+        contraseña="asd123",
+        nombre_club="belgrano")
+
+
+    db_test.add(usuario)
+    db_test.commit()
+    db_test.refresh(usuario)
+
+    liga = Liga(
+        id_usuario=usuario.id_usuario,
+        nombre="Liga publica",
+        estado=EstadoLiga.DISPONIBLE,
+        min_jugadores=2,
+        max_jugadores=10,
+        duracion_partido=10)
+
+    db_test.add(liga)
+    db_test.commit()
+    db_test.refresh(liga)
+
+    response = client.get(f"/liga/{liga.id}/fixture")
+    assert response.status_code == 409
+    datos = response.json()
+    assert datos["error"] == "LIGA_NO_DISPONIBLE"
+    assert datos["mensaje"] == "La liga esta finalizada o no esta iniciada"
+
+def test_endpoint_obtener_tabla_correctamente(client, db_test):
+    usuario1 = Usuario(
+        email="jere@gmail.com",
+        nombre="jerito",
+        id_avatar=1,
+        contraseña="asd123",
+        nombre_club="belgrano")
+
+    usuario2 = Usuario(
+        email="tomas@gmail.com",
+        nombre="toma",
+        id_avatar=2,
+        contraseña="asd123",
+        nombre_club="talleres")
+
+    db_test.add_all([usuario1, usuario2])
+    db_test.commit()
+
+    equipo1 = Equipo(id_usuario=usuario1.id_usuario)
+    equipo2 = Equipo(id_usuario=usuario2.id_usuario)
+
+    db_test.add_all([equipo1, equipo2])
+    db_test.commit()
+
+    db_test.refresh(equipo1)
+    db_test.refresh(equipo2)
+
+    liga = Liga(
+        id_usuario=usuario1.id_usuario,
+        nombre="Liga 123",
+        estado=EstadoLiga.EN_JUEGO,
+        min_jugadores=2,
+        max_jugadores=10,
+        duracion_partido=10)
+
+    db_test.add(liga)
+    db_test.commit()
+    db_test.refresh(liga)
+
+    tabla1 = TablaLiga(
+        id_liga=liga.id,
+        id_equipo=equipo1.id_equipo,
+        id_usuario=usuario1.id_usuario,
+        partidos_ganados=2,
+        partidos_empatados=0,
+        partidos_perdidos=0,
+        puntos=6,
+        goles_a_favor=5,
+        goles_en_contra=1)
+
+    tabla2 = TablaLiga(
+        id_liga=liga.id,
+        id_equipo=equipo2.id_equipo,
+        id_usuario=usuario2.id_usuario,
+        partidos_ganados=0,
+        partidos_empatados=0,
+        partidos_perdidos=2,
+        puntos=0,
+        goles_a_favor=1,
+        goles_en_contra=5)
+
+    db_test.add_all([tabla1, tabla2])
+    db_test.commit()
+
+    response = client.get(f"/liga/{liga.id}/tabla")
+
+    assert response.status_code == 200
+
+    datos = response.json()
+
+    assert "tabla" in datos
+    assert len(datos["tabla"]) == 2
+    assert datos["tabla"][0]["id_equipo"] == equipo1.id_equipo
+    assert datos["tabla"][0]["puntos"] == 6
+    assert datos["tabla"][0]["partidos_ganados"] == 2
+    assert datos["tabla"][0]["goles_a_favor"] == 5
+
+    assert datos["tabla"][1]["id_equipo"] == equipo2.id_equipo
+    assert datos["tabla"][1]["puntos"] == 0
+    assert datos["tabla"][1]["partidos_perdidos"] == 2
+    assert datos["tabla"][1]["goles_en_contra"] == 5
+
+def test_endpoint_obtener_tabla_liga_no_existente(client):
+    response = client.get("/liga/111/tabla")
+    assert response.status_code == 404
+    datos = response.json()
+
+    assert datos["error"] == "LIGA_NO_ENCONTRADA"
+    assert datos["mensaje"] == "La liga no existe"
+
+def test_endpoint_obtener_tabla_liga_no_disponible(client, db_test):
+    usuario = Usuario(
+        email="jere@gmail.com",
+        nombre="jerito",
+        id_avatar=1,
+        contraseña="asd123",
+        nombre_club="belgrano")
+
+    db_test.add(usuario)
+    db_test.commit()
+    db_test.refresh(usuario)
+
+    liga = Liga(
+        id_usuario=usuario.id_usuario,
+        nombre="Liga publica",
+        estado=EstadoLiga.DISPONIBLE,
+        min_jugadores=2,
+        max_jugadores=10,
+        duracion_partido=10)
+
+    db_test.add(liga)
+    db_test.commit()
+    db_test.refresh(liga)
+
+    response = client.get(f"/liga/{liga.id}/tabla")
+
+    assert response.status_code == 409
+    datos = response.json()
+    assert datos["error"] == "LIGA_NO_DISPONIBLE"
+    assert datos["mensaje"] == "La liga esta finalizada o no esta iniciada"

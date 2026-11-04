@@ -1627,3 +1627,145 @@ def test_eliminar_comportamiento_en_uso_falla():
     with pytest.raises(ComportamientoEnUso):
         servicio.eliminar_comportamiento(usuario_id=1, comp_id=1)
     repo_comportamientos.eliminar.assert_not_called()
+
+def test_obtener_fixture_correctamente():
+    servicio, _, repo_ligas, _ = crear_servicio_liga()
+
+    liga = Liga(
+        id=10,
+        id_usuario=1,
+        nombre="Liga master",
+        contraseña=None,
+        min_jugadores=2,
+        max_jugadores=5,
+        duracion_partido=5,
+        estado=EstadoLiga.EN_JUEGO)
+
+    fixture_1 = FixtureLiga(
+        id_liga=10,
+        id_equipo_izq=1,
+        id_equipo_der=2,
+        id_partido=50,
+        turno=1)
+
+    fixture_2 = FixtureLiga(
+        id_liga=10,
+        id_equipo_izq=1,
+        id_equipo_der=3,
+        id_partido=51,
+        turno=2)
+    
+    repo_ligas.obtener_por_id.return_value = liga
+    repo_ligas.obtener_fixture_completo.return_value = [fixture_1, fixture_2]
+
+    resultado = servicio.obtener_fixture(liga_id=10)
+
+    assert resultado.fixture == [fixture_1, fixture_2]
+    assert len(resultado.fixture) == 2
+
+def test_obtener_fixture_liga_no_encontrada():
+    servicio, _, repo_ligas, _ = crear_servicio_liga()
+
+    repo_ligas.obtener_por_id.return_value = None
+
+    with pytest.raises(LigaNoEncontrada):
+        servicio.obtener_fixture(liga_id=10)
+
+    repo_ligas.obtener_por_id.assert_called_once_with(10)
+    repo_ligas.obtener_fixture_completo.assert_not_called()
+
+def test_obtener_fixture_liga_no_disponible():
+    servicio, _, repo_ligas, _ = crear_servicio_liga()
+
+    liga = Liga(
+        id=10,
+        id_usuario=1,
+        nombre="Liga master",
+        contraseña=None,
+        min_jugadores=2,
+        max_jugadores=5,
+        duracion_partido=5,
+        estado=EstadoLiga.DISPONIBLE)
+
+    repo_ligas.obtener_por_id.return_value = liga
+
+    with pytest.raises(NoEsPosibleVerElFixture):
+        servicio.obtener_fixture(liga_id=10)
+
+    repo_ligas.obtener_por_id.assert_called_once_with(10)
+    repo_ligas.obtener_fixture_completo.assert_not_called()
+
+def test_obtener_tabla_correctamente():
+    servicio, _, repo_ligas, _ = crear_servicio_liga()
+
+    liga = Liga(
+        id=10,
+        id_usuario=1,
+        nombre="Liga master",
+        contraseña=None,
+        min_jugadores=2,
+        max_jugadores=5,
+        duracion_partido=5,
+        estado=EstadoLiga.EN_JUEGO)
+
+    tabla_1 = TablaLiga(
+        id_liga=10,
+        id_equipo=1,
+        id_usuario=1,
+        partidos_ganados=2,
+        partidos_empatados=0,
+        partidos_perdidos=0,
+        puntos=6,
+        goles_a_favor=5,
+        goles_en_contra=1)
+
+    tabla_2 = TablaLiga(
+        id_liga=10,
+        id_equipo=2,
+        id_usuario=2,
+        partidos_ganados=1,
+        partidos_empatados=0,
+        partidos_perdidos=1,
+        puntos=3,
+        goles_a_favor=3,
+        goles_en_contra=4)
+
+    repo_ligas.obtener_por_id.return_value = liga
+    repo_ligas.obtener_tabla_completa.return_value = [tabla_1, tabla_2]
+
+    resultado = servicio.obtener_tabla(liga_id=10)
+
+    assert resultado.tabla == [tabla_1, tabla_2]
+    assert len(resultado.tabla) == 2
+
+def test_obtener_tabla_liga_no_encontrada():
+    servicio, _, repo_ligas, _ = crear_servicio_liga()
+
+    repo_ligas.obtener_por_id.return_value = None
+
+    with pytest.raises(LigaNoEncontrada):
+        servicio.obtener_tabla(liga_id=10)
+
+    repo_ligas.obtener_por_id.assert_called_once_with(10)
+    repo_ligas.obtener_tabla_completa.assert_not_called()
+
+def test_obtener_tabla_liga_no_disponible():
+    servicio, _, repo_ligas, _ = crear_servicio_liga()
+
+    liga = Liga(
+        id=10,
+        id_usuario=1,
+        nombre="Liga master",
+        contraseña=None,
+        min_jugadores=2,
+        max_jugadores=5,
+        duracion_partido=5,
+        estado=EstadoLiga.DISPONIBLE)
+
+    repo_ligas.obtener_por_id.return_value = liga
+
+    with pytest.raises(NoEsPosibleVerLaTabla):
+        servicio.obtener_tabla(liga_id=10)
+
+    repo_ligas.obtener_por_id.assert_called_once_with(10)
+    repo_ligas.obtener_tabla_completa.assert_not_called()
