@@ -6,6 +6,9 @@ from app.partido.estados import Arco,Cancha, Coordenada, EstadoPartido, JugadorE
 from app.partido.motor import MotorPartido, T
 from app.partido.ejecutor import EjecutorPartido, DURACION_PAUSA_ENTRETIEMPO, DURACION_PAUSA_COOLING_BREAK
 
+from app.capa_2_logica.resultados import CambioJugadorResultado
+from app.capa_2_logica.errores import NoSePuedeCambiarJugador
+
 # helper para los websockets
 def ejecutar(coroutine):
     return asyncio.run(coroutine)
@@ -106,3 +109,169 @@ def test_ejecutor_realiza_exactamente_3_pausas_durante_el_partido(monkeypatch):
     assert acciones_emitidas.count("partido_reanudado") == 3
     assert acciones_emitidas[0] == "partido_iniciado"
     assert acciones_emitidas[-1] == "partido_terminado"
+
+def test_puede_realizar_cambio():
+    motor = crear_motor_prueba()
+    ejecutor = EjecutorPartido(partido_id=10, motor=motor, duracion=100)
+
+    assert ejecutor.puede_realizar_cambio(10) is False
+
+    ejecutor.pausado = True
+
+    # no puede cambiar si todavia no hay una pausa
+    assert ejecutor.puede_realizar_cambio(10) is False
+
+    ejecutor.pausas_realizadas = 1
+
+    # puede cambiar durante la primera pausa
+    assert ejecutor.puede_realizar_cambio(10) is True
+
+    # si ya cambio durante esa pausa, no puede volver a hacerl
+    ejecutor.equipos_que_cambiaron.add((1, 10))
+
+    assert ejecutor.puede_realizar_cambio(10) is False
+
+    # otro equipo si puede cambiar durante la misma pausa
+    assert ejecutor.puede_realizar_cambio(20) is True
+
+    # no puede cambiar mas de 3 pausas
+    ejecutor.pausas_realizadas = 4
+    assert ejecutor.puede_realizar_cambio(10) is False
+
+def test_solicitar_cambio_queda_cambio_pendiente():
+    motor = crear_motor_prueba()
+    ejecutor = EjecutorPartido(partido_id=10, motor=motor, duracion=100)
+
+    resultado = CambioJugadorResultado(
+        id_jugador=3,
+        control=60,
+        agilidad=60,
+        fuerza=60,
+        poder=60,
+        velocidad=60,
+        codigo_comportamiento="estoy cansado de tanto test profe")
+
+    ejecutar(ejecutor.solicitar_cambio(
+        usuario_id=1,
+        jugador_sale_id=1,
+        resultado=resultado))
+
+    assert ejecutor.cambios_pendientes == {10: (1, 1, resultado)}
+    assert ejecutor.equipos_que_cambiaron == set()
+
+def test_solicitar_otro_cambio_pisa_el_anterior():
+    motor = crear_motor_prueba()
+    ejecutor = EjecutorPartido(partido_id=10, motor=motor, duracion=100)
+
+    resultado_1 = CambioJugadorResultado(
+        id_jugador=3,
+        control=60,
+        agilidad=60,
+        fuerza=60,
+        poder=60,
+        velocidad=60,
+        codigo_comportamiento="estoy cansado de tanto test profe")
+    
+    resultado_2 = CambioJugadorResultado(
+        id_jugador=4,
+        control=60,
+        agilidad=60,
+        fuerza=60,
+        poder=60,
+        velocidad=60,
+        codigo_comportamiento="estoy cansado de tanto test profe")
+
+    ejecutar(ejecutor.solicitar_cambio(
+        usuario_id=1,
+        jugador_sale_id=1,
+        resultado=resultado_1))
+
+    ejecutar(ejecutor.solicitar_cambio(
+        usuario_id=1,
+        jugador_sale_id=1,
+        resultado=resultado_2))
+
+    assert ejecutor.cambios_pendientes == {10: (1, 1, resultado_2)}
+
+
+def test_no_permitir_mas_de_tres_cambios_por_equipo():
+    motor = crear_motor_prueba()
+    ejecutor = EjecutorPartido(partido_id=10, motor=motor, duracion=100)
+
+    ejecutor.equipos_que_cambiaron = {(1, 10), (2, 10), (3, 10)}
+
+    resultado = CambioJugadorResultado(
+        id_jugador=3,
+        control=60,
+        agilidad=60,
+        fuerza=60,
+        poder=60,
+        velocidad=60,
+        codigo_comportamiento="ingenieria la mejor materia de la facu")
+
+    with pytest.raises(NoSePuedeCambiarJugador):
+        ejecutar(ejecutor.solicitar_cambio(usuario_id=1, jugador_sale_id=1, resultado=resultado))
+
+    assert ejecutor.cambios_pendientes == {}
+
+
+def test_realizar_cambio_correctamente():
+    motor = crear_motor_prueba()
+    admin_mock = Mock()
+    admin_mock.emitir_partido = AsyncMock()
+
+    ejecutor = EjecutorPartido(
+        partido_id=10,
+        motor=motor,
+        duracion=100,
+        admin=admin_mock)
+
+    ejecutor.pausado = True
+    ejecutor.pausas_realizadas = 1
+
+    resultado = CambioJugadorResultado(
+        id_jugador=3,
+        control=60,
+        agilidad=60,
+        fuerza=60,
+        poder=60,
+        velocidad=60,
+        codigo_comportamiento="ingenieria la mejor materia de la facu")
+
+    ejecutar(ejecutor.realizar_cambio(
+        usuario_id=1,
+        id_equipo=10,
+        jugador_sale_id=1,
+        resultado=resultado))
+
+    estado = motor.estado
+
+    # el jugador que sale ya no esta en el estad
+    assert (1, 1) not in estado.jugadores
+    assert (1, 1) not in estado.comportamientos
+
+    # el jugador que entra esta en el estado
+    assert (1, 3) in estado.jugadores
+    assert (1, 3) in estado.comportamientos
+
+    jugador_nuevo = estado.jugadores[(1, 3)]
+
+    assert jugador_nuevo.id_jugador == 3
+    assert jugador_nuevo.id_equipo == 10
+    assert jugador_nuevo.id_usuario == 1
+
+    # conserva la posicion del jugador que salio
+    assert jugador_nuevo.posicion.x == 20
+    assert jugador_nuevo.posicion.y == 25
+
+    # copia las estadísticas del resultado
+    assert jugador_nuevo.control == 60
+    assert jugador_nuevo.agilidad == 60
+    assert jugador_nuevo.fuerza == 60
+    assert jugador_nuevo.poder == 60
+    assert jugador_nuevo.velocidad == 60
+
+    assert estado.comportamientos[(1, 3)] == resultado.codigo_comportamiento
+
+    # registra que el equipo ya cambio durante esta pausa
+    assert (1, 10) in ejecutor.equipos_que_cambiaron

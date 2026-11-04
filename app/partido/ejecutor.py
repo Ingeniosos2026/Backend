@@ -219,7 +219,7 @@ class EjecutorPartido:
         
         #ingreso al nuevo
         estado.jugadores[clave_entra] = nuevo_jugador
-        estado.comportamientos[clave_entra] = resultado.codigo
+        estado.comportamientos[clave_entra] = resultado.codigo_comportamiento
 
         # registro que el equipo realizo  un cambio en esta pausa 
         self.equipos_que_cambiaron.add((self.pausas_realizadas, id_equipo))
