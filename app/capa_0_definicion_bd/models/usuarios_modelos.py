@@ -44,7 +44,7 @@ class Usuario(Base):
     )
 
     ligas_unidas = relationship(
-        "Liga",
-        secondary="liga_participantes",
-        back_populates="participantes"
+        "LigaParticipante",
+        back_populates="usuario",
+        cascade="all, delete-orphan"
     )

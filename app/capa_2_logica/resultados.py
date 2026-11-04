@@ -4,6 +4,9 @@ from app.capa_0_definicion_bd.models.equipo_modelos import Equipo as EquipoModel
 from app.capa_0_definicion_bd.models.partidos_modelos import Partido as PartidoModelo
 from app.capa_0_definicion_bd.models.comportamientos_modelos import Comportamiento as ComportamientoModelo
 from app.capa_0_definicion_bd.models.liga_modelos import Liga as LigaModelo
+from app.capa_0_definicion_bd.models.fixture_liga_modelos import FixtureLiga
+from app.capa_0_definicion_bd.models.tabla_liga_modelos import TablaLiga
+from app.capa_0_definicion_bd.models.liga_participantes_modelos import LigaParticipante
 from dataclasses import dataclass
 from typing import List
 
@@ -27,7 +30,7 @@ class ListarComportamientosResultado:
 
 @dataclass(slots=True)
 class CrearPartidoResultado:
-    partido: PartidoModelo
+    partido: PartidoModelo | None
 
 @dataclass(slots=True)
 class CrearEquipoResultado:
@@ -53,6 +56,7 @@ class PartidoResultado:
 @dataclass(slots=True)
 class CrearLigaResultado:
     liga: LigaModelo
+    participacion: LigaParticipante
 
 @dataclass(slots=True)
 class CrearComportamientoResultado:
@@ -62,6 +66,7 @@ class CrearComportamientoResultado:
 class UnirseLigaResultado:
     liga: LigaModelo
     usuario_unido: UsuarioModelo
+    participacion: LigaParticipante
     
 @dataclass(slots=True)
 class AbandonarLigaResultado:
@@ -71,3 +76,25 @@ class AbandonarLigaResultado:
 @dataclass(slots=True)
 class ListarLigasResultado:
     ligas: List[LigaModelo]
+
+@dataclass(slots=True)
+class IniciarLigaResultado:
+    liga: LigaModelo
+    partido: PartidoModelo
+    fixture: list[FixtureLiga]
+    tabla: list[TablaLiga]
+
+@dataclass(slots=True)
+class RegistrarResultadoPartidoLiga:
+    fixture: FixtureLiga
+    tabla_izq: TablaLiga
+    tabla_der: TablaLiga
+
+@dataclass(slots=True)
+class FinalizarLigaResultado:
+    liga: LigaModelo
+
+@dataclass(slots=True)
+class EditarComportamientoResultado:
+    comportamiento: ComportamientoModelo
+

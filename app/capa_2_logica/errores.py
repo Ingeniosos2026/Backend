@@ -70,3 +70,15 @@ class LigaIniciada (Exception):
 
 class UsuarioNoExisteEnLiga(Exception): 
     pass
+
+class NoEsPosibleIniciarLiga (Exception): 
+    pass
+
+class NoSeEncontraronLasTablas (Exception):
+    pass
+  
+class ComportamientoNoEditable(Exception):
+    pass
+
+class ComportamientoEnUso(Exception):
+    pass

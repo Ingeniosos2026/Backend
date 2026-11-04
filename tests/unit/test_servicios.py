@@ -1,7 +1,5 @@
 from unittest.mock import Mock
-
 import pytest
-
 from app.capa_0_definicion_bd.models.usuarios_modelos import Usuario
 from app.capa_0_definicion_bd.models.jugadores_modelos import Jugador
 from app.capa_0_definicion_bd.models.equipo_modelos import Equipo
@@ -9,16 +7,17 @@ from app.capa_0_definicion_bd.models.equipos_jugadores_modelos import EstadoJuga
 from app.capa_0_definicion_bd.models.comportamientos_modelos import Comportamiento
 from app.capa_0_definicion_bd.models.partidos_modelos import Partido, TipoPartido, EstadoPartido, Formacion
 from app.capa_0_definicion_bd.models.liga_modelos import Liga, EstadoLiga
+from app.capa_0_definicion_bd.models.liga_participantes_modelos import LigaParticipante
+from app.capa_0_definicion_bd.models.tabla_liga_modelos import TablaLiga
+from app.capa_0_definicion_bd.models.fixture_liga_modelos import FixtureLiga
 from app.capa_2_logica.errores import *
 from app.capa_2_logica.servicios import Servicios, password_hash
 from app.capa_2_logica.resultados import *
-
+from app.partido.comportamientos import COMPORTAMIENTOS_PREDETERMINADOS
 
 def test_crear_usuario_datos_invalidos():
-
     repositorio = Mock()
     servicio = Servicios(usuarios=repositorio)
-
     with pytest.raises(DatosInvalidos):
         servicio.crear_usuario(
             email="leandro@gmail.com.ar",
@@ -27,16 +26,12 @@ def test_crear_usuario_datos_invalidos():
             contraseña="123456",
             nombre_club="Talleres"
         )
-
     repositorio.obtener_por_email.assert_not_called()
     repositorio.crear.assert_not_called()
 
-
 def test_crear_usuario_nombre_vacio():
-
     repositorio = Mock()
     servicio = Servicios(usuarios=repositorio)
-
     with pytest.raises(DatosInvalidos):
         servicio.crear_usuario(
             email="leandro@gmail.com",
@@ -45,15 +40,12 @@ def test_crear_usuario_nombre_vacio():
             contraseña="123456",
             nombre_club="Talleres"
         )
-
     repositorio.obtener_por_email.assert_not_called()
     repositorio.crear.assert_not_called()
 
 def test_crear_usuario_contraseña_vacia():
-
     repositorio = Mock()
     servicio = Servicios(usuarios=repositorio)
-
     with pytest.raises(DatosInvalidos):
         servicio.crear_usuario(
             email="leandro@gmail.com",
@@ -62,15 +54,12 @@ def test_crear_usuario_contraseña_vacia():
             contraseña="",
             nombre_club="Talleres"
         )
-
     repositorio.obtener_por_email.assert_not_called()
     repositorio.crear.assert_not_called()
 
 def test_crear_usuario_club_vacio():
-
     repositorio = Mock()
     servicio = Servicios(usuarios=repositorio)
-
     with pytest.raises(DatosInvalidos):
         servicio.crear_usuario(
             email="leandro@gmail.com",
@@ -79,69 +68,55 @@ def test_crear_usuario_club_vacio():
             contraseña="123456",
             nombre_club=""
         )
-
     repositorio.obtener_por_email.assert_not_called()
     repositorio.crear.assert_not_called()
-
 
 def test_crear_comportamiento_con_repositorios_simulados():
     def devolver_comportamiento(comportamiento):
         return comportamiento
-
     usuarios = Mock()
     usuarios.obtener_por_id.return_value = Mock()
     comportamientos = Mock()
     comportamientos.crear.side_effect = devolver_comportamiento
     servicio = Servicios(usuarios=usuarios, comportamientos=comportamientos)
     codigo = "def comportamiento(primitivas):\n primitivas.correr((1, 2))"
-
     resultado = servicio.crear_comportamiento(usuario_id=7, nombre="Defensa", codigo=codigo)
-
     assert resultado.comportamiento.id_usuario == 7
     assert resultado.comportamiento.nombre == "Defensa"
     assert resultado.comportamiento.codigo == codigo
     usuarios.obtener_por_id.assert_called_once_with(7)
     comportamientos.crear.assert_called_once()
 
-
 @pytest.mark.parametrize("nombre", ["", "   ", "x" * 1000])
 def test_crear_comportamiento_rechaza_nombre_invalido(nombre):
     usuarios = Mock()
     comportamientos = Mock()
     servicio = Servicios(usuarios=usuarios, comportamientos=comportamientos)
-
     with pytest.raises(DatosInvalidos):
         servicio.crear_comportamiento(usuario_id=7, nombre=nombre, codigo="def comportamiento(primitivas):\n pass")
     usuarios.obtener_por_id.assert_not_called()
     comportamientos.crear.assert_not_called()
-
 
 def test_crear_comportamiento_rechaza_usuario_inexistente():
     usuarios = Mock()
     usuarios.obtener_por_id.return_value = None
     comportamientos = Mock()
     servicio = Servicios(usuarios=usuarios, comportamientos=comportamientos)
-
     with pytest.raises(UsuarioNoEncontrado):
         servicio.crear_comportamiento(usuario_id=7, nombre="Defensa", codigo="def comportamiento(primitivas):\n pass")
     comportamientos.crear.assert_not_called()
-
 
 def test_crear_comportamiento_rechaza_codigo_invalido():
     usuarios = Mock()
     usuarios.obtener_por_id.return_value = Mock()
     comportamientos = Mock()
     servicio = Servicios(usuarios=usuarios, comportamientos=comportamientos)
-
     with pytest.raises(DatosInvalidos):
         servicio.crear_comportamiento(usuario_id=7,nombre="Defensa", codigo="def comportamiento(primitivas):\n open()")
     comportamientos.crear.assert_not_called()
 
-
 def test_crear_usuario_email_registrado():
-
     repositorio = Mock()
-
     usuario_existente = Usuario(
         email="leandro@gmail.com",
         nombre="Leandro",
@@ -149,11 +124,8 @@ def test_crear_usuario_email_registrado():
         contraseña="123456",
         nombre_club="Talleres"
     )
-
     repositorio.obtener_por_email.return_value = usuario_existente
-
     servicio = Servicios(usuarios=repositorio)
-
     with pytest.raises(EmailRegistrado):
         servicio.crear_usuario(
             email="leandro@gmail.com",
@@ -162,16 +134,12 @@ def test_crear_usuario_email_registrado():
             contraseña="123456",
             nombre_club="Talleres"
         )
-
     repositorio.obtener_por_email.assert_called_once_with("leandro@gmail.com")
     repositorio.crear.assert_not_called()
 
-
 def test_crear_usuario_correctamente():
-
     repositorio = Mock()
     repositorio.obtener_por_email.return_value = None
-
     usuario_nuevo = Usuario(
         id_usuario=1,
         email="leandro@gmail.com",
@@ -180,10 +148,8 @@ def test_crear_usuario_correctamente():
         contraseña="hash",
         nombre_club="Talleres"
     )
-
     repositorio.crear.return_value = usuario_nuevo
     servicio = Servicios(usuarios=repositorio)
-
     resultado = servicio.crear_usuario(
         email="leandro@gmail.com",
         nombre="Leandro",
@@ -191,9 +157,7 @@ def test_crear_usuario_correctamente():
         contraseña="123456",
         nombre_club="Talleres"
     )
-
     usuario = resultado.usuario
-
     assert usuario.id_usuario == 1
     assert usuario.email == "leandro@gmail.com"
     assert usuario.nombre == "Leandro"
@@ -205,16 +169,13 @@ def test_crear_usuario_correctamente():
         "Atacar",
         "Pasar compañero",
     ]
-
     assert usuario.contraseña != "123456"
     assert usuario.contraseña is not None
-
     repositorio.obtener_por_email.assert_called_once_with("leandro@gmail.com")
     repositorio.crear.assert_called_once()
 
 def test_login_usuario_correctamente():
     contraseña = "asd123"
-
     repositorio = Mock()
     usuario = Usuario(
         id_usuario=1,
@@ -224,22 +185,16 @@ def test_login_usuario_correctamente():
         contraseña=password_hash.hash(contraseña),
         nombre_club="boca"
     )
-
     repositorio.obtener_por_email.return_value = usuario
-
     servicio = Servicios(usuarios=repositorio)
-
     resultado = servicio.login_usuario(
         email="pepito@gmail.com",
         contraseña=contraseña
     )
-
     assert resultado == usuario
-
     repositorio.obtener_por_email.assert_called_once_with("pepito@gmail.com")
 
 def test_login_contraseña_incorrecta():
-
     repositorio = Mock()
     usuario = Usuario(
         id_usuario=1,
@@ -249,11 +204,8 @@ def test_login_contraseña_incorrecta():
         contraseña=password_hash.hash("asd123"),
         nombre_club="boca"
     )
-
     repositorio.obtener_por_email.return_value = usuario
-
     servicio = Servicios(usuarios=repositorio)
-
     with pytest.raises(CredencialesInvalidas):
         servicio.login_usuario(
             email="pepito@gmail.com",
@@ -263,52 +215,39 @@ def test_login_contraseña_incorrecta():
 def test_login_usuario_inexistente():
     repositorio = Mock()
     repositorio.obtener_por_email.return_value = None
-
     servicio = Servicios(usuarios=repositorio)
-
     with pytest.raises(CredencialesInvalidas):
         servicio.login_usuario(
             email="inexistente@gmail.com",
             contraseña="asd123"
         )
-
     repositorio.obtener_por_email.assert_called_once_with(
         "inexistente@gmail.com"
     )
-
     
 def test_listar_comportamientos_exitoso():
     repositorio_comportamiento = Mock()
     repositorio_usuarios = Mock()
-
     comportamiento_1 = Comportamiento(
         id_usuario=1,
         nombre="Defender",
         codigo="codigo defender")
-
     comportamiento_2 = Comportamiento(
         id_usuario=1,
         nombre="Atacar",
         codigo="codigo atacar")
-
     comportamiento_3 = Comportamiento(
         id_usuario=1,
         nombre="Pasar",
         codigo="codigo pasar")
-
     repositorio_comportamiento.obtener_comportamientos_usuario.return_value = [comportamiento_1, comportamiento_2, comportamiento_3]
-
     servicio = Servicios(usuarios=repositorio_usuarios, comportamientos = repositorio_comportamiento)
-
     resultado = servicio.listar_comportamientos(1)
-
     assert resultado.comportamientos == [comportamiento_1, comportamiento_2, comportamiento_3]
 
-    
 def test_listar_comportamientos_sin_comportamientos():
     repositorio_comportamiento = Mock()
     repositorio_usuarios = Mock()
-
     repositorio_comportamiento.obtener_comportamientos_usuario.return_value = []
     servicio = Servicios(usuarios=repositorio_usuarios, comportamientos = repositorio_comportamiento)
     
@@ -317,12 +256,19 @@ def test_listar_comportamientos_sin_comportamientos():
     
     repositorio_comportamiento.obtener_comportamientos_usuario.assert_called_once_with(1)
 
-    
+def agregar_jugador(equipo, jugador, estado, comportamiento=None):
+    EquipoJugador(
+        equipo=equipo,
+        jugador=jugador,
+        estado=estado,
+        comportamiento=comportamiento,
+    )
+    return equipo
+
 def test_crear_amistoso_correctamente():
     repo_equipos = Mock()
     repo_partidos = Mock()
     repo_usuarios = Mock()
-
     equipo = Equipo(
         id_equipo=1,
         id_usuario=1
@@ -341,13 +287,15 @@ def test_crear_amistoso_correctamente():
         for id_jugador in range(1, 7)
     ]
     jugadores_por_id = {jugador.id_jugador: jugador for jugador in jugadores}
-
+    
     repo_usuarios.obtener_por_id.return_value = Usuario(id_usuario=1)
     repo_equipos.crear.return_value = equipo
     repo_equipos.obtener_por_id.return_value = equipo
     repo_equipos.agregar_jugador.side_effect = agregar_jugador
+    
     repo_jugadores = Mock()
     repo_jugadores.obtener_por_id.side_effect = jugadores_por_id.get
+    
     repo_comportamientos = Mock()
     repo_comportamientos.obtener_comportamiento_por_id_y_usuario.return_value = Comportamiento(
         id=7,
@@ -355,22 +303,21 @@ def test_crear_amistoso_correctamente():
         nombre="Defender",
         codigo="def comportamiento(primitivas): pass",
     )
-
+    
     partido_nuevo = Partido(
         id_partido=1,
         id_usuario_1=1,
         id_usuario_2=None,
         id_equipo_1=1,
         id_equipo_2=None,
-        duracion=5,
+        duracion_partido=5,
         formacion_1=Formacion.OFENSIVA,
         formacion_2=None,
-        tipo=TipoPartido.AMISTOSO,
-        estado=EstadoPartido.DISPONIBLE
+        tipo_partido=TipoPartido.AMISTOSO,
+        estado_partido=EstadoPartido.DISPONIBLE
     )
-
     repo_partidos.crear.return_value = partido_nuevo
-
+    
     servicio = Servicios(usuarios=repo_usuarios, equipos=repo_equipos, jugadores=repo_jugadores, partidos=repo_partidos, comportamientos=repo_comportamientos)
     resultado = servicio.crear_amistoso(
         usuario_id=1,
@@ -380,7 +327,7 @@ def test_crear_amistoso_correctamente():
         duracion=5,
         formacion=Formacion.OFENSIVA,
     )
-
+    
     assert resultado.partido == partido_nuevo
     assert partido_nuevo.id_usuario_1 == 1
     assert partido_nuevo.id_equipo_1 == 1
@@ -399,13 +346,12 @@ def test_crear_amistoso_correctamente():
         EstadoJugador.SUPLENTE,
         EstadoJugador.SUPLENTE,
         EstadoJugador.SUPLENTE]
-
+    
     repo_usuarios.obtener_por_id.assert_called_once_with(1)
     repo_equipos.crear.assert_called_once()
     assert repo_equipos.agregar_jugador.call_count == 6
     repo_partidos.crear.assert_called_once()
 
-    
 def test_crear_amistoso_jugador_no_encontrado():
     repo_equipos = Mock()
     repo_partidos = Mock()
@@ -413,9 +359,7 @@ def test_crear_amistoso_jugador_no_encontrado():
     repo_jugadores = Mock()
     repo_usuarios.obtener_por_id.return_value = Usuario(id_usuario=1)
     repo_jugadores.obtener_por_id.return_value = None
-
     servicio = Servicios(usuarios=repo_usuarios, equipos=repo_equipos, jugadores=repo_jugadores, partidos=repo_partidos)
-
     with pytest.raises(JugadorNoEncontrado):
         servicio.crear_amistoso(
             usuario_id=1,
@@ -423,17 +367,16 @@ def test_crear_amistoso_jugador_no_encontrado():
             duracion=5,
             formacion=Formacion.OFENSIVA,
         )
-
     repo_equipos.crear.assert_not_called()
     repo_partidos.crear.assert_not_called()
 
-    
 def test_crear_amistoso_comportamiento_no_encontrado():
     repo_equipos = Mock()
     repo_partidos = Mock()
     repo_usuarios = Mock()
     repo_jugadores = Mock()
     repo_comportamientos = Mock()
+    
     repo_usuarios.obtener_por_id.return_value = Usuario(id_usuario=1)
     repo_comportamientos.obtener_comportamiento_por_id_y_usuario.return_value = None
     repo_jugadores.obtener_por_id.return_value = Jugador(
@@ -453,7 +396,6 @@ def test_crear_amistoso_comportamiento_no_encontrado():
         partidos=repo_partidos,
         comportamientos=repo_comportamientos,
     )
-
     with pytest.raises(ComportamientoNoEncontrado):
         servicio.crear_amistoso(
             usuario_id=1,
@@ -461,19 +403,15 @@ def test_crear_amistoso_comportamiento_no_encontrado():
             duracion=5,
             formacion=Formacion.OFENSIVA,
         )
-
     repo_equipos.crear.assert_not_called()
     repo_partidos.crear.assert_not_called()
 
-    
 def test_crear_amistoso_duracion_invalida():
     repo_equipos = Mock()
     repo_partidos = Mock()
     repo_usuarios = Mock()
     repo_jugadores = Mock()
-
     servicio = Servicios( usuarios=repo_usuarios, equipos=repo_equipos, jugadores=repo_jugadores, partidos=repo_partidos)
-
     with pytest.raises(DatosInvalidos):
         servicio.crear_amistoso(
             usuario_id=1,
@@ -481,12 +419,10 @@ def test_crear_amistoso_duracion_invalida():
             duracion=0,
             formacion=Formacion.OFENSIVA,
         )
-
     repo_equipos.crear.assert_not_called()
     repo_jugadores.obtener_por_id.assert_not_called()
     repo_partidos.crear.assert_not_called()
 
-    
 def test_crear_amistoso_formacion_invalida():
     repo_equipos = Mock()
     repo_partidos = Mock()
@@ -498,7 +434,6 @@ def test_crear_amistoso_formacion_invalida():
         jugadores=repo_jugadores,
         partidos=repo_partidos,
     )
-
     with pytest.raises(DatosInvalidos):
         servicio.crear_amistoso(
             usuario_id=1,
@@ -506,32 +441,18 @@ def test_crear_amistoso_formacion_invalida():
             duracion=5,
             formacion=5,
         )
-
     repo_jugadores.obtener_por_id.assert_not_called()
     repo_equipos.crear.assert_not_called()
     repo_partidos.crear.assert_not_called()
 
-    
-def agregar_jugador(equipo, jugador, estado, comportamiento=None):
-    EquipoJugador(
-        equipo=equipo,
-        jugador=jugador,
-        estado=estado,
-        comportamiento=comportamiento,
-    )
-    return equipo
-
-  
 def test_agregar_jugador_a_equipo_correctamente():
     repo_equipos = Mock()
     repo_jugadores = Mock()
     repo_usuarios = Mock()
-
     equipo = Equipo(
         id_equipo=1,
         id_usuario=1
     )
-
     jugador = Jugador(
         id_jugador=1,
         id_usuario=1,
@@ -542,7 +463,6 @@ def test_agregar_jugador_a_equipo_correctamente():
         velocidad=60,
         fuerza=60
     )
-
     repo_equipos.obtener_por_id.return_value = equipo
     repo_jugadores.obtener_por_id.return_value = jugador
     repo_equipos.agregar_jugador.side_effect = agregar_jugador
@@ -563,85 +483,65 @@ def test_agregar_jugador_a_equipo_correctamente():
         id_comportamiento=1,
         estado=EstadoJugador.SUPLENTE
     )
-
     assert resultado.equipo == equipo
     assert len(equipo.jugadores) == 1
     assert equipo.jugadores[0].jugador == jugador
     assert equipo.jugadores[0].estado == EstadoJugador.SUPLENTE
     assert equipo.jugadores[0].comportamiento is comportamiento
-
     repo_equipos.obtener_por_id.assert_called_once_with(1)
     repo_jugadores.obtener_por_id.assert_called_once_with(1)
     repo_equipos.agregar_jugador.assert_called_once_with(equipo, jugador, EstadoJugador.SUPLENTE, comportamiento)
-    
+
 def test_agregar_jugador_a_equipo_equipo_no_encontrado():
     repo_equipos = Mock()
     repo_jugadores = Mock()
     repo_usuarios = Mock()
-
     repo_equipos.obtener_por_id.return_value = None
-
     servicio = Servicios(usuarios=repo_usuarios, equipos=repo_equipos, jugadores=repo_jugadores)
-
     with pytest.raises(EquipoNoEncontrado):
         servicio.agregar_jugador_a_equipo(usuario_id=1, id_equipo=58, id_jugador=1, id_comportamiento=1, estado=EstadoJugador.SUPLENTE)
-
     repo_equipos.obtener_por_id.assert_called_once_with(58)
     repo_jugadores.obtener_por_id.assert_not_called()
     repo_equipos.agregar_jugador.assert_not_called()
 
-    
 def test_agregar_jugador_a_equipo_usuario_no_encontrado():
     repo_equipos = Mock()
     repo_jugadores = Mock()
     repo_usuarios = Mock()
-
     equipo = Equipo(
         id_equipo=1,
         id_usuario=2
     )
-
     repo_equipos.obtener_por_id.return_value = equipo
-
     servicio = Servicios(usuarios=repo_usuarios, equipos=repo_equipos, jugadores=repo_jugadores)
-
     with pytest.raises(UsuarioNoEncontrado):
         servicio.agregar_jugador_a_equipo(usuario_id=1, id_equipo=1, id_jugador=1, id_comportamiento=1, estado=EstadoJugador.SUPLENTE)
-
     repo_equipos.obtener_por_id.assert_called_once_with(1)
     repo_jugadores.obtener_por_id.assert_not_called()
     repo_equipos.agregar_jugador.assert_not_called()
 
-    
 def test_agregar_jugador_a_equipo_jugador_no_encontrado():
     repo_equipos = Mock()
     repo_jugadores = Mock()
     repo_usuarios = Mock()
-
     equipo = Equipo(
         id_equipo=1,
         id_usuario=1
     )
-
     repo_equipos.obtener_por_id.return_value = equipo
     repo_jugadores.obtener_por_id.return_value = None
-
     servicio = Servicios(usuarios=repo_usuarios, equipos=repo_equipos, jugadores=repo_jugadores)
-
     with pytest.raises(JugadorNoEncontrado):
         servicio.agregar_jugador_a_equipo(usuario_id=1, id_equipo=1, id_jugador=58, id_comportamiento=1, estado=EstadoJugador.SUPLENTE)
-
     repo_equipos.obtener_por_id.assert_called_once_with(1)
     repo_jugadores.obtener_por_id.assert_called_once_with(58)
     repo_equipos.agregar_jugador.assert_not_called()
 
-    
 def test_agregar_jugador_a_equipo_con_comportamiento():
     repo_equipos = Mock()
     repo_jugadores = Mock()
     repo_usuarios = Mock()
     repo_comportamientos = Mock()
-
     equipo = Equipo(id_equipo=1, id_usuario=1)
     jugador = Jugador(
         id_jugador=1,
@@ -659,19 +559,16 @@ def test_agregar_jugador_a_equipo_con_comportamiento():
         nombre="Defender",
         codigo="def comportamiento(jugador): pass",
     )
-
     repo_equipos.obtener_por_id.return_value = equipo
     repo_jugadores.obtener_por_id.return_value = jugador
     repo_comportamientos.obtener_comportamiento_por_id_y_usuario.return_value = comportamiento
     repo_equipos.agregar_jugador.side_effect = agregar_jugador
-
     servicio = Servicios(
         usuarios=repo_usuarios,
         jugadores=repo_jugadores,
         comportamientos=repo_comportamientos,
-        equipos=repo_equipos
+        equipos=repo_equipos,
     )
-
     resultado = servicio.agregar_jugador_a_equipo(
         usuario_id=1,
         id_equipo=1,
@@ -679,7 +576,6 @@ def test_agregar_jugador_a_equipo_con_comportamiento():
         id_comportamiento=7,
         estado=EstadoJugador.SUPLENTE
     )
-
     assert resultado.equipo == equipo
     assert len(equipo.jugadores) == 1
     assert equipo.jugadores[0].jugador == jugador
@@ -687,24 +583,21 @@ def test_agregar_jugador_a_equipo_con_comportamiento():
     assert equipo.jugadores[0].comportamiento is comportamiento
     repo_comportamientos.obtener_comportamiento_por_id_y_usuario.assert_called_once_with(7, 1)
     repo_equipos.agregar_jugador.assert_called_once_with(equipo, jugador, EstadoJugador.SUPLENTE, comportamiento)
-    
+
 def test_agregar_jugador_a_equipo_comportamiento_no_encontrado():
     repo_equipos = Mock()
     repo_jugadores = Mock()
     repo_usuarios = Mock()
     repo_comportamientos = Mock()
-
     repo_equipos.obtener_por_id.return_value = Equipo(id_equipo=1, id_usuario=1)
     repo_jugadores.obtener_por_id.return_value = Jugador(id_jugador=1, id_usuario=1)
     repo_comportamientos.obtener_comportamiento_por_id_y_usuario.return_value = None
-
     servicio = Servicios(
         usuarios=repo_usuarios,
         jugadores=repo_jugadores,
         comportamientos=repo_comportamientos,
         equipos=repo_equipos,
     )
-
     with pytest.raises(ComportamientoNoEncontrado):
         servicio.agregar_jugador_a_equipo(
             usuario_id=1,
@@ -713,7 +606,6 @@ def test_agregar_jugador_a_equipo_comportamiento_no_encontrado():
             id_comportamiento=7,
             estado=EstadoJugador.SUPLENTE
         )
-
     repo_equipos.agregar_jugador.assert_not_called()
 
 def test_unirse_amistoso_correctamente():
@@ -722,11 +614,8 @@ def test_unirse_amistoso_correctamente():
     repo_usuarios = Mock()
     repo_jugadores = Mock()
     repo_comportamientos = Mock()
-
     usuario = Usuario(id_usuario=2)
-
     equipo = Equipo(id_equipo=2, id_usuario=2)
-
     jugadores = [
         Jugador(
             id_jugador=id_jugador,
@@ -740,46 +629,39 @@ def test_unirse_amistoso_correctamente():
         )
         for id_jugador in range(1, 7)
     ]
-
     jugadores_por_id = {
         jugador.id_jugador: jugador
         for jugador in jugadores
     }
-
     comportamiento = Comportamiento(
         id=7,
         id_usuario=2,
         nombre="Defender",
         codigo="def comportamiento(primitivas): pass",
     )
-
     partido = Partido(
         id_partido=1,
         id_usuario_1=1,
         id_usuario_2=None,
         id_equipo_1=1,
         id_equipo_2=None,
-        duracion=5,
+        duracion_partido=5,
         formacion_1=Formacion.OFENSIVA,
         formacion_2=None,
         tipo_partido=TipoPartido.AMISTOSO,
         estado_partido=EstadoPartido.DISPONIBLE,
     )
-
+    
     repo_partidos.obtener_por_id.return_value = partido
     repo_partidos.actualizar.return_value = partido
-
     repo_usuarios.obtener_por_id.return_value = usuario
-
     repo_jugadores.contar_jugadores_usuario.return_value = 6
     repo_jugadores.obtener_por_id.side_effect = jugadores_por_id.get
-
     repo_comportamientos.obtener_comportamiento_por_id_y_usuario.return_value = comportamiento
-
     repo_equipos.crear.return_value = equipo
     repo_equipos.obtener_por_id.return_value = equipo
     repo_equipos.agregar_jugador.side_effect = agregar_jugador
-
+    
     servicio = Servicios(
         usuarios=repo_usuarios,
         jugadores=repo_jugadores,
@@ -787,7 +669,6 @@ def test_unirse_amistoso_correctamente():
         equipos=repo_equipos,
         comportamientos=repo_comportamientos,
     )
-
     resultado = servicio.unirse_amistoso(
         partido_id=1,
         usuario_id=2,
@@ -797,14 +678,11 @@ def test_unirse_amistoso_correctamente():
         ],
         formacion=Formacion.DEFENSIVA,
     )
-
     assert resultado.partido == partido
-
     assert partido.id_usuario_2 == 2
     assert partido.id_equipo_2 == 2
     assert partido.formacion_2 == Formacion.DEFENSIVA
     assert partido.estado_partido == EstadoPartido.PENDIENTE
-
     assert len(equipo.jugadores) == 6
     assert [asociacion.estado for asociacion in equipo.jugadores] == [
         EstadoJugador.TITULAR,
@@ -815,17 +693,13 @@ def test_unirse_amistoso_correctamente():
         EstadoJugador.SUPLENTE
     ]
     assert all(asociacion.comportamiento is comportamiento for asociacion in equipo.jugadores)
-
     repo_partidos.obtener_por_id.assert_called_once_with(1)
     repo_usuarios.obtener_por_id.assert_called_once_with(2)
     repo_jugadores.contar_jugadores_usuario.assert_called_once_with(2)
-
     assert repo_jugadores.obtener_por_id.call_count == 6
     assert repo_comportamientos.obtener_comportamiento_por_id_y_usuario.call_count == 6
-
     repo_equipos.crear.assert_called_once()
     assert repo_equipos.agregar_jugador.call_count == 6
-
     repo_partidos.actualizar.assert_called_once_with(partido)
 
 def test_unirse_amistoso_partido_no_encontrado():
@@ -833,16 +707,13 @@ def test_unirse_amistoso_partido_no_encontrado():
     repo_usuarios = Mock()
     repo_jugadores = Mock()
     repo_equipos = Mock()
-
     repo_partidos.obtener_por_id.return_value = None
-
     servicio = Servicios(
         usuarios=repo_usuarios,
         jugadores=repo_jugadores,
         partidos=repo_partidos,
         equipos=repo_equipos,
     )
-
     with pytest.raises(PartidoNoEncontrado):
         servicio.unirse_amistoso(
             partido_id=999,
@@ -857,7 +728,6 @@ def test_unirse_amistoso_partido_no_encontrado():
             ],
             formacion=Formacion.DEFENSIVA,
         )
-
     repo_usuarios.obtener_por_id.assert_not_called()
     repo_jugadores.contar_jugadores_usuario.assert_not_called()
     repo_equipos.crear.assert_not_called()
@@ -868,29 +738,25 @@ def test_unirse_amistoso_partido_no_disponible():
     repo_usuarios = Mock()
     repo_jugadores = Mock()
     repo_equipos = Mock()
-
     partido = Partido(
         id_partido=1,
         id_usuario_1=1,
         id_usuario_2=None,
         id_equipo_1=1,
         id_equipo_2=None,
-        duracion=5,
+        duracion_partido=5,
         formacion_1=Formacion.OFENSIVA,
         formacion_2=None,
         tipo_partido=TipoPartido.AMISTOSO,
         estado_partido=EstadoPartido.EN_CURSO,
     )
-
     repo_partidos.obtener_por_id.return_value = partido
-
     servicio = Servicios(
         usuarios=repo_usuarios,
         jugadores=repo_jugadores,
         partidos=repo_partidos,
         equipos=repo_equipos,
     )
-
     with pytest.raises(PartidoNoDisponible):
         servicio.unirse_amistoso(
             partido_id=1,
@@ -898,7 +764,6 @@ def test_unirse_amistoso_partido_no_disponible():
             jugadores_comportamientos=[],
             formacion=Formacion.DEFENSIVA,
         )
-
     repo_usuarios.obtener_por_id.assert_not_called()
     repo_jugadores.contar_jugadores_usuario.assert_not_called()
     repo_equipos.crear.assert_not_called()
@@ -909,29 +774,25 @@ def test_unirse_amistoso_partido_ya_tiene_usuario_2():
     repo_usuarios = Mock()
     repo_jugadores = Mock()
     repo_equipos = Mock()
-
     partido = Partido(
         id_partido=1,
         id_usuario_1=1,
         id_usuario_2=3,
         id_equipo_1=1,
         id_equipo_2=3,
-        duracion=5,
+        duracion_partido=5,
         formacion_1=Formacion.OFENSIVA,
         formacion_2=None,
         tipo_partido=TipoPartido.AMISTOSO,
         estado_partido=EstadoPartido.PENDIENTE,
     )
-
     repo_partidos.obtener_por_id.return_value = partido
-
     servicio = Servicios(
         usuarios=repo_usuarios,
         jugadores=repo_jugadores,
         partidos=repo_partidos,
         equipos=repo_equipos,
     )
-
     with pytest.raises(PartidoNoDisponible):
         servicio.unirse_amistoso(
             partido_id=1,
@@ -939,7 +800,6 @@ def test_unirse_amistoso_partido_ya_tiene_usuario_2():
             jugadores_comportamientos=[],
             formacion=Formacion.DEFENSIVA,
         )
-
     repo_usuarios.obtener_por_id.assert_not_called()
     repo_jugadores.contar_jugadores_usuario.assert_not_called()
     repo_equipos.crear.assert_not_called()
@@ -949,30 +809,26 @@ def test_unirse_amistoso_usuario_no_encontrado():
     repo_usuarios = Mock()
     repo_jugadores = Mock()
     repo_equipos = Mock()
-
     partido = Partido(
         id_partido=1,
         id_usuario_1=1,
         id_usuario_2=None,
         id_equipo_1=1,
         id_equipo_2=None,
-        duracion=5,
+        duracion_partido=5,
         formacion_1=Formacion.OFENSIVA,
         formacion_2=None,
         tipo_partido=TipoPartido.AMISTOSO,
         estado_partido=EstadoPartido.DISPONIBLE,
     )
-
     repo_partidos.obtener_por_id.return_value = partido
     repo_usuarios.obtener_por_id.return_value = None
-
     servicio = Servicios(
         usuarios=repo_usuarios,
         jugadores=repo_jugadores,
         partidos=repo_partidos,
         equipos=repo_equipos,
     )
-
     with pytest.raises(UsuarioNoEncontrado):
         servicio.unirse_amistoso(
             partido_id=1,
@@ -980,7 +836,6 @@ def test_unirse_amistoso_usuario_no_encontrado():
             jugadores_comportamientos=[],
             formacion=Formacion.DEFENSIVA,
         )
-
     repo_jugadores.contar_jugadores_usuario.assert_not_called()
     repo_equipos.crear.assert_not_called()
 
@@ -989,31 +844,27 @@ def test_unirse_amistoso_usuario_con_menos_de_6_jugadores():
     repo_usuarios = Mock()
     repo_jugadores = Mock()
     repo_equipos = Mock()
-
     partido = Partido(
         id_partido=1,
         id_usuario_1=1,
         id_usuario_2=None,
         id_equipo_1=1,
         id_equipo_2=None,
-        duracion=5,
+        duracion_partido=5,
         formacion_1=Formacion.OFENSIVA,
         formacion_2=None,
         tipo_partido=TipoPartido.AMISTOSO,
         estado_partido=EstadoPartido.DISPONIBLE,
     )
-
     repo_partidos.obtener_por_id.return_value = partido
     repo_usuarios.obtener_por_id.return_value = Usuario(id_usuario=2)
     repo_jugadores.contar_jugadores_usuario.return_value = 5
-
     servicio = Servicios(
         usuarios=repo_usuarios,
         jugadores=repo_jugadores,
         partidos=repo_partidos,
         equipos=repo_equipos,
     )
-
     with pytest.raises(JugadoresInsuficientes):
         servicio.unirse_amistoso(
             partido_id=1,
@@ -1021,7 +872,6 @@ def test_unirse_amistoso_usuario_con_menos_de_6_jugadores():
             jugadores_comportamientos=[],
             formacion=Formacion.DEFENSIVA,
         )
-
     repo_jugadores.obtener_por_id.assert_not_called()
     repo_equipos.crear.assert_not_called()
     repo_partidos.actualizar.assert_not_called()
@@ -1031,31 +881,27 @@ def test_unirse_amistoso_no_permite_jugadores_repetidos():
     repo_usuarios = Mock()
     repo_jugadores = Mock()
     repo_equipos = Mock()
-
     partido = Partido(
         id_partido=1,
         id_usuario_1=1,
         id_usuario_2=None,
         id_equipo_1=1,
         id_equipo_2=None,
-        duracion=5,
+        duracion_partido=5,
         formacion_1=Formacion.OFENSIVA,
         formacion_2=None,
         tipo_partido=TipoPartido.AMISTOSO,
         estado_partido=EstadoPartido.DISPONIBLE,
     )
-
     repo_partidos.obtener_por_id.return_value = partido
     repo_usuarios.obtener_por_id.return_value = Usuario(id_usuario=2)
     repo_jugadores.contar_jugadores_usuario.return_value = 6
-
     servicio = Servicios(
         usuarios=repo_usuarios,
         jugadores=repo_jugadores,
         partidos=repo_partidos,
         equipos=repo_equipos,
     )
-
     with pytest.raises(DatosInvalidos):
         servicio.unirse_amistoso(
             partido_id=1,
@@ -1070,24 +916,20 @@ def test_unirse_amistoso_no_permite_jugadores_repetidos():
             ],
             formacion=Formacion.DEFENSIVA,
         )
-
     repo_jugadores.obtener_por_id.assert_not_called()
     repo_equipos.crear.assert_not_called()
-
 
 def test_unirse_amistoso_rechaza_formacion_invalida():
     repo_partidos = Mock()
     repo_usuarios = Mock()
     repo_jugadores = Mock()
     repo_equipos = Mock()
-
     servicio = Servicios(
         usuarios=repo_usuarios,
         jugadores=repo_jugadores,
         partidos=repo_partidos,
         equipos=repo_equipos,
     )
-
     with pytest.raises(DatosInvalidos):
         servicio.unirse_amistoso(
             partido_id=1,
@@ -1095,27 +937,21 @@ def test_unirse_amistoso_rechaza_formacion_invalida():
             jugadores_comportamientos=[],
             formacion="todos al arco",
         )
-
     repo_partidos.obtener_por_id.assert_not_called()
     repo_equipos.crear.assert_not_called()
 
-
 def crear_partido_pendiente():
     partido = Mock()
-
     partido.id_partido = 1
     partido.id_usuario_1 = 1
     partido.estado_partido = EstadoPartido.PENDIENTE
-
     return partido
-
 
 def crear_servicio(repositorio_partidos):
     repositorio_usuarios = Mock()
     repositorio_jugadores = Mock()
     repositorio_comportamientos = Mock()
     repositorio_equipos = Mock()
-
     return Servicios(
         usuarios=repositorio_usuarios,
         jugadores=repositorio_jugadores,
@@ -1124,74 +960,63 @@ def crear_servicio(repositorio_partidos):
         partidos=repositorio_partidos,
     )
 
-
 def test_iniciar_partido_cambia_estado_a_en_curso():
     partido = crear_partido_pendiente()
-
     repositorio_partidos = Mock()
     repositorio_partidos.obtener_por_id.return_value = partido
-
     servicio = crear_servicio(repositorio_partidos)
-
     resultado = servicio.iniciar_partido(partido_id=1, usuario_id=1)
-
     assert partido.estado_partido == EstadoPartido.EN_CURSO
     assert resultado.partido == partido
-
     repositorio_partidos.obtener_por_id.assert_called_once_with(1)
     repositorio_partidos.actualizar.assert_called_once_with(partido)
-
 
 def test_iniciar_partido_lanza_error_si_no_existe():
     repositorio_partidos = Mock()
     repositorio_partidos.obtener_por_id.return_value = None
-
     servicio = crear_servicio(repositorio_partidos)
-
     with pytest.raises(AmistosoNoEncontrado):
         servicio.iniciar_partido(partido_id=1, usuario_id=1)
-
     repositorio_partidos.actualizar.assert_not_called()
-
 
 def test_iniciar_partido_lanza_error_si_no_es_el_creador():
     partido = crear_partido_pendiente()
-
     repositorio_partidos = Mock()
     repositorio_partidos.obtener_por_id.return_value = partido
-
     servicio = crear_servicio(repositorio_partidos)
-
     with pytest.raises(IniciarNoPermitido):
         servicio.iniciar_partido(partido_id=1, usuario_id=2)
-
     assert partido.estado_partido == EstadoPartido.PENDIENTE
     repositorio_partidos.actualizar.assert_not_called()
-
 
 def test_iniciar_partido_lanza_error_si_no_esta_pendiente():
     partido = crear_partido_pendiente()
     partido.estado_partido = EstadoPartido.EN_CURSO
-
     repositorio_partidos = Mock()
     repositorio_partidos.obtener_por_id.return_value = partido
-
     servicio = crear_servicio(repositorio_partidos)
-
     with pytest.raises(AmistosoNoPuedeIniciar):
         servicio.iniciar_partido(partido_id=1, usuario_id=1)
-
     repositorio_partidos.actualizar.assert_not_called()
-
-
 
 #helper
 @pytest.fixture
 def repositorios():
     usuarios = Mock()
     ligas = Mock()
-
+    jugadores = Mock()
+    comportamientos = Mock()
+    equipos = Mock()
+    
     usuarios.obtener_por_id.return_value = Usuario(id_usuario=1)
+    jugadores.contar_jugadores_usuario.return_value = 6
+    jugadores.obtener_por_id.return_value = Jugador(id_jugador=1, id_usuario=1)
+    comportamientos.obtener_comportamiento_por_id_y_usuario.return_value = Comportamiento(id=1)
+    equipos.crear.return_value = Equipo(id_equipo=1)
+
+    equipo_mock = Equipo(id_equipo=1, id_usuario=1)
+    equipos.crear.return_value = equipo_mock
+    equipos.obtener_por_id.return_value = equipo_mock
 
     liga_creada = Liga(
         id=10,
@@ -1204,18 +1029,23 @@ def repositorios():
         estado=EstadoLiga.DISPONIBLE,
     )
     ligas.crear.return_value = liga_creada
+    
+    inscripcion = Mock()
+    inscripcion.id_equipo = 1
+    inscripcion.formacion = Formacion.OFENSIVA
+    ligas.agregar_participante.return_value = inscripcion
 
     servicio = Servicios(
         usuarios=usuarios,
         ligas=ligas,
+        jugadores=jugadores,
+        comportamientos=comportamientos,
+        equipos=equipos
     )
-
     return servicio, usuarios, ligas
-
 
 def test_crear_liga_correctamente(repositorios):
     servicio, usuarios, ligas = repositorios
-
     resultado = servicio.crear_liga(
         usuario_id=1,
         nombre="Liga de prueba",
@@ -1223,8 +1053,9 @@ def test_crear_liga_correctamente(repositorios):
         min_jugadores=3,
         max_jugadores=10,
         duracion_partido=5,
+        jugadores_comportamientos=[(i, 1) for i in range(1, 7)],
+        formacion=Formacion.OFENSIVA
     )
-
     assert resultado.liga.id == 10
     assert resultado.liga.id_usuario == 1
     assert resultado.liga.nombre == "Liga de prueba"
@@ -1232,10 +1063,8 @@ def test_crear_liga_correctamente(repositorios):
     assert resultado.liga.max_jugadores == 10
     assert resultado.liga.duracion_partido == 5
     assert resultado.liga.estado == EstadoLiga.DISPONIBLE
-
-    usuarios.obtener_por_id.assert_called_once_with(1)
+    usuarios.obtener_por_id.assert_called_with(1)
     ligas.crear.assert_called_once()
-
 
 @pytest.mark.parametrize(
     ("min_jugadores", "max_jugadores"),
@@ -1243,7 +1072,6 @@ def test_crear_liga_correctamente(repositorios):
 )
 def test_crear_liga_rechaza_cantidad_de_jugadores_invalida(repositorios,min_jugadores,max_jugadores):
     servicio, _, ligas = repositorios
-
     with pytest.raises(DatosLigaInvalidos):
         servicio.crear_liga(
             usuario_id=1,
@@ -1252,14 +1080,13 @@ def test_crear_liga_rechaza_cantidad_de_jugadores_invalida(repositorios,min_juga
             min_jugadores=min_jugadores,
             max_jugadores=max_jugadores,
             duracion_partido=5,
+            jugadores_comportamientos=[(i, 1) for i in range(1, 7)],
+            formacion=Formacion.OFENSIVA
         )
-
     ligas.crear.assert_not_called()
-
 
 def test_crear_liga_rechaza_duracion_invalida(repositorios):
     servicio, _, ligas = repositorios
-
     with pytest.raises(DatosLigaInvalidos):
         servicio.crear_liga(
             usuario_id=1,
@@ -1268,14 +1095,13 @@ def test_crear_liga_rechaza_duracion_invalida(repositorios):
             min_jugadores=3,
             max_jugadores=10,
             duracion_partido=0,
+            jugadores_comportamientos=[(i, 1) for i in range(1, 7)],
+            formacion=Formacion.OFENSIVA
         )
-
     ligas.crear.assert_not_called()
-
 
 def test_crear_liga_rechaza_nombre_vacio(repositorios):
     servicio, _, ligas = repositorios
-
     with pytest.raises(DatosLigaInvalidos):
         servicio.crear_liga(
             usuario_id=1,
@@ -1284,15 +1110,14 @@ def test_crear_liga_rechaza_nombre_vacio(repositorios):
             min_jugadores=3,
             max_jugadores=10,
             duracion_partido=5,
+            jugadores_comportamientos=[(i, 1) for i in range(1, 7)],
+            formacion=Formacion.OFENSIVA
         )
-
     ligas.crear.assert_not_called()
-
 
 def test_crear_liga_usuario_inexistente(repositorios):
     servicio, usuarios, ligas = repositorios
     usuarios.obtener_por_id.return_value = None
-
     with pytest.raises(UsuarioNoEncontrado):
         servicio.crear_liga(
             usuario_id=999,
@@ -1301,14 +1126,13 @@ def test_crear_liga_usuario_inexistente(repositorios):
             min_jugadores=3,
             max_jugadores=10,
             duracion_partido=5,
+            jugadores_comportamientos=[(i, 1) for i in range(1, 7)],
+            formacion=Formacion.OFENSIVA
         )
-
     ligas.crear.assert_not_called()
-
 
 def test_crear_liga_sin_contrasena(repositorios):
     servicio, _, ligas = repositorios
-
     resultado = servicio.crear_liga(
         usuario_id=1,
         nombre="Liga abierta",
@@ -1316,8 +1140,9 @@ def test_crear_liga_sin_contrasena(repositorios):
         min_jugadores=3,
         max_jugadores=10,
         duracion_partido=5,
+        jugadores_comportamientos=[(i, 1) for i in range(1, 7)],
+        formacion=Formacion.OFENSIVA
     )
-
     assert resultado.liga is not None
     ligas.crear.assert_called_once()
 
@@ -1325,6 +1150,8 @@ def crear_escenario_unirse_liga():
     repo_usuarios = Mock()
     repo_jugadores = Mock()
     repo_ligas = Mock()
+    repo_equipos = Mock()
+    repo_comportamientos = Mock()
 
     usuario = Usuario(id_usuario=2, nombre="Tomas")
     liga = Liga(
@@ -1337,15 +1164,25 @@ def crear_escenario_unirse_liga():
         duracion_partido=10,
         estado=EstadoLiga.DISPONIBLE,
     )
-    liga.participantes = []
-
+    liga.__dict__["participantes"] = []
     repo_ligas.obtener_por_id.return_value = liga
     repo_usuarios.obtener_por_id.return_value = usuario
     repo_jugadores.contar_jugadores_usuario.return_value = 6
+    repo_jugadores.obtener_por_id.side_effect = lambda id_j: Jugador(id_jugador=id_j, id_usuario=2)
+    repo_comportamientos.obtener_comportamiento_por_id_y_usuario.return_value = Comportamiento(id=1)
+    
+    equipo_mock = Equipo(id_equipo=1, id_usuario=2)
+    repo_equipos.crear.return_value = equipo_mock
+    repo_equipos.obtener_por_id.return_value = equipo_mock
 
-    def agregar_participante_mock(liga_obj, usuario_obj):
-        liga_obj.participantes.append(usuario_obj)
-        return liga_obj
+    def agregar_participante_mock(liga_obj, usuario_obj, id_equipo, formacion):
+        participacion = Mock()
+        participacion.id_usuario = usuario_obj.id_usuario
+        participacion.usuario = usuario_obj
+        participacion.id_equipo = id_equipo
+        participacion.formacion = formacion
+        liga_obj.__dict__["participantes"].append(participacion)
+        return participacion
 
     repo_ligas.agregar_participante.side_effect = agregar_participante_mock
 
@@ -1353,61 +1190,83 @@ def crear_escenario_unirse_liga():
         usuarios=repo_usuarios,
         jugadores=repo_jugadores,
         ligas=repo_ligas,
+        equipos=repo_equipos,
+        comportamientos=repo_comportamientos
     )
     return servicio, repo_usuarios, repo_jugadores, repo_ligas, liga, usuario
 
 def test_unirse_liga_privada_con_contraseña_correcta():
     servicio, _, _, repo_ligas, liga, usuario = crear_escenario_unirse_liga()
     liga.contraseña = "hola123"
-
-    resultado = servicio.unirse_liga(liga_id = 10, usuario_id = 2, contraseña = "hola123")
-
+    resultado = servicio.unirse_liga(
+        liga_id = 10,
+        usuario_id = 2,
+        contraseña = "hola123",
+        jugadores_comportamientos=[(i, 1) for i in range(1, 7)],
+        formacion=Formacion.OFENSIVA
+    )
     assert resultado.liga == liga
     assert resultado.usuario_unido == usuario
-    repo_ligas.agregar_participante.assert_called_once_with(liga, usuario)
 
 def test_unirse_liga_contraseña_incorrecta():
     servicio, _, _, repo_ligas, liga, _ = crear_escenario_unirse_liga()
     liga.contraseña = "hola123"
-
     with pytest.raises(ContraseñaLigaIncorrecta):
-        servicio.unirse_liga(liga_id = 10, usuario_id= 2, contraseña= "niideacapo")
-
+        servicio.unirse_liga(
+            liga_id = 10,
+            usuario_id= 2,
+            contraseña= "niideacapo",
+            jugadores_comportamientos=[(i, 1) for i in range(1, 7)],
+            formacion=Formacion.OFENSIVA
+        )
     repo_ligas.agregar_participante.assert_not_called()
 
 def test_unirse_liga_llena():
     servicio, _, _, repo_ligas, liga, _ = crear_escenario_unirse_liga()
     liga.max_jugadores = 3
-    liga.participantes = [Usuario(id_usuario=3), Usuario(id_usuario=4), Usuario(id_usuario=193)]
-
+    
+    p1 = Mock(id_usuario=3)
+    p2 = Mock(id_usuario=4)
+    p3 = Mock(id_usuario=193)
+    liga.__dict__["participantes"] = [p1, p2, p3]
+    
     with pytest.raises(LigaLlena):
-        servicio.unirse_liga(liga_id = 10, usuario_id = 2)
-
+        servicio.unirse_liga(
+            liga_id = 10,
+            usuario_id = 2,
+            jugadores_comportamientos=[(i, 1) for i in range(1, 7)],
+            formacion=Formacion.OFENSIVA
+        )
     repo_ligas.agregar_participante.assert_not_called()
 
 def test_unirse_liga_usuario_es_creador():
     servicio, repo_usuarios, _, repo_ligas, liga, _ = crear_escenario_unirse_liga()
     creador = Usuario(id_usuario=1)
     repo_usuarios.obtener_por_id.return_value = creador
-
     with pytest.raises(UsuarioEsCreadorDeLiga):
-        servicio.unirse_liga(liga_id = 10, usuario_id = 1)
-
+        servicio.unirse_liga(
+            liga_id = 10,
+            usuario_id = 1,
+            jugadores_comportamientos=[(i, 1) for i in range(1, 7)],
+            formacion=Formacion.OFENSIVA
+        )
     repo_ligas.agregar_participante.assert_not_called()
 
 def test_unirse_liga_jugadores_insuficientes():
     servicio, _, repo_jugadores, repo_ligas, _, _ = crear_escenario_unirse_liga()
     repo_jugadores.contar_jugadores_usuario.return_value = 5
-
     with pytest.raises(JugadoresInsuficientes):
-        servicio.unirse_liga(liga_id = 10, usuario_id = 2)
-
+        servicio.unirse_liga(
+            liga_id = 10,
+            usuario_id = 2,
+            jugadores_comportamientos=[(i, 1) for i in range(1, 7)],
+            formacion=Formacion.OFENSIVA
+        )
     repo_ligas.agregar_participante.assert_not_called()
 
 def test_abandonar_liga():
     repo_ligas = Mock()
     repo_usuarios = Mock()
-
     usuario = Usuario(id_usuario = 2, nombre = "Tomas")
     liga = Liga(
         id = 1,
@@ -1418,25 +1277,24 @@ def test_abandonar_liga():
         max_jugadores = 10,
         duracion_partido = 5,
     )
-    liga.participantes = [usuario]
-
+    
+    part = Mock(id_usuario=2)
+    part.usuario = usuario
+    liga.__dict__["participantes"] = [part]
+    
     repo_ligas.obtener_por_id.return_value = liga
     repo_usuarios.obtener_por_id.return_value = usuario
     repo_ligas.eliminar_participante.return_value = liga
-
-
+    
     servicio = Servicios(usuarios=repo_usuarios, ligas=repo_ligas)
     resultado = servicio.abandonar_liga(liga_id = 1, usuario_id = 2)
-
     assert resultado.liga == liga
     assert resultado.usuario_abandonado == usuario
     repo_ligas.eliminar_participante.assert_called_once_with(liga, usuario)
 
-
 def test_abandonar_liga_lanza_error_si_liga_comenzo():
     repo_ligas = Mock()
     repo_usuarios = Mock()
-
     usuario = Usuario(id_usuario=2)
     liga = Liga(
         id = 1,
@@ -1447,14 +1305,325 @@ def test_abandonar_liga_lanza_error_si_liga_comenzo():
         max_jugadores = 10,
         duracion_partido = 5,
     )
-    liga.participantes = [usuario]
-
+    
+    part = Mock(id_usuario=2)
+    part.usuario = usuario
+    liga.__dict__["participantes"] = [part]
+    
     repo_ligas.obtener_por_id.return_value = liga
     repo_usuarios.obtener_por_id.return_value = usuario
-
+    
     servicio = Servicios(usuarios = repo_usuarios, ligas = repo_ligas)
-
     with pytest.raises(LigaIniciada):
         servicio.abandonar_liga(liga_id = 1, usuario_id = 2)
 
     repo_ligas.eliminar_participante.assert_not_called()
+
+def crear_servicio_liga():
+    repo_usuarios = Mock()
+    repo_ligas = Mock()
+    repo_partidos = Mock()
+
+    servicio = Servicios(usuarios=repo_usuarios, ligas=repo_ligas, partidos=repo_partidos)
+
+    return servicio, repo_usuarios, repo_ligas, repo_partidos
+
+def test_iniciar_liga_correctamente():
+    servicio, _, repo_ligas, repo_partidos = crear_servicio_liga()
+
+    liga = Liga(
+        id=10,
+        id_usuario=1,
+        nombre="Liga master",
+        contraseña=None,
+        min_jugadores=2,
+        max_jugadores=5,
+        duracion_partido=5,
+        estado=EstadoLiga.DISPONIBLE)
+
+    participante_1 = LigaParticipante(
+        id_liga=10,
+        id_usuario=1,
+        id_equipo=1,
+        formacion=Formacion.OFENSIVA)
+
+    participante_2 = LigaParticipante(
+        id_liga=10,
+        id_usuario=2,
+        id_equipo=2,
+        formacion=Formacion.DEFENSIVA)
+
+    partido = Partido(
+        id_partido=50,
+        id_usuario_1=1,
+        id_usuario_2=2,
+        id_equipo_1=1,
+        id_equipo_2=2,
+        duracion_partido=5,
+        formacion_1=Formacion.OFENSIVA,
+        formacion_2=Formacion.DEFENSIVA,
+        tipo_partido=TipoPartido.LIGA,
+        estado_partido=EstadoPartido.EN_CURSO)
+
+    repo_ligas.obtener_por_id.return_value = liga
+    repo_ligas.obtener_participantes_liga.return_value = [participante_1, participante_2]
+
+    repo_partidos.crear.return_value = partido
+    repo_ligas.asignar_partido_fixture.side_effect = (lambda fixture, partido_id: setattr(fixture, "id_partido", partido_id))
+
+    resultado = servicio.iniciar_liga(id_liga=10, usuario_id=1)
+
+    assert resultado.liga == liga
+    assert resultado.partido == partido
+
+    assert len(resultado.tabla) == 2
+    assert len(resultado.fixture) == 1
+
+    assert resultado.tabla[0].puntos == 0
+    assert resultado.tabla[1].puntos == 0
+
+    assert resultado.fixture[0].id_partido == 50
+    assert resultado.fixture[0].turno == 1
+
+def test_crear_siguiente_partido_liga_correctamente():
+    servicio, _, repo_ligas, repo_partidos = crear_servicio_liga()
+
+    liga = liga = Liga(
+        id=10,
+        id_usuario=1,
+        nombre="Liga master",
+        contraseña=None,
+        min_jugadores=2,
+        max_jugadores=5,
+        duracion_partido=5,
+        estado=EstadoLiga.DISPONIBLE)
+
+    fixture = FixtureLiga(
+        id_liga=10,
+        id_equipo_izq=1,
+        id_equipo_der=2,
+        turno=2)
+
+    participante_1 = LigaParticipante(
+        id_liga=10,
+        id_usuario=1,
+        id_equipo=1,
+        formacion=Formacion.OFENSIVA)
+
+    participante_2 = LigaParticipante(
+        id_liga=10,
+        id_usuario=2,
+        id_equipo=2,
+        formacion=Formacion.DEFENSIVA)
+
+    partido = Partido(
+        id_partido=51,
+        id_usuario_1=1,
+        id_usuario_2=2,
+        id_equipo_1=1,
+        id_equipo_2=2,
+        duracion_partido=5,
+        formacion_1=Formacion.OFENSIVA,
+        formacion_2=Formacion.DEFENSIVA,
+        tipo_partido=TipoPartido.LIGA,
+        estado_partido=EstadoPartido.EN_CURSO)
+
+    repo_ligas.obtener_por_id.return_value = liga
+    repo_ligas.obtener_siguiente_fixture.return_value = fixture
+
+    repo_ligas.obtener_participante_por_equipo.side_effect = [participante_1, participante_2]
+
+    repo_partidos.crear.return_value = partido
+
+    repo_ligas.asignar_partido_fixture.side_effect = (lambda fixture, partido_id: setattr(fixture, "id_partido", partido_id))
+
+    resultado = servicio.crear_siguiente_partido_liga(10)
+
+    assert resultado.partido == partido
+    assert fixture.id_partido == 51
+
+    partido_creado = repo_partidos.crear.call_args.args[0]
+
+    assert partido_creado.id_usuario_1 == 1
+    assert partido_creado.id_usuario_2 == 2
+    assert partido_creado.id_equipo_1 == 1
+    assert partido_creado.id_equipo_2 == 2
+    assert partido_creado.duracion_partido == 5
+    assert partido_creado.formacion_1 == Formacion.OFENSIVA
+    assert partido_creado.formacion_2 == Formacion.DEFENSIVA
+    assert partido_creado.tipo_partido == TipoPartido.LIGA
+    assert partido_creado.estado_partido == EstadoPartido.EN_CURSO
+
+def test_crear_siguiente_partido_liga_sin_fixtures_pendientes():
+    servicio, _, repo_ligas, _ = crear_servicio_liga()
+
+    liga = Liga(
+        id=10,
+        id_usuario=1,
+        nombre="Liga master",
+        contraseña=None,
+        min_jugadores=2,
+        max_jugadores=5,
+        duracion_partido=5,
+        estado=EstadoLiga.DISPONIBLE)
+
+    repo_ligas.obtener_por_id.return_value = liga
+    repo_ligas.obtener_siguiente_fixture.return_value = None
+
+    resultado = servicio.crear_siguiente_partido_liga(10)
+
+    assert resultado.partido is None
+
+    repo_ligas.obtener_por_id.assert_called_once_with(10)
+    repo_ligas.obtener_siguiente_fixture.assert_called_once_with(10)
+
+def test_crear_siguiente_partido_liga_no_encontrada():
+    servicio, _, repo_ligas, _ = crear_servicio_liga()
+
+    repo_ligas.obtener_por_id.return_value = None
+
+    with pytest.raises(LigaNoEncontrada):
+        servicio.crear_siguiente_partido_liga(10)
+
+    repo_ligas.obtener_por_id.assert_called_once_with(10)
+    repo_ligas.obtener_siguiente_fixture.assert_not_called()
+
+def test_registrar_resultado_partido_liga_gana_izquierda():
+    servicio, _, repo_ligas, repo_partidos = crear_servicio_liga()
+
+    fixture = FixtureLiga(
+        id_liga=10,
+        id_equipo_izq=1,
+        id_equipo_der=2,
+        id_partido=50,
+        turno=1)
+
+    tabla_izq = TablaLiga(
+        id_liga=10,
+        id_equipo=1,
+        id_usuario=1,
+        partidos_ganados=0,
+        partidos_empatados=0,
+        partidos_perdidos=0,
+        puntos=0,
+        goles_a_favor=0,
+        goles_en_contra=0)
+
+    tabla_der = TablaLiga(
+        id_liga=10,
+        id_equipo=2,
+        id_usuario=2,
+        partidos_ganados=0,
+        partidos_empatados=0,
+        partidos_perdidos=0,
+        puntos=0,
+        goles_a_favor=0,
+        goles_en_contra=0)
+
+    partido = Partido(
+        id_partido=50,
+        id_usuario_1=1,
+        id_usuario_2=2,
+        id_equipo_1=1,
+        id_equipo_2=2,
+        duracion_partido=5,
+        formacion_1=Formacion.OFENSIVA,
+        formacion_2=Formacion.DEFENSIVA,
+        tipo_partido=TipoPartido.LIGA,
+        estado_partido=EstadoPartido.TERMINADO)
+
+    repo_ligas.obtener_fixture_por_turno.return_value = fixture
+    repo_ligas.obtener_registro_tabla.side_effect = [tabla_izq, tabla_der]
+
+    repo_partidos.obtener_por_id.return_value = partido
+
+    resultado = servicio.registrar_resultado_partido_liga(
+        id_liga=10,
+        turno=1,
+        goles_izq=3,
+        goles_der=1)
+
+    assert resultado.fixture == fixture
+    assert resultado.tabla_izq == tabla_izq
+    assert resultado.tabla_der == tabla_der
+
+    assert fixture.goles_equipo_izq == 3
+    assert fixture.goles_equipo_der == 1
+
+    assert tabla_izq.goles_a_favor == 3
+    assert tabla_izq.goles_en_contra == 1
+    assert tabla_izq.partidos_ganados == 1
+    assert tabla_izq.partidos_empatados == 0
+    assert tabla_izq.partidos_perdidos == 0
+    assert tabla_izq.puntos == 3
+
+    assert tabla_der.goles_a_favor == 1
+    assert tabla_der.goles_en_contra == 3
+    assert tabla_der.partidos_ganados == 0
+    assert tabla_der.partidos_empatados == 0
+    assert tabla_der.partidos_perdidos == 1
+    assert tabla_der.puntos == 0
+
+def test_eliminar_comportamiento():
+    repo_comportamientos = Mock()
+    comportamiento = Comportamiento(
+        id=1,
+        id_usuario=1,
+        nombre="Defender",
+        codigo="def comportamiento(primitivas): pass")
+    repo_comportamientos.obtener_comportamiento_por_id_y_usuario.return_value = comportamiento
+    servicio = Servicios(usuarios=Mock(), comportamientos=repo_comportamientos)
+
+    resultado = servicio.eliminar_comportamiento(usuario_id=1, comp_id=1)
+
+    assert resultado is None
+    repo_comportamientos.obtener_comportamiento_por_id_y_usuario.assert_called_once_with(1, 1)
+    repo_comportamientos.eliminar.assert_called_once_with(comportamiento)
+
+def test_eliminar_comportamiento_no_encontrado():
+    repo_comportamientos = Mock()
+    repo_comportamientos.obtener_comportamiento_por_id_y_usuario.return_value = None
+    servicio = Servicios(usuarios=Mock(), comportamientos=repo_comportamientos)
+    with pytest.raises(ComportamientoNoEncontrado):
+        servicio.eliminar_comportamiento(usuario_id=1, comp_id=1)
+    repo_comportamientos.eliminar.assert_not_called()
+
+def test_eliminar_comportamiento_predeterminado_falla():
+    repo_comportamientos = Mock()
+    nombre, codigo = COMPORTAMIENTOS_PREDETERMINADOS[0]
+    comportamiento = Comportamiento(
+        id=1,
+        id_usuario=1,
+        nombre=nombre,
+        codigo=codigo
+    )
+    repo_comportamientos.obtener_comportamiento_por_id_y_usuario.return_value = comportamiento
+    servicio = Servicios(usuarios=Mock(), comportamientos=repo_comportamientos)
+    with pytest.raises(ComportamientoNoEditable):
+        servicio.eliminar_comportamiento(usuario_id=1, comp_id=1)
+    repo_comportamientos.eliminar.assert_not_called()
+
+def test_eliminar_comportamiento_en_uso_falla():
+    repo_comportamientos = Mock()
+    comportamiento = Comportamiento(
+        id=1,
+        id_usuario=1,
+        nombre="Correr",
+        codigo="def comportamiento(primitivas):\n    primitivas.correr((1, 2))"
+    )
+    equipo = Equipo(id_usuario=1)
+    jugador = Jugador(
+        id_usuario=1,
+        nombre_jugador="Messi",
+        control=60,
+        agilidad=60,
+        fuerza=60,
+        poder=60,
+        velocidad=60
+    )
+    EquipoJugador(equipo=equipo, jugador=jugador, comportamiento=comportamiento, estado=EstadoJugador.TITULAR)
+    repo_comportamientos.obtener_comportamiento_por_id_y_usuario.return_value = comportamiento
+    servicio = Servicios(usuarios=Mock(), comportamientos=repo_comportamientos)
+    with pytest.raises(ComportamientoEnUso):
+        servicio.eliminar_comportamiento(usuario_id=1, comp_id=1)
+    repo_comportamientos.eliminar.assert_not_called()

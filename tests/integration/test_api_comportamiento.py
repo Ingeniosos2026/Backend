@@ -1,6 +1,10 @@
 import pytest
 from app.capa_0_definicion_bd.models.usuarios_modelos import Usuario
 from app.capa_0_definicion_bd.models.comportamientos_modelos import Comportamiento
+from app.capa_0_definicion_bd.models.equipo_modelos import Equipo
+from app.capa_0_definicion_bd.models.jugadores_modelos import Jugador
+from app.capa_0_definicion_bd.models.equipos_jugadores_modelos import EquipoJugador, EstadoJugador
+from app.partido.comportamientos import COMPORTAMIENTOS_PREDETERMINADOS
 
 def create_datos_prueba(db):
     usuario = Usuario(
@@ -155,3 +159,166 @@ def test_endpoint_crear_comportamiento_usuario_inexistente(client, db_test):
     assert response.status_code == 404
     assert response.json() == {"error": "USUARIO_NO_ENCONTRADO", "mensaje": "El usaurio no existe"}
     assert db_test.query(Comportamiento).count() == 0
+
+def test_endpoint_editar_comportamiento_persiste_nombre_y_codigo(client, db_test):
+    usuario, comp = create_datos_prueba(db_test)
+    codigo = "def comportamiento(primitivas):\n    primitivas.correr((1, 2))"
+
+    response = client.put(f"/comportamiento/{usuario.id_usuario}/{comp.id}", json={"nombre": "Arquero", "codigo": codigo})
+    assert response.status_code == 200
+    assert response.json() == {
+        "id": comp.id,
+        "id_usuario": usuario.id_usuario,
+        "nombre": "Arquero",
+        "codigo": codigo
+    }
+
+    db_test.refresh(comp)
+    assert comp.nombre == "Arquero"
+    assert comp.codigo == codigo
+
+
+def test_comportamiento_predeterminado_no_es_editable(client, db_test):
+    usuario = Usuario(
+        email="Pepito@gmail.com",
+        nombre="Pepito",
+        id_avatar=1,
+        contraseña="asd123",
+        nombre_club="Boca"
+    )
+    db_test.add(usuario)
+    db_test.commit()
+    nombre, codigo = COMPORTAMIENTOS_PREDETERMINADOS[0]
+    comp = Comportamiento(
+        id_usuario=usuario.id_usuario,
+        nombre=nombre,
+        codigo=codigo
+    )
+    db_test.add(comp)
+    db_test.commit()
+
+    response = client.put(f"/comportamiento/{usuario.id_usuario}/{comp.id}",
+        json={
+            "nombre": "Otro nombre",
+            "codigo": "def comportamiento(primitivas):\n    primitivas.correr((1, 2))"}
+    )
+
+    assert response.status_code == 403
+    assert response.json() == {
+        "error": "COMPORTAMIENTO_NO_EDITABLE",
+        "mensaje": "No se pueden editar los comportamientos predeterminados",
+    }
+    db_test.refresh(comp)
+    assert comp.nombre == nombre
+    assert comp.codigo == codigo
+
+
+def test_editar_comportamiento_no_encontrado(client, db_test):
+    usuario, _ = create_datos_prueba(db_test)
+    response = client.put(f"/comportamiento/{usuario.id_usuario}/999",
+        json={
+            "nombre": "Otro nombre",
+            "codigo": "def comportamiento(primitivas):\n    primitivas.correr((1, 2))"}
+    )
+
+    assert response.status_code == 404
+    assert response.json() == {
+        "error": "COMPORTAMIENTO_NO_ENCONTRADO",
+        "mensaje": "No existe el comportamiento para este usuario",
+    }
+
+
+def test_editar_comportamiento_invalido(client, db_test):
+    usuario, comp = create_datos_prueba(db_test)
+
+    response = client.put(f"/comportamiento/{usuario.id_usuario}/{comp.id}",
+        json={
+            "nombre": "Otro nombre",
+            "codigo": "def comportamiento(primitivas):\n    open()"}
+    )
+
+    assert response.status_code == 400
+    assert response.json() == {
+        "error": "DATOS_INVALIDOS",
+        "mensaje": "El nombre o el código del comportamiento no son válidos",
+    }
+    db_test.refresh(comp)
+    assert comp.nombre == "Arquero"
+    assert comp.codigo == "Correr(centro_arco)"
+
+def test_endpoint_eliminar_comportamiento_correctamente(client, db_test):
+    usuario, comp = create_datos_prueba(db_test)
+    response = client.delete(f"/comportamiento/{usuario.id_usuario}/{comp.id}")
+
+    assert response.status_code == 204
+    assert response.content == b""
+    assert db_test.query(Comportamiento).filter_by(id=comp.id).first() is None
+
+def test_endpoint_eliminar_comportamiento_no_encontrado(client, db_test):
+    usuario, _ = create_datos_prueba(db_test)
+    response = client.delete(f"/comportamiento/{usuario.id_usuario}/999")
+
+    assert response.status_code == 404
+    assert response.json() == {
+        "error": "COMPORTAMIENTO_NO_ENCONTRADO",
+        "mensaje": "No existe el comportamiento para este usuario"
+    }
+
+def test_endpoint_eliminar_comportamiento_predeterminado(client, db_test):
+    usuario = Usuario(
+        email="pepito@gmail.com",
+        nombre="Pepito",
+        id_avatar=1,
+        contraseña="asd123",
+        nombre_club="Boca"
+    )
+    db_test.add(usuario)
+    db_test.commit()
+    nombre, codigo = COMPORTAMIENTOS_PREDETERMINADOS[0]
+    comp = Comportamiento(id_usuario=usuario.id_usuario, nombre=nombre, codigo=codigo)
+    db_test.add(comp)
+    db_test.commit()
+
+    response = client.delete(f"/comportamiento/{usuario.id_usuario}/{comp.id}")
+
+    assert response.status_code == 403
+    assert response.json() == {
+        "error": "COMPORTAMIENTO_NO_EDITABLE",
+        "mensaje": "No se pueden eliminar los comportamientos predeterminados"
+    }
+    assert db_test.query(Comportamiento).filter_by(id=comp.id).first() is not None
+
+def test_endpoint_eliminar_comportamiento_en_uso(client, db_test):
+    usuario, comp = create_datos_prueba(db_test)
+    equipo = Equipo(id_usuario=usuario.id_usuario)
+    jugador = Jugador(
+        id_usuario=usuario.id_usuario,
+        nombre_jugador="Messi",
+        control=60,
+        agilidad=60,
+        fuerza=60,
+        poder=60,
+        velocidad=60
+    )
+    db_test.add_all([equipo, jugador])
+    db_test.commit()
+    db_test.refresh(equipo)
+    db_test.refresh(jugador)
+
+    asignacion = EquipoJugador(
+        id_equipo=equipo.id_equipo,
+        id_jugador=jugador.id_jugador,
+        id_comportamiento=comp.id,
+        estado=EstadoJugador.TITULAR
+    )
+    db_test.add(asignacion)
+    db_test.commit()
+
+    response = client.delete(f"/comportamiento/{usuario.id_usuario}/{comp.id}")
+
+    assert response.status_code == 400
+    assert response.json() == {
+        "error": "COMPORTAMIENTO_EN_USO",
+        "mensaje": "No se puede eliminar un comportamiento que está en uso"
+    }
+    assert db_test.query(Comportamiento).filter_by(id=comp.id).first() is not None

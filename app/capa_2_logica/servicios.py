@@ -1,6 +1,8 @@
 import re
 from typing import Protocol
 from pwdlib import PasswordHash
+import random
+from itertools import combinations
 
 from app.capa_0_definicion_bd.models.usuarios_modelos import Usuario as UsuarioModelo
 from app.capa_0_definicion_bd.models.jugadores_modelos import Jugador as JugadorModelo
@@ -11,6 +13,9 @@ from app.capa_0_definicion_bd.models.partidos_modelos import Partido as PartidoM
 from app.capa_0_definicion_bd.models.liga_modelos import Liga as LigaModelo
 from app.partido.validador import CodigoComportamientoInvalido, validar_codigo_comportamiento
 from app.capa_0_definicion_bd.models.liga_modelos import EstadoLiga, Liga as LigaModelo
+from app.capa_0_definicion_bd.models.liga_participantes_modelos import LigaParticipante
+from app.capa_0_definicion_bd.models.fixture_liga_modelos import FixtureLiga
+from app.capa_0_definicion_bd.models.tabla_liga_modelos import TablaLiga
 from app.partido.comportamientos import COMPORTAMIENTOS_PREDETERMINADOS
 from sqlalchemy.exc import IntegrityError
 from .errores import *
@@ -33,6 +38,8 @@ class _RepoComportamientosProtocol(Protocol):
     def obtener_comportamiento_por_id_y_usuario(self, comp_id: int, usuario_id: int) -> ComportamientoModelo | None: ...
     def obtener_comportamientos_usuario(self, usuario_id: int) -> List[ComportamientoModelo]: ...
     def crear(self, comportamiento: ComportamientoModelo) -> ComportamientoModelo: ...
+    def actualizar(self, comportamiento: ComportamientoModelo) -> ComportamientoModelo: ...
+    def eliminar(self, comportamiento: ComportamientoModelo) -> None: ...
 
 class _RepoPartidosProtocol(Protocol):
     def crear(self, partido: PartidoModelo) -> PartidoModelo: ...
@@ -48,10 +55,18 @@ class _RepoEquiposProtocol(Protocol):
 class _RepoLigasProtocol(Protocol):
     def crear(self, liga: LigaModelo) -> LigaModelo: ...
     def obtener_por_id(self, id_liga: int) -> LigaModelo | None: ...
-    def agregar_participante(self, liga: LigaModelo, usuario: UsuarioModelo) -> LigaModelo: ...
+    def agregar_participante(self, liga: LigaModelo, usuario: UsuarioModelo, id_equipo: int, formacion: Formacion) -> LigaParticipante: ...
     def eliminar_participante(self, liga: LigaModelo, usuario: UsuarioModelo) -> LigaModelo: ...
     def obtener_ligas_disponibles(self) -> list[LigaModelo]: ...
-
+    def obtener_participantes_liga(self, id_liga: int) -> list[LigaParticipante]: ...
+    def guardar_inicio_liga(self, liga: LigaModelo, tabla: list[TablaLiga], fixture: list[FixtureLiga],) -> None: ...
+    def obtener_fixture_por_turno(self, id_liga: int, turno: int) -> FixtureLiga: ...
+    def asignar_partido_fixture(self, fixture: FixtureLiga, partido_id: int) -> FixtureLiga: ...
+    def obtener_siguiente_fixture(self, id_liga: int) -> FixtureLiga | None: ...
+    def obtener_participante_por_equipo(self, id_liga: int, id_equipo: int) -> LigaParticipante | None: ...
+    def obtener_registro_tabla(self, id_liga: int, id_equipo: int) -> TablaLiga | None: ...
+    def finalizar_liga(self, liga: LigaModelo) -> LigaModelo: ...
+    def actualizar(self) -> None: ...
 
 
 class Servicios:
@@ -340,7 +355,7 @@ class Servicios:
 
         return PartidoResultado(partido=partido)
 
-    def crear_liga(self, usuario_id: int, nombre: str, contraseña: str | None, min_jugadores: int, max_jugadores: int, duracion_partido: int) -> CrearLigaResultado:
+    def crear_liga(self, usuario_id: int, nombre: str, contraseña: str | None, min_jugadores: int, max_jugadores: int, duracion_partido: int, jugadores_comportamientos: list[tuple[int, int]], formacion: Formacion) -> CrearLigaResultado:
 
         if not nombre.strip():
             raise DatosLigaInvalidos()
@@ -357,6 +372,35 @@ class Servicios:
         usuario = self.usuarios.obtener_por_id(usuario_id)
         if usuario is None:
             raise UsuarioNoEncontrado()
+        
+        cantidad_jugadores = self.jugadores.contar_jugadores_usuario(usuario_id)
+        if cantidad_jugadores < 6:
+            raise JugadoresInsuficientes()
+        
+        if len(jugadores_comportamientos) != 6:
+            raise DatosInvalidos()
+        
+        jugadores = []
+        for id_jugador, id_comportamiento in jugadores_comportamientos:
+            jugador = self.jugadores.obtener_por_id(id_jugador)
+
+            if jugador is None or jugador.id_usuario != usuario_id:
+                raise JugadorNoEncontrado()
+            
+            comportamiento = self.comportamientos.obtener_comportamiento_por_id_y_usuario(id_comportamiento, usuario_id)
+            if comportamiento is None:
+                raise ComportamientoNoEncontrado()
+            
+            jugadores.append((jugador, id_comportamiento))
+
+        resultado_equipo = self.crear_equipo(usuario_id=usuario_id)
+        equipo = resultado_equipo.equipo
+        for indice, (jugador, id_comportamiento) in enumerate(jugadores):
+            estado = (EstadoJugador.TITULAR if indice < 3 else EstadoJugador.SUPLENTE)
+            self.agregar_jugador_a_equipo(
+                usuario_id=usuario_id, id_equipo=equipo.id_equipo, id_jugador=jugador.id_jugador,
+                id_comportamiento=id_comportamiento, estado=estado
+            ) # el for es para agregar los jugadores al equipo del usuario que crea la liga
 
         nueva_liga = LigaModelo(
             id_usuario=usuario_id,
@@ -369,7 +413,10 @@ class Servicios:
 
         liga = self.ligas.crear(nueva_liga)
 
-        return CrearLigaResultado(liga=liga)
+        #ahora directamente agrego al owner de la liga como participante, con su equipo y formacion
+        participacion = self.ligas.agregar_participante(liga, usuario, equipo.id_equipo, formacion)
+
+        return CrearLigaResultado(liga=liga, participacion=participacion)
 
     def crear_comportamiento(self, usuario_id: int, nombre: str, codigo: str) -> CrearComportamientoResultado:
         if not nombre.strip():
@@ -393,7 +440,7 @@ class Servicios:
 
         return CrearComportamientoResultado(comportamiento=comportamiento)
     
-    def unirse_liga(self,liga_id: int,usuario_id: int, contraseña: str | None = None,) -> UnirseLigaResultado:
+    def unirse_liga(self, liga_id: int, usuario_id: int, jugadores_comportamientos: list[tuple[int, int]], formacion: Formacion, contraseña: str | None = None) -> UnirseLigaResultado:
         
         liga = self.ligas.obtener_por_id(liga_id)
 
@@ -422,10 +469,38 @@ class Servicios:
 
         if self.jugadores.contar_jugadores_usuario(usuario_id) < 6:
             raise JugadoresInsuficientes()
+        
+        if len(jugadores_comportamientos) != 6:
+            raise DatosInvalidos()
+        
+        id_jugadores = [id_jugador for id_jugador, _ in jugadores_comportamientos]
+        if len(set(id_jugadores)) != 6:
+            raise DatosInvalidos()
+        
+        jugadores = []
+        for id_jugador, id_comportamiento in jugadores_comportamientos:
+            jugador = self.jugadores.obtener_por_id(id_jugador)
 
-        liga_actualizada = self.ligas.agregar_participante(liga, usuario)
+            if jugador is None or jugador.id_usuario != usuario_id:
+                raise JugadorNoEncontrado()
+            
+            comportamiento = self.comportamientos.obtener_comportamiento_por_id_y_usuario(id_comportamiento, usuario_id)
+            if comportamiento is None:
+                raise ComportamientoNoEncontrado()
+            
+            jugadores.append((jugador, id_comportamiento))
 
-        return UnirseLigaResultado(liga=liga_actualizada, usuario_unido=usuario)
+        resultado_equipo = self.crear_equipo(usuario_id=usuario_id)
+        equipo = resultado_equipo.equipo
+        for indice, (jugador, id_comportamiento) in enumerate(jugadores):
+            estado = (EstadoJugador.TITULAR if indice < 3 else EstadoJugador.SUPLENTE)
+            self.agregar_jugador_a_equipo(
+                usuario_id=usuario_id, id_equipo=equipo.id_equipo, id_jugador=jugador.id_jugador,
+                id_comportamiento=id_comportamiento, estado=estado
+            ) # el for es para agregar los jugadores al equipo del usuario que crea la liga
+
+        participacion = self.ligas.agregar_participante(liga, usuario, equipo.id_equipo, formacion)
+        return UnirseLigaResultado(liga=liga, usuario_unido=usuario, participacion=participacion)
     
     def abandonar_liga(self, liga_id: int, usuario_id: int) -> AbandonarLigaResultado:
         liga = self.ligas.obtener_por_id(liga_id)
@@ -451,3 +526,209 @@ class Servicios:
     def listar_ligas_disponibles(self) -> ListarLigasResultado:
         ligas = self.ligas.obtener_ligas_disponibles()
         return ListarLigasResultado(ligas=ligas)
+
+
+    def iniciar_liga(self, id_liga: int, usuario_id: int) -> IniciarLigaResultado:
+        liga = self.ligas.obtener_por_id(id_liga)
+
+        if liga is None:
+            raise LigaNoEncontrada()
+
+        if liga.id_usuario != usuario_id:
+            raise IniciarNoPermitido()
+
+        if liga.estado != EstadoLiga.DISPONIBLE:
+            raise NoEsPosibleIniciarLiga()
+        
+        participantes = self.ligas.obtener_participantes_liga(id_liga)
+        cantidad_participantes = len(participantes)
+
+        if cantidad_participantes < liga.min_jugadores:
+            raise NoEsPosibleIniciarLiga()
+        
+        if cantidad_participantes > liga.max_jugadores:
+            raise NoEsPosibleIniciarLiga()
+        
+        tabla = []
+
+        for participante in participantes:
+            registro = TablaLiga(
+                id_liga=liga.id,
+                id_equipo=participante.id_equipo,
+                id_usuario=participante.id_usuario,
+                partidos_ganados=0,
+                partidos_empatados=0,
+                partidos_perdidos=0,
+                puntos=0,
+                goles_a_favor=0,
+                goles_en_contra=0)
+
+            tabla.append(registro)
+
+        enfrentamientos = list(combinations(participantes, 2))
+        random.shuffle(enfrentamientos)
+
+        fixture = []
+        for turno, (equipo1, equipo2) in enumerate(enfrentamientos, start=1):
+            partido_fixture = FixtureLiga(
+                id_liga=liga.id,
+                id_equipo_izq=equipo1.id_equipo,
+                id_equipo_der=equipo2.id_equipo,
+                turno=turno)
+
+            fixture.append(partido_fixture)
+
+        equipo1, equipo2 = enfrentamientos[0]
+
+        nuevo_partido = PartidoModelo(
+            id_usuario_1=equipo1.id_usuario,
+            id_usuario_2=equipo2.id_usuario,
+            id_equipo_1=equipo1.id_equipo,
+            id_equipo_2=equipo2.id_equipo,
+            duracion_partido=liga.duracion_partido,
+            formacion_1=equipo1.formacion,
+            formacion_2=equipo2.formacion,
+            tipo_partido=TipoPartido.LIGA,
+            estado_partido=EstadoPartido.EN_CURSO)
+
+        partido = self.partidos.crear(nuevo_partido)
+
+        self.ligas.asignar_partido_fixture(fixture=fixture[0], partido_id=partido.id_partido)
+        self.ligas.guardar_inicio_liga(liga=liga, tabla=tabla, fixture=fixture)
+
+        return IniciarLigaResultado(liga=liga, partido=partido, fixture=fixture, tabla=tabla)
+    
+
+    def crear_siguiente_partido_liga(self, id_liga: int) -> CrearPartidoResultado:
+        liga = self.ligas.obtener_por_id(id_liga)
+
+        if liga is None:
+            raise LigaNoEncontrada()
+
+        fixture = self.ligas.obtener_siguiente_fixture(id_liga)
+
+        if fixture is None:
+            return CrearPartidoResultado(partido=None)
+
+        equipo1 = self.ligas.obtener_participante_por_equipo(id_liga, fixture.id_equipo_izq)
+        equipo2 = self.ligas.obtener_participante_por_equipo(id_liga, fixture.id_equipo_der)
+
+        if equipo1 is None or equipo2 is None:
+            raise NoEsPosibleIniciarLiga()
+
+        nuevo_partido = PartidoModelo(
+            id_usuario_1=equipo1.id_usuario,
+            id_usuario_2=equipo2.id_usuario,
+            id_equipo_1=equipo1.id_equipo,
+            id_equipo_2=equipo2.id_equipo,
+            duracion_partido=liga.duracion_partido,
+            formacion_1=equipo1.formacion,
+            formacion_2=equipo2.formacion,
+            tipo_partido=TipoPartido.LIGA,
+            estado_partido=EstadoPartido.EN_CURSO)
+
+        partido = self.partidos.crear(nuevo_partido)
+
+        self.ligas.asignar_partido_fixture(fixture=fixture, partido_id=partido.id_partido)
+        self.ligas.actualizar()
+
+        return CrearPartidoResultado(partido=partido)
+    
+
+    def registrar_resultado_partido_liga(self, id_liga: int, turno: int, goles_izq: int, goles_der: int) -> RegistrarResultadoPartidoLiga:
+        fixture = self.ligas.obtener_fixture_por_turno(id_liga, turno)
+
+        tabla_izq = self.ligas.obtener_registro_tabla(id_liga, fixture.id_equipo_izq)
+        tabla_der = self.ligas.obtener_registro_tabla(id_liga, fixture.id_equipo_der)
+
+        partido = self.partidos.obtener_por_id(fixture.id_partido)
+
+        if partido is None:
+            raise PartidoNoEncontrado()
+
+        if tabla_izq is None or tabla_der is None:
+            raise NoSeEncontraronLasTablas()
+
+        # guardo los goles en el fixture
+        fixture.goles_equipo_izq = goles_izq
+        fixture.goles_equipo_der = goles_der
+
+        # actualizo los goles de ambos equipos
+        tabla_izq.goles_a_favor += goles_izq
+        tabla_izq.goles_en_contra += goles_der
+
+        tabla_der.goles_a_favor += goles_der
+        tabla_der.goles_en_contra += goles_izq
+
+        # actualizo el resultado del partido
+        if goles_izq > goles_der:
+            tabla_izq.partidos_ganados += 1
+            tabla_izq.puntos += 3
+            tabla_der.partidos_perdidos += 1
+
+        elif goles_der > goles_izq:
+            tabla_der.partidos_ganados += 1
+            tabla_der.puntos += 3
+            tabla_izq.partidos_perdidos += 1
+
+        else:
+            tabla_izq.partidos_empatados += 1
+            tabla_der.partidos_empatados += 1
+            tabla_izq.puntos += 1
+            tabla_der.puntos += 1
+
+        self.ligas.actualizar()
+
+        return RegistrarResultadoPartidoLiga(fixture=fixture, tabla_izq=tabla_izq, tabla_der=tabla_der)
+    
+    def finalizar_liga(self, id_liga: int):
+        liga = self.ligas.obtener_por_id(id_liga)
+
+        if liga is None:
+            raise LigaNoEncontrada()
+
+        liga_finalizada = self.ligas.finalizar_liga(liga)
+        
+        return FinalizarLigaResultado(liga=liga_finalizada)
+
+      
+    def editar_comportamiento(self, usuario_id: int, comp_id: int, nombre: str, codigo: str) -> EditarComportamientoResultado:
+        if not nombre.strip():
+            raise DatosInvalidos()
+
+        if len(nombre.strip()) > 50:
+            raise DatosInvalidos()
+
+        comportamiento = self.comportamientos.obtener_comportamiento_por_id_y_usuario(comp_id, usuario_id)
+
+        if comportamiento is None:
+            raise ComportamientoNoEncontrado()
+
+        if (comportamiento.nombre, comportamiento.codigo) in COMPORTAMIENTOS_PREDETERMINADOS:
+            raise ComportamientoNoEditable()
+
+        try:
+            codigo_sanitizado = validar_codigo_comportamiento(codigo)
+        except CodigoComportamientoInvalido as exc:
+            raise DatosInvalidos() from exc
+
+        comportamiento.nombre = nombre.strip()
+        comportamiento.codigo = codigo_sanitizado
+
+        comportamiento = self.comportamientos.actualizar(comportamiento)
+
+        return EditarComportamientoResultado(comportamiento=comportamiento)
+
+    def eliminar_comportamiento(self, usuario_id: int, comp_id: int) -> None:
+        comportamiento = self.comportamientos.obtener_comportamiento_por_id_y_usuario(comp_id, usuario_id)
+
+        if comportamiento is None:
+            raise ComportamientoNoEncontrado()
+
+        if (comportamiento.nombre, comportamiento.codigo) in COMPORTAMIENTOS_PREDETERMINADOS:
+            raise ComportamientoNoEditable()
+        
+        if (comportamiento.equipos_jugadores):
+            raise ComportamientoEnUso()
+        
+        self.comportamientos.eliminar(comportamiento)

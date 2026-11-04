@@ -1,12 +1,18 @@
 from fastapi import APIRouter, Depends, status
 from fastapi.responses import JSONResponse
 from typing import Optional
+import asyncio
 
 from app.capa_2_logica.servicios import Servicios
-from app.capa_2_logica.errores import DatosInvalidos, UsuarioNoEncontrado, UsuarioEsCreadorDeLiga ,LigaNoDisponible, LigaNoEncontrada, LigaLlena, UsuarioYaEnLiga, ContraseñaLigaIncorrecta, JugadoresInsuficientes, UsuarioNoExisteEnLiga, LigaIniciada
+from app.capa_2_logica.errores import *
 from app.capa_3_api.dtos.ligas import CrearLiga, UnirseLiga
 from app.capa_3_api.websockets.admin_conexiones import admin_conexiones
 from app.capa_3_api.dependencias import obtener_servicio
+from app.partido.administrar_partidos import administrador_partidas
+from app.partido.inicializacion import crear_estado_partido, crear_cancha
+from app.partido.motor import MotorPartido
+from app.partido.ejecutorliga import EjecutorLiga
+from app.partido.convertidor import tabla_a_dict, fixture_a_dict
 
 liga_router = APIRouter()
 
@@ -21,10 +27,12 @@ async def crear_liga(usuario_id: int, datos: CrearLiga, servicio: Servicios = De
             min_jugadores=datos.min_jugadores,
             max_jugadores=datos.max_jugadores,
             duracion_partido=datos.duracion_partido,
+            jugadores_comportamientos=[(j.id_jugador, j.id_comportamiento) for j in datos.jugadores],
+            formacion=datos.formacion
         )
 
         liga = resultado.liga
-
+        participacion = resultado.participacion
         await admin_conexiones.difundir("liga creada",
             {
                 "id_liga": liga.id,
@@ -42,6 +50,8 @@ async def crear_liga(usuario_id: int, datos: CrearLiga, servicio: Servicios = De
             "max_jugadores": liga.max_jugadores,
             "duracion_partido": liga.duracion_partido,
             "estado": liga.estado.name,
+            "id_equipo": participacion.id_equipo,
+            "formacion": participacion.formacion.value
         }
 
     except DatosInvalidos:
@@ -55,6 +65,18 @@ async def crear_liga(usuario_id: int, datos: CrearLiga, servicio: Servicios = De
             status_code=404,
             content={"error": "USUARIO_NO_ENCONTRADO", "mensaje": "El usuario no existe"}
         )
+    
+    except JugadoresInsuficientes:
+        return JSONResponse(
+            status_code=400,
+            content={"error": "JUGADORES_INSUFICIENTES", "mensaje": "Tenes que tener al menos 6 jugadores"},
+        )
+    
+    except ComportamientoNoEncontrado:
+        return JSONResponse(
+            status_code=404,
+            content={"error": "COMPORTAMIENTO_NO_ENCONTRADO", "mensaje": "El jugador no tiene un comportamiento válido"},
+        )
 
     except Exception:
         return JSONResponse(
@@ -63,15 +85,19 @@ async def crear_liga(usuario_id: int, datos: CrearLiga, servicio: Servicios = De
         )
     
 @liga_router.put("/liga/{liga_id}/unirse/{usuario_id}", status_code=status.HTTP_200_OK)
-async def unirse_liga(liga_id: int,usuario_id: int, datos: UnirseLiga | None = None, servicio: Servicios = Depends(obtener_servicio)):
+async def unirse_liga(liga_id: int,usuario_id: int, datos: UnirseLiga, servicio: Servicios = Depends(obtener_servicio)):
     try:
         contraseña = datos.contraseña if datos else None
 
         resultado = servicio.unirse_liga(
             liga_id=liga_id, 
             usuario_id=usuario_id, 
-            contraseña=contraseña
+            contraseña=contraseña,
+            jugadores_comportamientos=[(j.id_jugador, j.id_comportamiento) for j in datos.jugadores],
+            formacion=datos.formacion
         )
+
+        participacion = resultado.participacion
 
         await admin_conexiones.emitir_lobby_liga(
             liga_id=liga_id,
@@ -80,16 +106,18 @@ async def unirse_liga(liga_id: int,usuario_id: int, datos: UnirseLiga | None = N
                 "usuario_unido": {
                     "id": resultado.usuario_unido.id_usuario,
                     "nombre": resultado.usuario_unido.nombre,
-                    "club": resultado.usuario_unido.nombre_club
+                    "club": resultado.usuario_unido.nombre_club,
+                    "id_equipo": participacion.id_equipo,
+                    "formacion": participacion.formacion.value
                 }
             }
         )
 
-
-
         return {
             "id_liga": resultado.liga.id,
             "id_usuario": resultado.usuario_unido.id_usuario,
+            "id_equipo": participacion.id_equipo,
+            "formacion": participacion.formacion.value
         }
     except LigaNoEncontrada:
         return JSONResponse(
@@ -131,6 +159,12 @@ async def unirse_liga(liga_id: int,usuario_id: int, datos: UnirseLiga | None = N
             status_code= 400, 
             content={"error": "USUARIO_ES_CREADOR_DE_LIGA", "mensaje": "El creador de la liga no puede unirse a su propia liga"})
     
+    except ComportamientoNoEncontrado:
+        return JSONResponse(
+            status_code=404,
+            content={"error": "COMPORTAMIENTO_NO_ENCONTRADO", "mensaje": "El jugador no tiene un comportamiento válido"},
+        )
+            
     except Exception:
         return JSONResponse(
             status_code=500, 
@@ -207,3 +241,48 @@ def listar_ligas(servicio: Servicios = Depends(obtener_servicio)):
                 "mensaje": "Ocurrió un error interno del servidor",
             },
         )
+
+@liga_router.put("/liga/{liga_id}/{usuario_id}", status_code=status.HTTP_200_OK)
+async def iniciar_liga(liga_id: int, usuario_id: int, servicio: Servicios = Depends(obtener_servicio)):
+    try:
+        resultado = servicio.iniciar_liga(id_liga=liga_id, usuario_id=usuario_id)
+
+        partido = resultado.partido
+        estado = crear_estado_partido(partido)
+        duracion_segundos = partido.duracion_partido * 60
+        motor = MotorPartido(estado=estado)
+        administrador_partidas.agregar(partido_id=partido.id_partido, motor=motor)
+
+        fixture = [fixture_a_dict(fix) for fix in resultado.fixture]
+        tabla = [tabla_a_dict(tab) for tab in resultado.tabla]
+
+        ejecutor = EjecutorLiga(liga_id=liga_id, partido_id=partido.id_partido, motor=motor, duracion=duracion_segundos, turno=1)
+        asyncio.create_task(ejecutor.ejecutar())
+
+    except LigaNoEncontrada:
+        return JSONResponse(status_code=404, content={"error": "LIGA_NO_ENCONTRADA", "mensaje": "La liga no existe"})
+
+    except IniciarNoPermitido:
+        return JSONResponse(status_code=403, content={"error": "INICIAR_NO_PERMITIDO", "mensaje": "No se puede iniciar una liga que no creaste"})
+
+    except NoEsPosibleIniciarLiga:
+        return JSONResponse(status_code=409, content={"error": "LIGA_NO_PUEDE_INICIAR", "mensaje": "La liga no puede iniciarse en su estado actual"})
+
+    except Exception:
+        return JSONResponse(status_code=500, content={"error": "ERROR_INTERNO", "mensaje": "No se pudo iniciar la liga"})
+
+    await admin_conexiones.emitir_lobby_liga(
+        liga_id=liga_id,
+        accion="liga_iniciada",
+        payload={
+            "accion": "primer_partido_iniciado",
+            "estado": "EN_JUEGO",
+            "id_partido_actual": partido.id_partido,
+            "fixture": fixture,
+            "tabla": tabla,
+            "turno": 1})
+
+    return {
+        "mensaje": "Liga iniciada",
+        "id_liga": liga_id,
+        "id_partido": partido.id_partido}
