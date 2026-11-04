@@ -8,7 +8,7 @@ from app.capa_0_definicion_bd.models.usuarios_modelos import Usuario as UsuarioM
 from app.capa_0_definicion_bd.models.jugadores_modelos import Jugador as JugadorModelo
 from app.capa_0_definicion_bd.models.comportamientos_modelos import Comportamiento as ComportamientoModelo
 from app.capa_0_definicion_bd.models.equipo_modelos import Equipo as EquipoModelo
-from app.capa_0_definicion_bd.models.equipos_jugadores_modelos import EstadoJugador
+from app.capa_0_definicion_bd.models.equipos_jugadores_modelos import EstadoJugador, EquipoJugador
 from app.capa_0_definicion_bd.models.partidos_modelos import Partido as PartidoModelo, TipoPartido, EstadoPartido, Formacion
 from app.capa_0_definicion_bd.models.liga_modelos import Liga as LigaModelo
 from app.partido.validador import CodigoComportamientoInvalido, validar_codigo_comportamiento
@@ -51,6 +51,7 @@ class _RepoEquiposProtocol(Protocol):
     def crear(self, equipo: EquipoModelo) -> EquipoModelo: ...
     def obtener_por_id(self, id_equipo: int) -> EquipoModelo | None: ...
     def agregar_jugador(self, equipo: EquipoModelo, jugador: JugadorModelo, estado: EstadoJugador, comportamiento: ComportamientoModelo | None = None) -> EquipoModelo: ...
+    def obtener_jugador_equipo(self, id_equipo: int, id_jugador: int) -> EquipoJugador | None: ...
 
 class _RepoLigasProtocol(Protocol):
     def crear(self, liga: LigaModelo) -> LigaModelo: ...
@@ -766,3 +767,46 @@ class Servicios:
             raise NoEsPosibleVerLaTabla()
         
         return TablaCompletaResultado(tabla=tabla)
+    
+    def obtener_datos_cambio_jugador(self, partido_id: int, usuario_id: int, jugador_sale_id: int, jugador_entra_id: int) -> CambioJugadorResultado:
+        partido = self.partidos.obtener_por_id(partido_id)
+
+        if partido is None:
+            raise PartidoNoEncontrado()
+        
+        if partido.id_usuario_1 == usuario_id:
+            id_equipo = partido.id_equipo_1
+
+        elif partido.id_usuario_2 == usuario_id:
+            id_equipo = partido.id_equipo_2
+
+        else:
+            raise UsuarioNoEncontrado
+        
+        if jugador_sale_id == jugador_entra_id:
+            raise NoSePuedeCambiarJugador
+        
+
+        jugador_sale = self.equipos.obtener_jugador_equipo(id_equipo, jugador_sale_id)
+
+        if jugador_sale is None:
+            raise JugadorNoEncontrado
+             
+        jugador_entra = self.equipos.obtener_jugador_equipo(id_equipo, jugador_entra_id)
+
+        if jugador_entra is None:
+            raise JugadorNoEncontrado
+        
+        
+        jugador = jugador_entra.jugador
+        comportamiento = jugador_entra.comportamiento
+
+        
+        return CambioJugadorResultado(
+            id_jugador=jugador.id_jugador,
+            control=jugador.control,
+            agilidad=jugador.agilidad,
+            fuerza=jugador.fuerza,
+            poder=jugador.poder,
+            velocidad=jugador.velocidad,
+            codigo_comportamiento=comportamiento.codigo)

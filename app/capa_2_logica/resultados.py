@@ -105,3 +105,13 @@ class FixtureCompletoResultado:
 @dataclass(slots=True)
 class TablaCompletaResultado:
     tabla: list[TablaLiga]
+
+@dataclass(slots=True, frozen=True)
+class CambioJugadorResultado:
+    id_jugador: int
+    control: int
+    agilidad: int
+    fuerza: int
+    poder: int
+    velocidad: int
+    codigo_comportamiento: str

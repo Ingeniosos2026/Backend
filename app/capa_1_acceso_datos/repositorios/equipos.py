@@ -27,3 +27,6 @@ class EquipoRepositorio:
         self.db.commit()
         self.db.refresh(j)
         return j
+    
+    def obtener_jugador_equipo(self, id_equipo: int, id_jugador: int) -> EquipoJugador | None:
+        return (self.db.query(EquipoJugador).filter(EquipoJugador.id_equipo == id_equipo, EquipoJugador.id_jugador == id_jugador).first())

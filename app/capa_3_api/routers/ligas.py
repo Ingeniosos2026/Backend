@@ -251,12 +251,12 @@ async def iniciar_liga(liga_id: int, usuario_id: int, servicio: Servicios = Depe
         estado = crear_estado_partido(partido)
         duracion_segundos = partido.duracion_partido * 60
         motor = MotorPartido(estado=estado)
-        administrador_partidas.agregar(partido_id=partido.id_partido, motor=motor)
+        ejecutor = EjecutorLiga(liga_id=liga_id, partido_id=partido.id_partido, motor=motor, duracion=duracion_segundos, turno=1)
+        administrador_partidas.agregar(partido_id=partido.id_partido, ejecutor=ejecutor)
 
         fixture = [fixture_a_dict(fix) for fix in resultado.fixture]
         tabla = [tabla_a_dict(tab) for tab in resultado.tabla]
 
-        ejecutor = EjecutorLiga(liga_id=liga_id, partido_id=partido.id_partido, motor=motor, duracion=duracion_segundos, turno=1)
         asyncio.create_task(ejecutor.ejecutar())
 
     except LigaNoEncontrada:

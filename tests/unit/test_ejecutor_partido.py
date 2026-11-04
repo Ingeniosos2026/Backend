@@ -63,7 +63,7 @@ def test_pausar_y_reanudar_emiten_eventos_ws():
     admin_mock.emitir_partido.assert_awaited_once_with(
         partido_id=10,
         accion="partido_pausado",
-        payload={"tiempo": 0.0, "numero_pausa": 0, "duracion_pausa": 10.0},
+        payload={"tiempo": 0.0, "numero_pausa": 1, "duracion_pausa": 10.0},
     )
 
     # reanudamos el partido

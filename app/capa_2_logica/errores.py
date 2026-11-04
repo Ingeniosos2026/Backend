@@ -88,3 +88,6 @@ class NoEsPosibleVerElFixture(Exception):
 
 class NoEsPosibleVerLaTabla(Exception):
     pass
+
+class NoSePuedeCambiarJugador(Exception):
+    pass
