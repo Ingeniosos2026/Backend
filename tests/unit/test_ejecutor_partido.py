@@ -75,16 +75,19 @@ def test_pausar_y_reanudar_emiten_eventos_ws():
         payload={"tiempo": 0.0},
     )
 
-def test_ejecutor_realiza_exactamente_3_pausas_durante_el_partido():
+def test_ejecutor_realiza_exactamente_3_pausas_durante_el_partido(monkeypatch):
     motor = crear_motor_prueba()
     admin_mock = Mock()
     admin_mock.emitir_partido = AsyncMock()
 
+    monkeypatch.setattr("app.partido.ejecutor.SessionLocal", Mock()) 
+    monkeypatch.setattr("app.partido.ejecutor.crear_servicio", Mock())
+    
     ejecutor = EjecutorPartido(
         partido_id=99,
         motor=motor,
         duracion= 4 * T,
-        duracion_pausa_entretiempo = 0,
+        duracion_pausa_entretiempo= 0,
         duracion_pausa_cooling_break=0,
         admin=admin_mock,
     )

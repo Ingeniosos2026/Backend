@@ -36,8 +36,7 @@ class EjecutorPartido:
         await self.admin.emitir_partido(partido_id=self.partido_id, accion="partido_iniciado", payload={"tiempo": 0})
 
         # mandamos el estado inicial antes del primer tick
-        await self.admin.emitir_partido(partido_id=self.partido_id, accion="estado_partido", payload={**estado_a_dict(self.motor.estado), "estados_jugadores": [], "acciones": []})
-        await admin_conexiones.emitir_partido(partido_id=self.partido_id, accion="estado_partido", payload={**estado_a_dict(self.motor.estado), "estados_jugadores": [], "acciones": [], "cancha": cancha_a_dict(self.motor.estado.cancha)})
+        await self.admin.emitir_partido(partido_id=self.partido_id, accion="estado_partido", payload={**estado_a_dict(self.motor.estado), "estados_jugadores": [], "acciones": [], "cancha": cancha_a_dict(self.motor.estado.cancha)})
 
         while self.motor.estado.tiempo < self.duracion:
 
@@ -51,15 +50,7 @@ class EjecutorPartido:
     
 
             if (self.pausas_realizadas < len(self.tiempos_pausa) and self.motor.estado.tiempo < self.duracion and self.motor.estado.tiempo >= self.tiempos_pausa[self.pausas_realizadas]):
-
-                if (self.pausas_realizadas == 1):
-                    tiempo_pausa = self.duracion_pausa_entretiempo
-                else:
-                    tiempo_pausa = self.duracion_pausa_cooling_break
-                
                 await self.pausar()
-                self.pausas_realizadas += 1
-                await asyncio.sleep(tiempo_pausa)
                 await self.reanudar()
 
             # esperamos hasta el proximo tick, esto es para que no se ejecuten instantaneamente varios ticks
@@ -77,7 +68,7 @@ class EjecutorPartido:
             partido = servicio.partidos.obtener_por_id(self.partido_id)
 
             if partido is None:
-                raise ValueError("No se encontró el partido")
+                raise ValueError("No se encontro el partido")
 
             partido.estado_partido = EstadoPartido.TERMINADO
             servicio.partidos.actualizar(partido)
@@ -94,6 +85,10 @@ class EjecutorPartido:
                 "goles": {"izquierdo": self.motor.estado.goles_izquierdo,
                           "derecho": self.motor.estado.goles_derecho}})
         
+        administrador_partidas.eliminar(self.partido_id)
+        
+        return {"goles_izquierdo": goles_izquierdo, "goles_derecho": goles_derecho}
+        
     async def pausar(self):
         if self.pausado:
             return  # ya esta en pausa, no hacemos nada
@@ -104,12 +99,17 @@ class EjecutorPartido:
             tiempo_espera = self.duracion_pausa_entretiempo
         else:
             tiempo_espera = self.duracion_pausa_cooling_break
-
+        
         await self.admin.emitir_partido(
         partido_id=self.partido_id, 
         accion="partido_pausado", 
         payload={"tiempo": self.motor.estado.tiempo, "numero_pausa": self.pausas_realizadas, "duracion_pausa" : tiempo_espera}
         ) 
+
+        if self.pausas_realizadas == 1:
+                    self.motor.fisica.reiniciar_posiciones()
+        self.pausas_realizadas += 1
+        await asyncio.sleep(tiempo_espera)
 
     async def reanudar(self): 
         if not self.pausado:
@@ -122,6 +122,3 @@ class EjecutorPartido:
             accion="partido_reanudado", 
             payload={"tiempo": self.motor.estado.tiempo}
         )
-        administrador_partidas.eliminar(self.partido_id)
-        
-        return {"goles_izquierdo": goles_izquierdo, "goles_derecho": goles_derecho}
