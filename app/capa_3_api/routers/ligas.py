@@ -322,3 +322,38 @@ async def tabla(liga_id: int, servicio: Servicios = Depends(obtener_servicio)):
 
     except Exception:
         return JSONResponse(status_code=500, content={"error": "ERROR_INTERNO", "mensaje": "No se pudo obtener la tabla de la liga"})
+
+@liga_router.get("/liga/{liga_id}/equipo/{equipo_id}", status_code=status.HTTP_200_OK)
+def obtener_equipo_de_liga(liga_id: int, equipo_id: int, servicio: Servicios = Depends(obtener_servicio)):
+    try:
+        resultado = servicio.obtener_equipo_de_liga(liga_id, equipo_id)
+        return {
+            "id_equipo": resultado.equipo.id_equipo,
+            "formacion": resultado.participacion.formacion.value,
+            "jugadores": [
+                {
+                    "id": asociacion.jugador.id_jugador,
+                    "nombre": asociacion.jugador.nombre_jugador,
+                    "estado": asociacion.estado.value,
+                    "comportamiento": (
+                        {
+                            "id": asociacion.comportamiento.id,
+                            "nombre": asociacion.comportamiento.nombre,
+                        }
+                        if asociacion.comportamiento is not None
+                        else None
+                    ),
+                }
+                for asociacion in resultado.equipo.jugadores
+            ],
+        }
+    except LigaNoEncontrada:
+        return JSONResponse(
+            status_code=404,
+            content={"error": "LIGA_NO_ENCONTRADA", "mensaje": "La liga no existe"},
+        )
+    except EquipoNoEncontrado:
+        return JSONResponse(
+            status_code=404,
+            content={"error": "EQUIPO_NO_ENCONTRADO", "mensaje": "El equipo no pertenece a la liga"},
+        )
