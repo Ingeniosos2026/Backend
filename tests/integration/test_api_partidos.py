@@ -3,11 +3,11 @@ import pytest
 
 from app.capa_0_definicion_bd.models.jugadores_modelos import Jugador
 from app.capa_0_definicion_bd.models.equipo_modelos import Equipo
-from app.capa_0_definicion_bd.models.equipos_jugadores_modelos import EstadoJugador
+from app.capa_0_definicion_bd.models.equipos_jugadores_modelos import EstadoJugador, EquipoJugador
 from app.capa_0_definicion_bd.models.comportamientos_modelos import Comportamiento
 from app.capa_0_definicion_bd.models.partidos_modelos import (EstadoPartido, Formacion, TipoPartido, Partido)
 from app.capa_2_logica.errores import *
-from app.capa_2_logica.resultados import CrearPartidoResultado
+from app.capa_2_logica.resultados import CrearPartidoResultado, CambioJugadorResultado
 from app.capa_3_api.dependencias import obtener_servicio
 from app.capa_3_api.websockets.admin_conexiones import admin_conexiones
 
@@ -37,6 +37,78 @@ def crear_jugadores_test(db_test, usuario_id, cantidad=6):
     db_test.add_all(jugadores)
     db_test.commit()
     return jugadores
+
+def preparar_jugadores_equipo_test(db_test, usuario_id, equipo_id):
+    jugadores = crear_jugadores_test(db_test, usuario_id)
+    comportamiento = (db_test.query(Comportamiento).filter(Comportamiento.id_usuario == usuario_id).first())
+    assert comportamiento is not None
+
+    asociaciones = [
+        EquipoJugador(
+            id_equipo=equipo_id,
+            id_jugador=jugador.id_jugador,
+            id_comportamiento=comportamiento.id,
+            estado=(
+                EstadoJugador.TITULAR
+                if indice < 3
+                else EstadoJugador.SUPLENTE))
+        for indice, jugador in enumerate(jugadores)
+    ]
+
+    db_test.add_all(asociaciones)
+    db_test.commit()
+
+    return jugadores
+
+def crear_partido_pendiente_test(client, db_test):
+    usuario_1 = client.post("/usuario", json={
+        "email": "lean@gmail.com",
+        "nombre": "Lean",
+        "avatar": 1,
+        "contraseña": "asd123",
+        "club": "talleres"
+    })
+
+    assert usuario_1.status_code == 201
+    usuario_1_id = usuario_1.json()["id"]
+
+    usuario_2 = client.post("/usuario", json={
+        "email": "juan@gmail.com",
+        "nombre": "juan",
+        "avatar": 2,
+        "contraseña": "juan",
+        "club": "boca"
+    })
+
+    assert usuario_2.status_code == 201
+    usuario_2_id = usuario_2.json()["id"]
+
+    equipo_1 = Equipo(id_usuario=usuario_1_id) 
+    equipo_2 = Equipo(id_usuario=usuario_2_id) 
+    db_test.add_all([equipo_1, equipo_2]) 
+    db_test.commit() 
+    db_test.refresh(equipo_1) 
+    db_test.refresh(equipo_2)
+
+    equipo_1 = db_test.query(Equipo).filter(Equipo.id_usuario == usuario_1_id).first()
+    equipo_2 = db_test.query(Equipo).filter(Equipo.id_usuario == usuario_2_id).first()
+
+    partido = Partido(
+        id_usuario_1=usuario_1_id,
+        id_usuario_2=usuario_2_id,
+        id_equipo_1=equipo_1.id_equipo,
+        id_equipo_2=equipo_2.id_equipo,
+        duracion_partido=5,
+        formacion_1=Formacion.OFENSIVA,
+        formacion_2=Formacion.DEFENSIVA,
+        tipo_partido=TipoPartido.AMISTOSO,
+        estado_partido=EstadoPartido.PENDIENTE)
+
+    db_test.add(partido)
+    db_test.commit()
+    db_test.refresh(partido)
+
+    return partido, usuario_1_id
 
 
 
@@ -354,58 +426,6 @@ def test_listar_amistosos_disponibles_devuelve_error_interno(client):
         "mensaje": "Ocurrió un error interno del servidor",
     }
 
-
-def crear_partido_pendiente_test(client, db_test):
-    usuario_1 = client.post("/usuario", json={
-        "email": "lean@gmail.com",
-        "nombre": "Lean",
-        "avatar": 1,
-        "contraseña": "asd123",
-        "club": "talleres"
-    })
-
-    assert usuario_1.status_code == 201
-    usuario_1_id = usuario_1.json()["id"]
-
-    usuario_2 = client.post("/usuario", json={
-        "email": "juan@gmail.com",
-        "nombre": "juan",
-        "avatar": 2,
-        "contraseña": "juan",
-        "club": "boca"
-    })
-
-    assert usuario_2.status_code == 201
-    usuario_2_id = usuario_2.json()["id"]
-
-    equipo_1 = Equipo(id_usuario=usuario_1_id) 
-    equipo_2 = Equipo(id_usuario=usuario_2_id) 
-    db_test.add_all([equipo_1, equipo_2]) 
-    db_test.commit() 
-    db_test.refresh(equipo_1) 
-    db_test.refresh(equipo_2)
-
-    equipo_1 = db_test.query(Equipo).filter(Equipo.id_usuario == usuario_1_id).first()
-    equipo_2 = db_test.query(Equipo).filter(Equipo.id_usuario == usuario_2_id).first()
-
-    partido = Partido(
-        id_usuario_1=usuario_1_id,
-        id_usuario_2=usuario_2_id,
-        id_equipo_1=equipo_1.id_equipo,
-        id_equipo_2=equipo_2.id_equipo,
-        duracion_partido=5,
-        formacion_1=Formacion.OFENSIVA,
-        formacion_2=Formacion.DEFENSIVA,
-        tipo_partido=TipoPartido.AMISTOSO,
-        estado_partido=EstadoPartido.PENDIENTE)
-
-    db_test.add(partido)
-    db_test.commit()
-    db_test.refresh(partido)
-
-    return partido, usuario_1_id
-
-
 def test_iniciar_partido(client, db_test, monkeypatch):
     partido, usuario_id = crear_partido_pendiente_test(client, db_test)
 
@@ -466,3 +486,96 @@ def test_iniciar_partido(client, db_test, monkeypatch):
 
 
     assert partido.estado_partido == EstadoPartido.EN_CURSO
+
+def test_realizar_cambio_jugador_correctamente(client, db_test, monkeypatch):
+    partido, usuario_id = crear_partido_pendiente_test(client, db_test)
+    jugadores = preparar_jugadores_equipo_test(db_test, usuario_id, partido.id_equipo_1)
+
+    jugador_sale = jugadores[0]
+    jugador_entra = jugadores[3]
+
+    ejecutor = Mock()
+    ejecutor.solicitar_cambio = AsyncMock()
+
+    obtener = Mock(return_value=ejecutor)
+    monkeypatch.setattr("app.capa_3_api.routers.partidos.administrador_partidas.obtener", obtener)
+
+    response = client.post(f"/partido/{partido.id_partido}/{usuario_id}/cambio",
+        json={
+            "jugador_sale_id": jugador_sale.id_jugador,
+            "jugador_entra_id": jugador_entra.id_jugador})
+
+    assert response.status_code == 200
+    assert response.json() == {"mensaje": "Solicitud de cambio recibida"}
+
+def test_realizar_cambio_jugador_partido_no_en_ejecucion(client, db_test, monkeypatch):
+    partido, usuario_id = crear_partido_pendiente_test(client, db_test)
+    obtener = Mock(return_value=None)
+    monkeypatch.setattr("app.capa_3_api.routers.partidos.administrador_partidas.obtener", obtener)
+
+    response = client.post(
+        f"/partido/{partido.id_partido}/{usuario_id}/cambio",
+        json={
+            "jugador_sale_id": 1,
+            "jugador_entra_id": 2
+        })
+
+    assert response.status_code == 404
+    assert response.json() == {
+        "error": "PARTIDO_NO_ENCONTRADO",
+        "mensaje": "El partido no existe o no se encuentra en ejecucion"}
+
+
+def test_realizar_cambio_jugador_usuario_no_participa(client, db_test, monkeypatch):
+    partido, usuario_id = crear_partido_pendiente_test(client, db_test)
+    jugadores = preparar_jugadores_equipo_test(db_test, usuario_id, partido.id_equipo_1)
+
+    jere = client.post("/usuario", json={
+        "email": "juan1@gmail.com",
+        "nombre": "juan",
+        "avatar": 3,
+        "contraseña": "juan123",
+        "club": "river"})
+
+    otro_usuario_id = jere.json()["id"]
+
+    ejecutor = Mock()
+    ejecutor.solicitar_cambio = AsyncMock()
+
+    obtener = Mock(return_value=ejecutor)
+
+    monkeypatch.setattr("app.capa_3_api.routers.partidos.administrador_partidas.obtener", obtener)
+
+    response = client.post(
+        f"/partido/{partido.id_partido}/{otro_usuario_id}/cambio",
+        json={
+            "jugador_sale_id": jugadores[0].id_jugador,
+            "jugador_entra_id": jugadores[3].id_jugador})
+
+    assert response.status_code == 404
+    assert response.json() == {
+        "error": "USUARIO_NO_ENCONTRADO",
+        "mensaje": "El usuario no participa en este partido"}
+    
+def test_realizar_cambio_jugador_mismo_jugador(client, db_test, monkeypatch):
+    partido, usuario_id = crear_partido_pendiente_test(client, db_test)
+    jugadores = preparar_jugadores_equipo_test(db_test, usuario_id, partido.id_equipo_1)
+    ejecutor = Mock()
+    ejecutor.solicitar_cambio = AsyncMock()
+
+    obtener = Mock(return_value=ejecutor)
+
+    monkeypatch.setattr("app.capa_3_api.routers.partidos.administrador_partidas.obtener", obtener)
+
+    jugador_id = jugadores[0].id_jugador
+
+    response = client.post(
+        f"/partido/{partido.id_partido}/{usuario_id}/cambio",
+        json={
+            "jugador_sale_id": jugador_id,
+            "jugador_entra_id": jugador_id})
+
+    assert response.status_code == 400
+    assert response.json() == {
+        "error": "NO_SE_PUEDE_CAMBIAR_JUGADOR",
+        "mensaje": "No se puede realizar el cambio solicitado"}

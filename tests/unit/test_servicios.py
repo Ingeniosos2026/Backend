@@ -1769,3 +1769,138 @@ def test_obtener_tabla_liga_no_disponible():
 
     repo_ligas.obtener_por_id.assert_called_once_with(10)
     repo_ligas.obtener_tabla_completa.assert_not_called()
+
+
+def test_obtener_datos_cambio_jugador_correctamente():
+    repo_partidos = Mock()
+    repo_equipos = Mock()
+    repo_usuarios = Mock()
+
+    partido = Partido(
+        id_partido=1,
+        id_usuario_1=10,
+        id_usuario_2=20,
+        id_equipo_1=100,
+        id_equipo_2=200,
+        duracion_partido=5,
+        formacion_1=Formacion.OFENSIVA,
+        formacion_2=Formacion.DEFENSIVA,
+        tipo_partido=TipoPartido.AMISTOSO,
+        estado_partido=EstadoPartido.EN_CURSO)
+
+    jugador = Jugador(
+        id_jugador=2,
+        id_usuario=10,
+        nombre_jugador="Messi",
+        control=60,
+        agilidad=60,
+        fuerza=60,
+        poder=60,
+        velocidad=60)
+    
+    jugador2 = Jugador(
+        id_jugador=3,
+        id_usuario=10,
+        nombre_jugador="ronaldo",
+        control=60,
+        agilidad=60,
+        fuerza=60,
+        poder=60,
+        velocidad=60)
+    
+    codigo_comportamientocomportamiento = Comportamiento(id=1, codigo="atacar()")
+    
+    jugador_sale=EquipoJugador(
+        id_equipo=1,
+        id_jugador=2,
+        estado=EstadoJugador.TITULAR,
+        jugador=jugador,
+        comportamiento=codigo_comportamientocomportamiento)
+
+    jugador_entra=EquipoJugador(
+        id_equipo=1,
+        id_jugador=3,
+        estado=EstadoJugador.SUPLENTE,
+        jugador=jugador2,
+        comportamiento=codigo_comportamientocomportamiento)
+    
+    
+
+    repo_partidos.obtener_por_id.return_value = partido
+    repo_equipos.obtener_jugador_equipo.side_effect = [jugador_sale, jugador_entra]
+
+    servicio = Servicios(usuarios=repo_usuarios, partidos=repo_partidos,equipos=repo_equipos)
+
+    resultado = servicio.obtener_datos_cambio_jugador(partido_id=1, usuario_id=10, jugador_sale_id=1, jugador_entra_id=2)
+
+    assert resultado == CambioJugadorResultado(
+        id_jugador=3,
+        control=60,
+        agilidad=60,
+        fuerza=60,
+        poder=60,
+        velocidad=60,
+        codigo_comportamiento="atacar()")
+
+    repo_partidos.obtener_por_id.assert_called_once_with(1)
+    assert repo_equipos.obtener_jugador_equipo.call_count == 2
+
+
+def test_obtener_datos_cambio_jugador_mismo_jugador():
+    repo_partidos = Mock()
+    repo_equipos = Mock()
+    repo_usuarios = Mock()
+
+    partido = Partido(
+        id_partido=1,
+        id_usuario_1=10,
+        id_usuario_2=20,
+        id_equipo_1=100,
+        id_equipo_2=200,
+        duracion_partido=5,
+        formacion_1=Formacion.OFENSIVA,
+        formacion_2=Formacion.DEFENSIVA,
+        tipo_partido=TipoPartido.AMISTOSO,
+        estado_partido=EstadoPartido.EN_CURSO)
+
+    repo_partidos.obtener_por_id.return_value = partido
+
+    servicio = Servicios(usuarios=repo_usuarios, partidos=repo_partidos,equipos=repo_equipos)
+
+    with pytest.raises(NoSePuedeCambiarJugador):
+        servicio.obtener_datos_cambio_jugador(
+            partido_id=1,
+            usuario_id=10,
+            jugador_sale_id=1,
+            jugador_entra_id=1)
+
+    repo_equipos.obtener_jugador_equipo.assert_not_called()
+
+def test_obtener_datos_cambio_jugador_sale_no_encontrado():
+    repo_partidos = Mock()
+    repo_equipos = Mock()
+    repo_usuarios = Mock()
+    
+    partido = Partido(
+        id_partido=1,
+        id_usuario_1=10,
+        id_usuario_2=20,
+        id_equipo_1=100,
+        id_equipo_2=200,
+        duracion_partido=5,
+        formacion_1=Formacion.OFENSIVA,
+        formacion_2=Formacion.DEFENSIVA,
+        tipo_partido=TipoPartido.AMISTOSO,
+        estado_partido=EstadoPartido.EN_CURSO)
+
+    repo_partidos.obtener_por_id.return_value = partido
+    repo_equipos.obtener_jugador_equipo.return_value = None
+
+    servicio = Servicios(usuarios=repo_usuarios, partidos=repo_partidos,equipos=repo_equipos)
+
+    with pytest.raises(JugadorNoEncontrado):
+        servicio.obtener_datos_cambio_jugador(
+            partido_id=1,
+            usuario_id=10,
+            jugador_sale_id=1,
+            jugador_entra_id=2)

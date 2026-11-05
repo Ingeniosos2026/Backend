@@ -4,7 +4,7 @@ import asyncio
 
 from app.capa_2_logica.servicios import Servicios
 from app.capa_2_logica.errores import *
-from app.capa_3_api.dtos.partidos import CrearAmistoso, UnirseAmistoso
+from app.capa_3_api.dtos.partidos import CrearAmistoso, UnirseAmistoso, CambioJugador
 from app.capa_3_api.dependencias import obtener_servicio
 from app.capa_3_api.websockets.admin_conexiones import admin_conexiones
 from app.partido.administrar_partidos import administrador_partidas
@@ -168,8 +168,8 @@ async def iniciar_partido(partido_id: int, usuario_id: int, servicio: Servicios 
         # esta bien poner todo esto aca en el endpoint?  
         duracion_segundos = partido.duracion_partido * 60
         motor = MotorPartido(estado=estado)
-        administrador_partidas.agregar(partido_id=partido.id_partido, motor=motor)
         ejecutor = EjecutorPartido(partido_id=partido.id_partido, motor=motor, duracion=duracion_segundos)
+        administrador_partidas.agregar(partido_id=partido.id_partido, ejecutor=ejecutor)  
         asyncio.create_task(ejecutor.ejecutar())
         cancha = crear_cancha()
 
@@ -222,3 +222,35 @@ async def iniciar_partido(partido_id: int, usuario_id: int, servicio: Servicios 
                     "poste_superior": {"x": cancha.arco_derecho.poste_superior.x, "y": cancha.arco_derecho.poste_superior.y},
                     "poste_inferior": {"x": cancha.arco_derecho.poste_inferior.x, "y": cancha.arco_derecho.poste_inferior.y}
                     }}}
+
+
+@partido_router.post("/partido/{partido_id}/{usuario_id}/cambio")
+async def realizar_cambio_jugador(partido_id: int, usuario_id: int, datos: CambioJugador, servicio: Servicios = Depends(obtener_servicio)):
+    try:
+        ejecutor = administrador_partidas.obtener(partido_id)
+        if ejecutor is None:
+            raise PartidoNoEncontrado()
+        
+        resultado = servicio.obtener_datos_cambio_jugador(partido_id=partido_id, 
+            usuario_id=usuario_id, 
+            jugador_sale_id=datos.jugador_sale_id, 
+            jugador_entra_id=datos.jugador_entra_id)
+        
+        await ejecutor.solicitar_cambio(usuario_id=usuario_id, jugador_sale_id=datos.jugador_sale_id, resultado=resultado)
+    
+    except PartidoNoEncontrado:
+        return JSONResponse(status_code=404, content={"error": "PARTIDO_NO_ENCONTRADO", "mensaje": "El partido no existe o no se encuentra en ejecucion"})
+
+    except UsuarioNoEncontrado:
+        return JSONResponse(status_code=404,content={"error": "USUARIO_NO_ENCONTRADO", "mensaje": "El usuario no participa en este partido"})
+
+    except JugadorNoEncontrado:
+        return JSONResponse(status_code=404, content={"error": "JUGADOR_NO_ENCONTRADO", "mensaje": "Uno de los jugadores no pertenece al equipo"})
+
+    except NoSePuedeCambiarJugador:
+        return JSONResponse(status_code=400, content={"error": "NO_SE_PUEDE_CAMBIAR_JUGADOR", "mensaje": "No se puede realizar el cambio solicitado"})
+    
+    except Exception:
+        return JSONResponse(status_code=500, content={"error": "ERROR_INTERNO", "mensaje": "No se pudo cambiar el jugador debido a un error interno"})
+
+    return {"mensaje": "Solicitud de cambio recibida"}

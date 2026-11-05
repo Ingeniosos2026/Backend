@@ -97,10 +97,11 @@ async def websocket_partido(websocket: WebSocket, partido_id: int):
     await admin_conexiones.conectar(websocket, partido_id)
 
     try:
-        motor = administrador_partidas.obtener(partido_id)
+        ejecutor = administrador_partidas.obtener(partido_id)
 
         # si el partido ya comenzo, mandamos inmediatamente su estado actual
-        if motor is not None:
+        if ejecutor is not None:
+            motor = ejecutor.motor
             await websocket.send_json({"action": "estado_partido", "payload": {
                     **estado_a_dict(motor.estado),
                     "estados_jugadores": [],
