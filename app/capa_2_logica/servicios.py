@@ -810,3 +810,18 @@ class Servicios:
             poder=jugador.poder,
             velocidad=jugador.velocidad,
             codigo_comportamiento=comportamiento.codigo)
+
+    def obtener_equipo_de_liga(self, id_liga: int, id_equipo: int) -> EquipoLigaResultado:
+            liga = self.ligas.obtener_por_id(id_liga)
+            if liga is None:
+                raise LigaNoEncontrada()
+    
+            participacion = self.ligas.obtener_participante_por_equipo(id_liga, id_equipo)
+            if participacion is None:
+                raise EquipoNoEncontrado()
+    
+            equipo = self.equipos.obtener_por_id(id_equipo)
+            if equipo is None:
+                raise EquipoNoEncontrado()
+    
+            return EquipoLigaResultado(equipo=equipo, participacion=participacion)

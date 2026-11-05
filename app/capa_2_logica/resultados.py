@@ -115,3 +115,8 @@ class CambioJugadorResultado:
     poder: int
     velocidad: int
     codigo_comportamiento: str
+
+@dataclass(slots=True)
+class EquipoLigaResultado:
+    equipo: EquipoModelo
+    participacion: LigaParticipante

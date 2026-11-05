@@ -3,6 +3,9 @@ from unittest.mock import AsyncMock, Mock
 from app.capa_0_definicion_bd.models.liga_modelos import EstadoLiga, Liga
 from app.capa_0_definicion_bd.models.liga_participantes_modelos import LigaParticipante
 from app.capa_0_definicion_bd.models.equipo_modelos import Equipo
+from app.capa_0_definicion_bd.models.jugadores_modelos import Jugador
+from app.capa_0_definicion_bd.models.comportamientos_modelos import Comportamiento
+from app.capa_0_definicion_bd.models.equipos_jugadores_modelos import EquipoJugador, EstadoJugador
 from app.capa_0_definicion_bd.models.partidos_modelos import Formacion
 from app.capa_0_definicion_bd.models.usuarios_modelos import Usuario
 from app.capa_0_definicion_bd.models.fixture_liga_modelos import FixtureLiga
@@ -477,3 +480,125 @@ def test_endpoint_obtener_tabla_liga_no_disponible(client, db_test):
     datos = response.json()
     assert datos["error"] == "LIGA_NO_DISPONIBLE"
     assert datos["mensaje"] == "La liga esta finalizada o no esta iniciada"
+
+def test_endpoint_obtener_equipo_de_liga(client, db_test):
+    usuario = Usuario(
+        email="Pepito@gmail.com",
+        nombre="Pepito",
+        id_avatar=1,
+        contraseña="asd123",
+        nombre_club="Boca",
+    )
+    db_test.add(usuario)
+    db_test.commit()
+
+    equipo = Equipo(id_usuario=usuario.id_usuario)
+    liga = Liga(
+        id_usuario=usuario.id_usuario,
+        nombre="superliga",
+        estado=EstadoLiga.DISPONIBLE,
+        min_jugadores=2,
+        max_jugadores=10,
+        duracion_partido=10,
+    )
+    jugador = Jugador(
+        id_usuario=usuario.id_usuario,
+        nombre_jugador="Messi",
+        control=60,
+        agilidad=60,
+        fuerza=60,
+        poder=60,
+        velocidad=60,
+    )
+    suplente = Jugador(
+        id_usuario=usuario.id_usuario,
+        nombre_jugador="Paredes",
+        control=60,
+        agilidad=60,
+        fuerza=60,
+        poder=60,
+        velocidad=60,
+    )
+    comportamiento = Comportamiento(id_usuario=usuario.id_usuario, nombre="Atacar", codigo="")
+    db_test.add_all([equipo, liga, jugador, suplente, comportamiento])
+    db_test.commit()
+
+    participacion = LigaParticipante(
+        id_liga=liga.id,
+        id_usuario=usuario.id_usuario,
+        id_equipo=equipo.id_equipo,
+        formacion=Formacion.DEFENSIVA,
+    )
+    asociacion = EquipoJugador(
+        id_equipo=equipo.id_equipo,
+        id_jugador=jugador.id_jugador,
+        id_comportamiento=comportamiento.id,
+        estado=EstadoJugador.TITULAR,
+    )
+    asociacion_suplente = EquipoJugador(
+        id_equipo=equipo.id_equipo,
+        id_jugador=suplente.id_jugador,
+        estado=EstadoJugador.SUPLENTE,
+    )
+    db_test.add_all([participacion, asociacion, asociacion_suplente])
+    db_test.commit()
+
+    response = client.get(f"/liga/{liga.id}/equipo/{equipo.id_equipo}")
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "id_equipo": equipo.id_equipo,
+        "formacion": "defensiva",
+        "jugadores": [
+            {
+                "id": jugador.id_jugador,
+                "nombre": "Messi",
+                "estado": "titular",
+                "comportamiento": {
+                    "id": comportamiento.id,
+                    "nombre": "Atacar",
+                },
+            },
+            {
+                "id": suplente.id_jugador,
+                "nombre": "Paredes",
+                "estado": "suplente",
+                "comportamiento": None,
+            },
+        ],
+    }
+
+
+def test_endpoint_obtener_equipo_de_liga_rechaza_equipo_que_no_participa(client, db_test):
+    usuario = Usuario(
+        email="Pepito@gmail.com",
+        nombre="Pepito",
+        id_avatar=1,
+        contraseña="asd123",
+        nombre_club="Boca",
+    )
+    db_test.add(usuario)
+    db_test.commit()
+    equipo = Equipo(id_usuario=usuario.id_usuario)
+    liga = Liga(
+        id_usuario=usuario.id_usuario,
+        nombre="premier",
+        estado=EstadoLiga.DISPONIBLE,
+        min_jugadores=2,
+        max_jugadores=10,
+        duracion_partido=10,
+    )
+    db_test.add_all([equipo, liga])
+    db_test.commit()
+
+    response = client.get(f"/liga/{liga.id}/equipo/{equipo.id_equipo}")
+
+    assert response.status_code == 404
+    assert response.json()["error"] == "EQUIPO_NO_ENCONTRADO"
+
+
+def test_endpoint_obtener_equipo_de_liga_rechaza_liga_inexistente(client):
+    response = client.get("/liga/999/equipo/1")
+
+    assert response.status_code == 404
+    assert response.json()["error"] == "LIGA_NO_ENCONTRADA"
