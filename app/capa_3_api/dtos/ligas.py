@@ -16,3 +16,7 @@ class UnirseLiga(BaseModel): # esto es para evitar que se mande la contraseña e
     contraseña: Optional[str] = None
     jugadores: list[JugadorConComportamiento]
     formacion: Formacion
+
+class CambiarAlineacion(BaseModel):
+    formacion: Formacion
+    jugadores: list[JugadorConComportamiento]
