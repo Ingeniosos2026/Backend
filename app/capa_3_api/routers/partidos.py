@@ -224,7 +224,7 @@ async def iniciar_partido(partido_id: int, usuario_id: int, servicio: Servicios 
                     }}}
 
 
-@partido_router.post("/partido/{partido_id}/{usuario_id}/cambio")
+@partido_router.put("/partido/{partido_id}/{usuario_id}/cambio")
 async def realizar_cambio_jugador(partido_id: int, usuario_id: int, datos: CambioJugador, servicio: Servicios = Depends(obtener_servicio)):
     try:
         ejecutor = administrador_partidas.obtener(partido_id)
@@ -255,7 +255,7 @@ async def realizar_cambio_jugador(partido_id: int, usuario_id: int, datos: Cambi
 
     return {"mensaje": "Solicitud de cambio recibida"}
 
-@partido_router.post("/partido/{partido_id}/cambiar/comportamiento")
+@partido_router.put("/partido/{partido_id}/cambiar/comportamiento")
 def cambiar_comportamiento(partido_id: int, datos: CambiarComportamiento, servicio: Servicios = Depends(obtener_servicio)):
     try:
         ejecutor = administrador_partidas.obtener(partido_id)
