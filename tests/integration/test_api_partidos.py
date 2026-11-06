@@ -500,7 +500,7 @@ def test_realizar_cambio_jugador_correctamente(client, db_test, monkeypatch):
     obtener = Mock(return_value=ejecutor)
     monkeypatch.setattr("app.capa_3_api.routers.partidos.administrador_partidas.obtener", obtener)
 
-    response = client.post(f"/partido/{partido.id_partido}/{usuario_id}/cambio",
+    response = client.put(f"/partido/{partido.id_partido}/{usuario_id}/cambio",
         json={
             "jugador_sale_id": jugador_sale.id_jugador,
             "jugador_entra_id": jugador_entra.id_jugador})
@@ -513,7 +513,7 @@ def test_realizar_cambio_jugador_partido_no_en_ejecucion(client, db_test, monkey
     obtener = Mock(return_value=None)
     monkeypatch.setattr("app.capa_3_api.routers.partidos.administrador_partidas.obtener", obtener)
 
-    response = client.post(
+    response = client.put(
         f"/partido/{partido.id_partido}/{usuario_id}/cambio",
         json={
             "jugador_sale_id": 1,
@@ -546,7 +546,7 @@ def test_realizar_cambio_jugador_usuario_no_participa(client, db_test, monkeypat
 
     monkeypatch.setattr("app.capa_3_api.routers.partidos.administrador_partidas.obtener", obtener)
 
-    response = client.post(
+    response = client.put(
         f"/partido/{partido.id_partido}/{otro_usuario_id}/cambio",
         json={
             "jugador_sale_id": jugadores[0].id_jugador,
@@ -569,7 +569,7 @@ def test_realizar_cambio_jugador_mismo_jugador(client, db_test, monkeypatch):
 
     jugador_id = jugadores[0].id_jugador
 
-    response = client.post(
+    response = client.put(
         f"/partido/{partido.id_partido}/{usuario_id}/cambio",
         json={
             "jugador_sale_id": jugador_id,
@@ -579,3 +579,65 @@ def test_realizar_cambio_jugador_mismo_jugador(client, db_test, monkeypatch):
     assert response.json() == {
         "error": "NO_SE_PUEDE_CAMBIAR_JUGADOR",
         "mensaje": "No se puede realizar el cambio solicitado"}
+
+
+
+def test_cambiar_comportamiento_correctamente(client, db_test, monkeypatch):
+    partido, usuario_id = crear_partido_pendiente_test(client, db_test)
+    jugadores = preparar_jugadores_equipo_test(db_test, usuario_id, partido.id_equipo_1)
+
+    jugador = jugadores[0]
+
+    comportamientos = (db_test.query(Comportamiento).filter(Comportamiento.id_usuario == usuario_id).all())
+
+    comportamiento = comportamientos[1]
+
+    ejecutor = Mock()
+    obtener = Mock(return_value=ejecutor)
+
+    monkeypatch.setattr("app.capa_3_api.routers.partidos.administrador_partidas.obtener", obtener)
+
+    response = client.put(
+        f"/partido/{partido.id_partido}/cambiar/comportamiento",
+        json={
+            "usuario_id": usuario_id,
+            "jugador_id": jugador.id_jugador,
+            "comp_id": comportamiento.id})
+
+    assert response.status_code == 200
+
+    assert response.json() == {
+        "mensaje": "solicitud de cambio de comportamiento recibida",
+        "Nuevo_comportamiento": comportamiento.nombre}
+    
+def test_cambiar_comportamiento_comportamiento_no_encontrado(client, db_test, monkeypatch):
+    partido, usuario_id = crear_partido_pendiente_test(client, db_test)
+    jugadores = preparar_jugadores_equipo_test(db_test, usuario_id, partido.id_equipo_1)
+
+    otro_usuario = client.post("/usuario", json={
+        "email": "jjj@gmail.com",
+        "nombre": "jjj",
+        "avatar": 3,
+        "contraseña": "adgsdgf",
+        "club": "Ninguno"})
+
+    otro_usuario_id = otro_usuario.json()["id"]
+
+    comportamiento_otro_usuario = (db_test.query(Comportamiento).filter(Comportamiento.id_usuario == otro_usuario_id).first())
+    ejecutor = Mock()
+    obtener = Mock(return_value=ejecutor)
+
+    monkeypatch.setattr("app.capa_3_api.routers.partidos.administrador_partidas.obtener", obtener)
+
+    response = client.put(
+        f"/partido/{partido.id_partido}/cambiar/comportamiento",
+        json={
+            "usuario_id": usuario_id,
+            "jugador_id": jugadores[0].id_jugador,
+            "comp_id": comportamiento_otro_usuario.id})
+
+    assert response.status_code == 400
+
+    assert response.json() == {
+        "error": "NO_SE_PUEDE_CAMBIAR_COMPORTAMIENTO",
+        "mensaje": "No se puede realizar el cambio de comportamiento solicitado"}

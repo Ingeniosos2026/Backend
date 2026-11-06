@@ -120,3 +120,9 @@ class CambioJugadorResultado:
 class EquipoLigaResultado:
     equipo: EquipoModelo
     participacion: LigaParticipante
+
+@dataclass(slots=True)
+class CambioComportamientoResultado:
+    jugador_id: int
+    codigo_comportamiento: str
+    nombre_comportamiento: str

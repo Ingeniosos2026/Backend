@@ -825,3 +825,30 @@ class Servicios:
                 raise EquipoNoEncontrado()
     
             return EquipoLigaResultado(equipo=equipo, participacion=participacion)
+    
+    def obtener_datos_cambio_comportamiento(self, partido_id: int, usuario_id: int, jugador_id: int, comportamiento_id: int) -> CambioComportamientoResultado:
+        partido = self.partidos.obtener_por_id(partido_id)
+
+        if partido is None:
+            raise PartidoNoEncontrado()
+
+        if partido.id_usuario_1 == usuario_id:
+            id_equipo = partido.id_equipo_1
+
+        elif partido.id_usuario_2 == usuario_id:
+            id_equipo = partido.id_equipo_2
+
+        else:
+            raise UsuarioNoEncontrado()
+
+        jugador_equipo = self.equipos.obtener_jugador_equipo(id_equipo, jugador_id)
+
+        if jugador_equipo is None:
+            raise JugadorNoEncontrado()
+
+        comportamiento = self.comportamientos.obtener_comportamiento_por_id_y_usuario(comportamiento_id, usuario_id)
+
+        if comportamiento is None:
+            raise ComportamientoNoEncontrado()
+
+        return CambioComportamientoResultado(jugador_id=jugador_equipo.id_jugador, codigo_comportamiento=comportamiento.codigo, nombre_comportamiento=comportamiento.nombre)

@@ -4,7 +4,7 @@ import asyncio
 
 from app.capa_2_logica.servicios import Servicios
 from app.capa_2_logica.errores import *
-from app.capa_3_api.dtos.partidos import CrearAmistoso, UnirseAmistoso, CambioJugador
+from app.capa_3_api.dtos.partidos import CrearAmistoso, UnirseAmistoso, CambioJugador, CambiarComportamiento
 from app.capa_3_api.dependencias import obtener_servicio
 from app.capa_3_api.websockets.admin_conexiones import admin_conexiones
 from app.partido.administrar_partidos import administrador_partidas
@@ -224,7 +224,7 @@ async def iniciar_partido(partido_id: int, usuario_id: int, servicio: Servicios 
                     }}}
 
 
-@partido_router.post("/partido/{partido_id}/{usuario_id}/cambio")
+@partido_router.put("/partido/{partido_id}/{usuario_id}/cambio")
 async def realizar_cambio_jugador(partido_id: int, usuario_id: int, datos: CambioJugador, servicio: Servicios = Depends(obtener_servicio)):
     try:
         ejecutor = administrador_partidas.obtener(partido_id)
@@ -254,3 +254,34 @@ async def realizar_cambio_jugador(partido_id: int, usuario_id: int, datos: Cambi
         return JSONResponse(status_code=500, content={"error": "ERROR_INTERNO", "mensaje": "No se pudo cambiar el jugador debido a un error interno"})
 
     return {"mensaje": "Solicitud de cambio recibida"}
+
+@partido_router.put("/partido/{partido_id}/cambiar/comportamiento")
+def cambiar_comportamiento(partido_id: int, datos: CambiarComportamiento, servicio: Servicios = Depends(obtener_servicio)):
+    try:
+        ejecutor = administrador_partidas.obtener(partido_id)
+
+        if ejecutor is None:
+            raise PartidoNoEncontrado()
+
+        resultado = servicio.obtener_datos_cambio_comportamiento(partido_id=partido_id, usuario_id=datos.usuario_id, jugador_id=datos.jugador_id, comportamiento_id=datos.comp_id)
+
+        ejecutor.solicitar_cambio_comportamiento(usuario_id=datos.usuario_id, jugador_id=resultado.jugador_id, comportamiento=resultado.codigo_comportamiento)
+
+    
+    except PartidoNoEncontrado:
+        return JSONResponse(status_code=404, content={"error": "PARTIDO_NO_ENCONTRADO", "mensaje": "El partido no existe o no se encuentra en ejecucion"})
+
+    except UsuarioNoEncontrado:
+        return JSONResponse(status_code=404,content={"error": "USUARIO_NO_ENCONTRADO", "mensaje": "El usuario no participa en este partido"})
+
+    except JugadorNoEncontrado:
+        return JSONResponse(status_code=404, content={"error": "JUGADOR_NO_ENCONTRADO", "mensaje": "El jugador no pertenece al equipo"})
+
+    except ComportamientoNoEncontrado:
+        return JSONResponse(status_code=400, content={"error": "NO_SE_PUEDE_CAMBIAR_COMPORTAMIENTO", "mensaje": "No se puede realizar el cambio de comportamiento solicitado"})
+    
+    except Exception:
+        return JSONResponse(status_code=500, content={"error": "ERROR_INTERNO", "mensaje": "No se pudo cambiar el comportamiento debido a un error interno"})
+    
+    return {"mensaje": "solicitud de cambio de comportamiento recibida",
+            "Nuevo_comportamiento": resultado.nombre_comportamiento}
