@@ -33,6 +33,7 @@ class EjecutorPartido:
         self.pausas_realizadas = 0
         self.equipos_que_cambiaron = set()
         self.cambios_pendientes = {}
+        self.comportamientos_pendientes = {}
 
 
     async def ejecutar(self):
@@ -44,6 +45,7 @@ class EjecutorPartido:
         await self.admin.emitir_partido(partido_id=self.partido_id, accion="estado_partido", payload={**estado_a_dict(self.motor.estado), "estados_jugadores": [], "acciones": [], "cancha": cancha_a_dict(self.motor.estado.cancha)})
 
         while self.motor.estado.tiempo < self.duracion:
+            self.cambio_comportamientos_pendientes()
 
             estado, estados_jugadores, eventos = self.motor.tick()
 
@@ -248,4 +250,13 @@ class EjecutorPartido:
             except NoSePuedeCambiarJugador:
                 continue
 
-        
+    
+    def solicitar_cambio_comportamiento(self, usuario_id: int, jugador_id: int, comportamiento: str):
+        clave = (usuario_id, jugador_id)
+        self.comportamientos_pendientes[clave] = comportamiento
+
+    def cambio_comportamientos_pendientes(self):
+        for clave, comportamiento in self.comportamientos_pendientes.items():
+            self.motor.estado.comportamientos[clave] = comportamiento
+
+        self.comportamientos_pendientes.clear()

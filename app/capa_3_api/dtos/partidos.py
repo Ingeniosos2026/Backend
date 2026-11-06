@@ -19,3 +19,8 @@ class UnirseAmistoso(BaseModel):
 class CambioJugador(BaseModel):
     jugador_sale_id: int
     jugador_entra_id: int
+
+class CambiarComportamiento(BaseModel):
+    usuario_id: int
+    jugador_id: int
+    comp_id: int
