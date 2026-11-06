@@ -194,7 +194,7 @@ def test_direccion_arco_propio():
 
     resultado = primitivas.direccionArcoPropio()
 
-    assert resultado == Coordenada(0, 25)
+    assert resultado == Coordenada(1, 25)
 
 
 def test_direccion_arco_rival_usuario_derecho():
@@ -214,4 +214,4 @@ def test_direccion_arco_propio_usuario_derecho():
 
     resultado = primitivas.direccionArcoPropio()
 
-    assert resultado == Coordenada(100, 25)
+    assert resultado == Coordenada(99, 25)

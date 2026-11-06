@@ -15,7 +15,6 @@ comportamiento_atacar = """
 def comportamiento(primitivas):
     if primitivas.pelotaCerca():
         primitivas.patear(primitivas.direccionArcoRival())
-        primitivas.correr(primitivas.direccionPelota())
     else:
         primitivas.correr(primitivas.direccionPelota())
 """
