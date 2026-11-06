@@ -851,4 +851,4 @@ class Servicios:
         if comportamiento is None:
             raise ComportamientoNoEncontrado()
 
-        return CambioComportamientoResultado(jugador_id=jugador_id, codigo_comportamiento=comportamiento.codigo, nombre_comportamiento=comportamiento.nombre)
+        return CambioComportamientoResultado(jugador_id=jugador_equipo.id_jugador, codigo_comportamiento=comportamiento.codigo, nombre_comportamiento=comportamiento.nombre)

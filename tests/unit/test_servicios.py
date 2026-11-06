@@ -1904,3 +1904,117 @@ def test_obtener_datos_cambio_jugador_sale_no_encontrado():
             usuario_id=10,
             jugador_sale_id=1,
             jugador_entra_id=2)
+        
+def test_obtener_datos_cambio_comportamiento_correctamente():
+    repo_usuarios = Mock()
+    repo_partidos = Mock()
+    repo_equipos = Mock()
+    repo_comportamientos = Mock()
+
+    servicio = Servicios(usuarios=repo_usuarios, partidos=repo_partidos, equipos=repo_equipos, comportamientos=repo_comportamientos)
+
+    partido = Partido(
+        id_partido=1,
+        id_usuario_1=1,
+        id_usuario_2=20,
+        id_equipo_1=3,
+        id_equipo_2=4,
+        duracion_partido=5,
+        formacion_1=Formacion.OFENSIVA,
+        formacion_2=Formacion.DEFENSIVA,
+        tipo_partido=TipoPartido.AMISTOSO,
+        estado_partido=EstadoPartido.EN_CURSO)
+    
+    jugador=EquipoJugador(id_equipo=3, id_jugador=8)
+    comportamiento = Comportamiento(id=1, codigo="hola", nombre="Atacar")
+
+    repo_partidos.obtener_por_id.return_value = partido
+    repo_equipos.obtener_jugador_equipo.return_value = jugador
+    repo_comportamientos.obtener_comportamiento_por_id_y_usuario.return_value = comportamiento
+
+    resultado = servicio.obtener_datos_cambio_comportamiento(partido_id=5, usuario_id=1, jugador_id=8, comportamiento_id=3)
+
+    assert resultado.jugador_id == 8
+    assert resultado.codigo_comportamiento == "hola"
+    assert resultado.nombre_comportamiento == "Atacar"
+
+
+def test_obtener_datos_cambio_comportamiento_partido_no_encontrado():
+    repo_usuarios = Mock()
+    repo_partidos = Mock()
+    repo_equipos = Mock()
+    repo_comportamientos = Mock()
+
+    servicio = Servicios(usuarios=repo_usuarios, partidos=repo_partidos, equipos=repo_equipos, comportamientos=repo_comportamientos)
+
+    repo_partidos.obtener_por_id.return_value = None
+
+    with pytest.raises(PartidoNoEncontrado):
+        servicio.obtener_datos_cambio_comportamiento(partido_id=2, usuario_id=1, jugador_id=8, comportamiento_id=3)
+
+    repo_partidos.obtener_por_id.assert_called_once_with(2)
+    repo_equipos.obtener_jugador_equipo.assert_not_called()
+    repo_comportamientos.obtener_comportamiento_por_id_y_usuario.assert_not_called()
+
+
+def test_obtener_datos_cambio_comportamiento_usuario_no_encontrado():
+    repo_usuarios = Mock()
+    repo_partidos = Mock()
+    repo_equipos = Mock()
+    repo_comportamientos = Mock()
+
+    servicio = Servicios(usuarios=repo_usuarios, partidos=repo_partidos, equipos=repo_equipos, comportamientos=repo_comportamientos)
+
+    partido = Partido(
+        id_partido=1,
+        id_usuario_1=1,
+        id_usuario_2=2,
+        id_equipo_1=3,
+        id_equipo_2=4,
+        duracion_partido=5,
+        formacion_1=Formacion.OFENSIVA,
+        formacion_2=Formacion.DEFENSIVA,
+        tipo_partido=TipoPartido.AMISTOSO,
+        estado_partido=EstadoPartido.EN_CURSO)
+
+    repo_partidos.obtener_por_id.return_value = partido
+
+    with pytest.raises(UsuarioNoEncontrado):
+        servicio.obtener_datos_cambio_comportamiento(partido_id=5, usuario_id=3, jugador_id=8, comportamiento_id=3)
+
+    repo_partidos.obtener_por_id.assert_called_once_with(5)
+    repo_equipos.obtener_jugador_equipo.assert_not_called()
+    repo_comportamientos.obtener_comportamiento_por_id_y_usuario.assert_not_called()
+
+def test_obtener_datos_cambio_comportamiento_comportamiento_no_encontrado():
+    repo_usuarios = Mock()
+    repo_partidos = Mock()
+    repo_equipos = Mock()
+    repo_comportamientos = Mock()
+
+    servicio = Servicios(usuarios=repo_usuarios, partidos=repo_partidos, equipos=repo_equipos, comportamientos=repo_comportamientos)
+
+    partido = Partido(
+        id_partido=1,
+        id_usuario_1=1,
+        id_usuario_2=2,
+        id_equipo_1=10,
+        id_equipo_2=4,
+        duracion_partido=5,
+        formacion_1=Formacion.OFENSIVA,
+        formacion_2=Formacion.DEFENSIVA,
+        tipo_partido=TipoPartido.AMISTOSO,
+        estado_partido=EstadoPartido.EN_CURSO)
+
+    jugador = EquipoJugador(id_equipo=10, id_jugador=8)
+
+    repo_partidos.obtener_por_id.return_value = partido
+    repo_equipos.obtener_jugador_equipo.return_value = jugador
+    repo_comportamientos.obtener_comportamiento_por_id_y_usuario.return_value = None
+
+    with pytest.raises(ComportamientoNoEncontrado):
+        servicio.obtener_datos_cambio_comportamiento(partido_id=1, usuario_id=1, jugador_id=8, comportamiento_id=7)
+
+    repo_partidos.obtener_por_id.assert_called_once_with(1)
+    repo_equipos.obtener_jugador_equipo.assert_called_once_with(10, 8)
+    repo_comportamientos.obtener_comportamiento_por_id_y_usuario.assert_called_once_with(7, 1)
