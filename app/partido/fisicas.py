@@ -20,8 +20,9 @@ class FisicaPartido:
         self.actualizar_jugadores(t)
         self.actualizar_pelota(t)
 
-        self.resolver_colisiones_jugadores()
         self.resolver_colisiones_pelota()
+        self.resolver_colisiones_jugadores()
+        self.bordes_pelota()
 
     def actualizar_jugadores(self, t: float) -> None:
         for jugador in self.estado.jugadores.values():
@@ -38,12 +39,12 @@ class FisicaPartido:
             if distancia <= distancia_movimiento:
                 jugador.posicion = Coordenada(x=jugador.destino.x, y=jugador.destino.y)
                 jugador.destino = None
-                continue
 
-            direccion = calcular_direccion(jugador.posicion, jugador.destino)
-
-            jugador.posicion = Coordenada(x=jugador.posicion.x + direccion.x * distancia_movimiento, 
-                                          y=jugador.posicion.y + direccion.y * distancia_movimiento)
+            else:
+                direccion = calcular_direccion(jugador.posicion, jugador.destino)
+                jugador.posicion = Coordenada(x=jugador.posicion.x + direccion.x * distancia_movimiento, y=jugador.posicion.y + direccion.y * distancia_movimiento)
+    
+            self.limitar_posicion_jugador(jugador)
 
     def actualizar_pelota(self, t: float) -> None:
         pelota = self.estado.pelota
@@ -51,7 +52,6 @@ class FisicaPartido:
         pelota.posicion = Coordenada(x=pelota.posicion.x + pelota.velocidad.x * t, y=pelota.posicion.y + pelota.velocidad.y * t)
 
         self.aplicar_friccion_pelota(t)
-        self.bordes_pelota()
 
     def bordes_pelota(self) -> None:
         pelota = self.estado.pelota
@@ -138,17 +138,19 @@ class FisicaPartido:
 
 
     def resolver_colisiones_jugadores(self) -> None: 
-        # detecta y resuelve las colisiones entre jugadores (o eso deberia de hacer, tengo que testearlo y ver)
+        # detecta y resuelve las colisiones entre jugadores
         jugadores = list(self.estado.jugadores.values()) 
-        for i in range(len(jugadores)): 
-            for j in range(i + 1, len(jugadores)):
-                jugador_a = jugadores[i]
-                jugador_b = jugadores[j] 
-                distancia = calcular_distancia(jugador_a.posicion, jugador_b.posicion) 
-                distancia_minima = RADIO_JUGADOR + RADIO_JUGADOR
-                if distancia >= distancia_minima: 
-                    continue 
-                self.resolver_colision_jugadores(jugador_a, jugador_b, distancia)
+        # este for es para volver a verificar las colisiones.
+        for _ in range(2): 
+            for i in range(len(jugadores)): 
+                for j in range(i + 1, len(jugadores)):
+                    jugador_a = jugadores[i]
+                    jugador_b = jugadores[j] 
+                    distancia = calcular_distancia(jugador_a.posicion, jugador_b.posicion) 
+                    distancia_minima = RADIO_JUGADOR + RADIO_JUGADOR
+                    if distancia >= distancia_minima: 
+                        continue 
+                    self.resolver_colision_jugadores(jugador_a, jugador_b, distancia)
 
     
     def resolver_colision_jugadores(self, jugador_a, jugador_b, distancia: float) -> None:
@@ -178,6 +180,9 @@ class FisicaPartido:
         
         jugador_a.posicion = Coordenada(x=jugador_a.posicion.x - direccion.x * desplazamiento_a, y=jugador_a.posicion.y - direccion.y * desplazamiento_a)
         jugador_b.posicion = Coordenada(x=jugador_b.posicion.x + direccion.x * desplazamiento_b, y=jugador_b.posicion.y + direccion.y * desplazamiento_b)
+
+        self.limitar_posicion_jugador(jugador_a)
+        self.limitar_posicion_jugador(jugador_b)
 
 
     def resolver_colisiones_pelota(self) -> None:
@@ -225,3 +230,10 @@ class FisicaPartido:
             velocidad_rebote = velocidad
 
         pelota.velocidad = Coordenada(x=direccion.x * velocidad_rebote, y=direccion.y * velocidad_rebote)
+
+    def limitar_posicion_jugador(self, jugador) -> None:
+        cancha = self.estado.cancha
+
+        jugador.posicion = Coordenada(
+            x=max(RADIO_JUGADOR, min(jugador.posicion.x, cancha.ancho - RADIO_JUGADOR)),
+            y=max(RADIO_JUGADOR, min(jugador.posicion.y, cancha.alto - RADIO_JUGADOR)))
