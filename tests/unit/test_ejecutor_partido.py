@@ -21,11 +21,11 @@ def crear_motor_prueba() -> MotorPartido:
         arco_derecho=Arco(poste_superior=Coordenada(100, 20), poste_inferior=Coordenada(100, 30)),
     )
     jugador_1 = JugadorEstado(
-        id_jugador=1, id_equipo=10, id_usuario=1, posicion=Coordenada(20, 25),
+        id_jugador=1, id_equipo=10, id_usuario=1, nombre="Lean", posicion=Coordenada(20, 25),
         control=50, agilidad=60, fuerza=70, poder=80, velocidad=40
     )
     jugador_2 = JugadorEstado(
-        id_jugador=2, id_equipo=20, id_usuario=2, posicion=Coordenada(80, 25),
+        id_jugador=2, id_equipo=20, id_usuario=2, nombre="Lean2", posicion=Coordenada(80, 25),
         control=60, agilidad=50, fuerza=80, poder=70, velocidad=50
     )
     estado = EstadoPartido(
@@ -39,6 +39,10 @@ def crear_motor_prueba() -> MotorPartido:
             (1, 1): "def comportamiento(primitivas):\n    pass",
             (2, 2): "def comportamiento(primitivas):\n    pass",
         },
+        suplentes={},
+        comportamientos_disponibles={},
+        codigo_dt={},
+        dt_activo={1: False, 2: False},
         pelota=PelotaEstado(posicion=Coordenada(50, 25), velocidad=Coordenada(0, 0)),
     )
     return MotorPartido(estado)
@@ -144,6 +148,7 @@ def test_solicitar_cambio_queda_cambio_pendiente():
 
     resultado = CambioJugadorResultado(
         id_jugador=3,
+        nombre="Lean",
         control=60,
         agilidad=60,
         fuerza=60,
@@ -165,6 +170,7 @@ def test_solicitar_otro_cambio_pisa_el_anterior():
 
     resultado_1 = CambioJugadorResultado(
         id_jugador=3,
+        nombre="Lean",
         control=60,
         agilidad=60,
         fuerza=60,
@@ -174,6 +180,7 @@ def test_solicitar_otro_cambio_pisa_el_anterior():
     
     resultado_2 = CambioJugadorResultado(
         id_jugador=4,
+        nombre="Lean",
         control=60,
         agilidad=60,
         fuerza=60,
@@ -202,6 +209,7 @@ def test_no_permitir_mas_de_tres_cambios_por_equipo():
 
     resultado = CambioJugadorResultado(
         id_jugador=3,
+        nombre="Lean",
         control=60,
         agilidad=60,
         fuerza=60,
@@ -231,6 +239,7 @@ def test_realizar_cambio_correctamente():
 
     resultado = CambioJugadorResultado(
         id_jugador=3,
+        nombre="Lean",
         control=60,
         agilidad=60,
         fuerza=60,

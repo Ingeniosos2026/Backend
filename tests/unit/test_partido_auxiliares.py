@@ -71,6 +71,7 @@ def test_obtener_jugador():
         id_jugador=1,
         id_equipo=10,
         id_usuario=1,
+        nombre="Lean",
         posicion=Coordenada(20, 25),
         control=50,
         agilidad=60,
@@ -82,6 +83,7 @@ def test_obtener_jugador():
         id_jugador=1,
         id_equipo=11,
         id_usuario=2,
+        nombre="Lean2",
         posicion=Coordenada(20, 25),
         control=50,
         agilidad=60,
@@ -105,6 +107,10 @@ def test_obtener_jugador():
         cancha=cancha,
         jugadores={(1, 1): jugador1, (2, 1): jugador2},
         comportamientos={},
+        suplentes={},
+        comportamientos_disponibles={},
+        codigo_dt={},
+        dt_activo={1: False, 2: False},
         pelota=pelota)
 
     resultado = obtener_jugador(estado, id_usuario=1, id_jugador=1)

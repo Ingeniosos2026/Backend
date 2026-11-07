@@ -19,6 +19,7 @@ def crear_estado_prueba():
         id_jugador=1,
         id_equipo=10,
         id_usuario=1,
+        nombre="Lean",
         posicion=Coordenada(49, 25),
         control=50,
         agilidad=60,
@@ -30,6 +31,7 @@ def crear_estado_prueba():
         id_jugador=2,
         id_equipo=20,
         id_usuario=2,
+        nombre="Lean2",
         posicion=Coordenada(80, 25),
         control=60,
         agilidad=50,
@@ -57,6 +59,10 @@ def comportamiento(primitivas):
     pass
 """
         },
+        suplentes={},
+        comportamientos_disponibles={},
+        codigo_dt={},
+        dt_activo={1: False, 2: False},
         pelota=PelotaEstado(posicion=Coordenada(50, 25), velocidad=Coordenada(0, 0)))
 
 

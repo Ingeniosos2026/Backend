@@ -207,6 +207,7 @@ class EjecutorPartido:
             id_jugador=resultado.id_jugador,
             id_equipo=id_equipo,
             id_usuario=usuario_id,
+            nombre=resultado.nombre,
             posicion=nueva_posicion,
             control=resultado.control,
             agilidad=resultado.agilidad,

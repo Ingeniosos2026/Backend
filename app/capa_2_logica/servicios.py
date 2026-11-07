@@ -804,6 +804,7 @@ class Servicios:
         
         return CambioJugadorResultado(
             id_jugador=jugador.id_jugador,
+            nombre=jugador.nombre_jugador,
             control=jugador.control,
             agilidad=jugador.agilidad,
             fuerza=jugador.fuerza,
