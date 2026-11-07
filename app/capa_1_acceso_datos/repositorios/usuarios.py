@@ -25,3 +25,6 @@ class UsuarioRepositorio:
             .filter(UsuarioModelo.id_usuario == id_usuario)
             .first()
         )
+    
+    def actualizar(self) -> None:
+        self.db.commit()

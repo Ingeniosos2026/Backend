@@ -1,8 +1,14 @@
 from app.capa_0_definicion_bd.models.usuarios_modelos import Usuario
-from sqlalchemy import ForeignKey, String, Text, Column, Integer
+from sqlalchemy import ForeignKey, String, Text, Column, Integer, Enum as SQLenum
 from sqlalchemy.orm import relationship
+from enum import Enum
 
 from app.capa_0_definicion_bd.base_datos_sqlalchemy import Base
+
+
+class TipoComportamiento(str, Enum):
+    JUGADOR = "jugador"
+    DT = "dt"
 
 
 class Comportamiento(Base):
@@ -16,6 +22,7 @@ class Comportamiento(Base):
     )
     nombre = Column(String(100), nullable=False)
     codigo = Column(Text, nullable=False)
+    tipo = Column(SQLenum(TipoComportamiento), nullable=False, default=TipoComportamiento.JUGADOR)
 
     usuario = relationship(
         "Usuario",

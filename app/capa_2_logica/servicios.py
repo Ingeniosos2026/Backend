@@ -6,7 +6,7 @@ from itertools import combinations
 
 from app.capa_0_definicion_bd.models.usuarios_modelos import Usuario as UsuarioModelo
 from app.capa_0_definicion_bd.models.jugadores_modelos import Jugador as JugadorModelo
-from app.capa_0_definicion_bd.models.comportamientos_modelos import Comportamiento as ComportamientoModelo
+from app.capa_0_definicion_bd.models.comportamientos_modelos import TipoComportamiento, Comportamiento as ComportamientoModelo
 from app.capa_0_definicion_bd.models.equipo_modelos import Equipo as EquipoModelo
 from app.capa_0_definicion_bd.models.equipos_jugadores_modelos import EstadoJugador, EquipoJugador
 from app.capa_0_definicion_bd.models.partidos_modelos import Partido as PartidoModelo, TipoPartido, EstadoPartido, Formacion
@@ -16,7 +16,7 @@ from app.capa_0_definicion_bd.models.liga_modelos import EstadoLiga, Liga as Lig
 from app.capa_0_definicion_bd.models.liga_participantes_modelos import LigaParticipante
 from app.capa_0_definicion_bd.models.fixture_liga_modelos import FixtureLiga
 from app.capa_0_definicion_bd.models.tabla_liga_modelos import TablaLiga
-from app.partido.comportamientos import COMPORTAMIENTOS_PREDETERMINADOS
+from app.partido.comportamientos import COMPORTAMIENTOS_PREDETERMINADOS, COMPORTAMIENTO_DT_PREDETERMINADO
 from sqlalchemy.exc import IntegrityError
 from .errores import *
 from .resultados import *
@@ -27,6 +27,7 @@ class _RepoUsuariosProtocol(Protocol):
     def crear (self, usuario: UsuarioModelo) -> UsuarioModelo: ...
     def obtener_por_email(self, email: str) -> UsuarioModelo | None: ...
     def obtener_por_id(self, id_usuario: int) -> UsuarioModelo | None: ...
+    def actualizar(self) -> None: ...
 
 class _RepoJugadoresProtocol(Protocol):
     def crear(self, jugador: JugadorModelo) -> JugadorModelo: ...
@@ -119,7 +120,13 @@ class Servicios:
             for nombre_comportamiento, codigo in COMPORTAMIENTOS_PREDETERMINADOS
         ]
 
+        nombre_dt, codigo_dt = COMPORTAMIENTO_DT_PREDETERMINADO
+        comportamiento_dt = ComportamientoModelo(nombre=nombre_dt, codigo=codigo_dt, tipo=TipoComportamiento.DT)
+        nuevo_usuario.comportamientos.append(comportamiento_dt)
+
         usuario = self.usuarios.crear(nuevo_usuario)
+        usuario.id_comportamiento_dt = comportamiento_dt.id
+        self.usuarios.actualizar()
 
         return CrearUsuarioResultado(usuario=usuario)
 

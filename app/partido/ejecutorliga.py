@@ -69,7 +69,8 @@ class EjecutorLiga:
 
                 estado = crear_estado_partido(partido)
                 self.motor = MotorPartido(estado=estado)
-                administrador_partidas.agregar(partido_id=partido.id_partido, motor=self.motor)
+                ejecutor_partido = EjecutorPartido(partido_id=partido.id_partido, motor=self.motor, duracion=self.duracion)
+                administrador_partidas.agregar(partido_id=partido.id_partido, ejecutor=ejecutor_partido)
 
                 await admin_conexiones.emitir_lobby_liga(
                         liga_id=self.liga_id,
