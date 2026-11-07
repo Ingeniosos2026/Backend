@@ -12,6 +12,7 @@ from app.partido.administrar_partidos import administrador_partidas
 from app.partido.inicializacion import crear_estado_partido, crear_cancha
 from app.partido.motor import MotorPartido
 from app.partido.ejecutorliga import EjecutorLiga
+from app.partido.ejecutor import EjecutorPartido
 from app.partido.convertidor import tabla_a_dict, fixture_a_dict
 
 liga_router = APIRouter()
@@ -251,13 +252,14 @@ async def iniciar_liga(liga_id: int, usuario_id: int, servicio: Servicios = Depe
         estado = crear_estado_partido(partido)
         duracion_segundos = partido.duracion_partido * 60
         motor = MotorPartido(estado=estado)
-        ejecutor = EjecutorLiga(liga_id=liga_id, partido_id=partido.id_partido, motor=motor, duracion=duracion_segundos, turno=1)
-        administrador_partidas.agregar(partido_id=partido.id_partido, ejecutor=ejecutor)
+        ejecutor_partido = EjecutorPartido(partido_id=partido.id_partido, motor=motor, duracion=duracion_segundos)
+        ejecutor_liga = EjecutorLiga(liga_id=liga_id, partido_id=partido.id_partido, motor=motor, duracion=duracion_segundos, ejecutor_partido=ejecutor_partido, turno=1)
+        administrador_partidas.agregar(partido_id=partido.id_partido, ejecutor=ejecutor_partido)
 
         fixture = [fixture_a_dict(fix) for fix in resultado.fixture]
         tabla = [tabla_a_dict(tab) for tab in resultado.tabla]
 
-        asyncio.create_task(ejecutor.ejecutar())
+        asyncio.create_task(ejecutor_liga.ejecutar())
 
     except LigaNoEncontrada:
         return JSONResponse(status_code=404, content={"error": "LIGA_NO_ENCONTRADA", "mensaje": "La liga no existe"})
