@@ -116,7 +116,7 @@ class Servicios:
             nombre_club=nombre_club
         )
         nuevo_usuario.comportamientos = [
-            ComportamientoModelo(nombre=nombre_comportamiento, codigo=codigo)
+            ComportamientoModelo(nombre=nombre_comportamiento, codigo=codigo, tipo=TipoComportamiento.JUGADOR)
             for nombre_comportamiento, codigo in COMPORTAMIENTOS_PREDETERMINADOS
         ]
 
@@ -445,7 +445,7 @@ class Servicios:
         except CodigoComportamientoInvalido as exc:
             raise DatosInvalidos() from exc
 
-        nuevo_comportamiento = ComportamientoModelo(id_usuario = usuario_id, nombre= nombre.strip(), codigo= codigo_sanitizado)
+        nuevo_comportamiento = ComportamientoModelo(id_usuario = usuario_id, nombre= nombre.strip(), codigo= codigo_sanitizado, tipo=TipoComportamiento.JUGADOR)
         comportamiento = self.comportamientos.crear(nuevo_comportamiento)
 
         return CrearComportamientoResultado(comportamiento=comportamiento)
