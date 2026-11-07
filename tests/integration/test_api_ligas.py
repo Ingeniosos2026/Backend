@@ -602,3 +602,199 @@ def test_endpoint_obtener_equipo_de_liga_rechaza_liga_inexistente(client):
 
     assert response.status_code == 404
     assert response.json()["error"] == "LIGA_NO_ENCONTRADA"
+
+def test_cambiar_alineacion_en_juego_actualiza_formacion_y_titulares(client, db_test):
+    usuario_1 = Usuario(
+        email="pepito@gmail.com",
+        nombre="pepito",
+        id_avatar=1,
+        contraseña="asd123",
+        nombre_club="boca"
+    )
+    db_test.add(usuario_1)
+    db_test.commit()
+
+    equipo_1 = Equipo(id_usuario=usuario_1.id_usuario)
+    liga = Liga(
+        id_usuario=usuario_1.id_usuario,
+        nombre="la peremier",
+        estado=EstadoLiga.EN_JUEGO,
+        min_jugadores=2,
+        max_jugadores=2,
+        duracion_partido=10
+    )
+    db_test.add_all([equipo_1, liga])
+    db_test.commit()
+
+    jugadores_1 = [
+        Jugador(
+            id_usuario=usuario_1.id_usuario,
+            nombre_jugador=f"messi-{indice}",
+            control=60,
+            agilidad=60,
+            fuerza=60,
+            poder=60,
+            velocidad=60
+        )
+        for indice in range(1, 8)
+    ]
+    comportamiento_actual = Comportamiento(id_usuario=usuario_1.id_usuario, nombre="Actual", codigo="")
+    comportamiento_nuevo = Comportamiento(id_usuario=usuario_1.id_usuario, nombre="Nuevo", codigo="")
+    db_test.add_all(jugadores_1 + [comportamiento_actual, comportamiento_nuevo])
+    db_test.commit()
+
+    participacion_1 = LigaParticipante(
+        id_liga=liga.id,
+        id_usuario=usuario_1.id_usuario,
+        id_equipo=equipo_1.id_equipo,
+        formacion=Formacion.OFENSIVA
+    )
+    asociaciones_1 = [
+        EquipoJugador(
+            id_equipo=equipo_1.id_equipo,
+            id_jugador=jugador.id_jugador,
+            id_comportamiento=comportamiento_actual.id,
+            estado=EstadoJugador.TITULAR if indice < 3 else EstadoJugador.SUPLENTE
+        )
+        for indice, jugador in enumerate(jugadores_1[:6])
+    ]
+    db_test.add_all([participacion_1] + asociaciones_1)
+    db_test.commit()
+
+    orden_alineacion = [jugadores_1[3], jugadores_1[4], jugadores_1[5],
+                        jugadores_1[0], jugadores_1[1], jugadores_1[2]]
+    alineacion = [{
+            "id_jugador": jugador.id_jugador,
+            "id_comportamiento": comportamiento_actual.id}
+        for jugador in orden_alineacion]
+    response = client.put(
+        f"/liga/{liga.id}/alineacion/{usuario_1.id_usuario}",
+        json={"formacion": "defensiva", "jugadores": alineacion},
+    )
+
+    assert response.status_code == 200
+    assert response.json()["formacion"] == Formacion.DEFENSIVA.value
+    assert participacion_1.formacion == Formacion.DEFENSIVA
+    jugadores_del_equipo = (db_test.query(EquipoJugador).filter_by(id_equipo=equipo_1.id_equipo).all())
+    assert sorted(asociacion.id_jugador for asociacion in jugadores_del_equipo) == sorted(jugador.id_jugador for jugador in jugadores_1[:6])
+
+    titulares = []
+    suplentes = []
+    for asociacion in jugadores_del_equipo:
+        if asociacion.estado == EstadoJugador.TITULAR:
+            titulares.append(asociacion.id_jugador)
+        else:
+            suplentes.append(asociacion.id_jugador)
+
+    assert sorted(titulares) == sorted(jugador.id_jugador for jugador in jugadores_1[3:6])
+    assert sorted(suplentes) == sorted(jugador.id_jugador for jugador in jugadores_1[:3])
+    for asociacion in jugadores_del_equipo:
+        assert asociacion.id_comportamiento == comportamiento_actual.id
+
+    jugadores_en_respuesta = response.json()["jugadores"]
+    assert sorted(jugador["id"] for jugador in jugadores_en_respuesta) == sorted(jugador.id_jugador for jugador in jugadores_1[:6])
+    titulares_en_respuesta = []
+    for jugador in jugadores_en_respuesta:
+        assert jugador["comportamiento"]["id"] == comportamiento_actual.id
+        if jugador["estado"] == EstadoJugador.TITULAR.value:
+            titulares_en_respuesta.append(jugador["id"])
+    assert sorted(titulares_en_respuesta) == sorted(jugador.id_jugador for jugador in jugadores_1[3:6])
+
+##todo esto es solo para chequear que se cambian los comportamientos si no se eligen suplentes
+    response_comportamientos = client.put(f"/liga/{liga.id}/alineacion/{usuario_1.id_usuario}",
+        json={
+            "formacion": "defensiva",
+            "jugadores": [
+                {
+                    "id_jugador": jugador.id_jugador,
+                    "id_comportamiento": comportamiento_nuevo.id,
+                }
+                for jugador in jugadores_1[3:6]
+            ]}
+    )
+
+    assert response_comportamientos.status_code == 200
+    asociaciones_actualizadas = {asociacion.id_jugador: asociacion for asociacion in db_test.query(EquipoJugador).filter_by(id_equipo=equipo_1.id_equipo).all()}
+    for jugador in jugadores_1[3:6]:
+        assert asociaciones_actualizadas[jugador.id_jugador].id_comportamiento == comportamiento_nuevo.id
+        assert asociaciones_actualizadas[jugador.id_jugador].estado == EstadoJugador.TITULAR
+    for jugador in jugadores_1[:3]:
+        assert asociaciones_actualizadas[jugador.id_jugador].id_comportamiento == comportamiento_actual.id
+        assert asociaciones_actualizadas[jugador.id_jugador].estado == EstadoJugador.SUPLENTE
+
+
+def test_cambiar_alineacion_rechaza_jugador_no_seleccionado(client, db_test):
+    usuario = Usuario(
+        email="pepito@gmail.com",
+        nombre="pepito",
+        id_avatar=1,
+        contraseña="asd123",
+        nombre_club="Boca"
+    )
+    db_test.add(usuario)
+    db_test.commit()
+
+    equipo = Equipo(id_usuario=usuario.id_usuario)
+    liga = Liga(
+        id_usuario=usuario.id_usuario,
+        nombre="superliga",
+        estado=EstadoLiga.EN_JUEGO,
+        min_jugadores=2,
+        max_jugadores=2,
+        duracion_partido=10,
+    )
+    db_test.add_all([equipo, liga])
+    db_test.commit()
+
+    jugadores = [
+        Jugador(
+            id_usuario=usuario.id_usuario,
+            nombre_jugador=f"jugador {indice}",
+            control=60,
+            agilidad=60,
+            fuerza=60,
+            poder=60,
+            velocidad=60
+        )
+        for indice in range(1, 8)
+    ]
+    comportamiento = Comportamiento(id_usuario=usuario.id_usuario, nombre="Comportamiento", codigo="")
+    db_test.add_all(jugadores + [comportamiento])
+    db_test.commit()
+
+    participacion = LigaParticipante(
+        id_liga=liga.id,
+        id_usuario=usuario.id_usuario,
+        id_equipo=equipo.id_equipo,
+        formacion=Formacion.OFENSIVA
+    )
+    asociaciones = [
+        EquipoJugador(
+            id_equipo=equipo.id_equipo,
+            id_jugador=jugador.id_jugador,
+            id_comportamiento=comportamiento.id,
+            estado=EstadoJugador.TITULAR if indice < 3 else EstadoJugador.SUPLENTE
+        )
+        for indice, jugador in enumerate(jugadores[:6])
+    ]
+    db_test.add_all([participacion] + asociaciones)
+    db_test.commit()
+
+    alineacion_invalida = [
+        {
+            "id_jugador": jugador.id_jugador,
+            "id_comportamiento": comportamiento.id,
+        }
+        for jugador in jugadores[1:]
+    ]
+    response = client.put(f"/liga/{liga.id}/alineacion/{usuario.id_usuario}", json={"formacion": "defensiva", "jugadores": alineacion_invalida})
+
+    assert response.status_code == 400
+    assert response.json()["error"] == "DATOS_INVALIDOS"
+    assert participacion.formacion == Formacion.OFENSIVA
+    jugadores_del_equipo = (db_test.query(EquipoJugador).filter_by(id_equipo=equipo.id_equipo).all())
+    assert len(jugadores_del_equipo) == 6
+    for indice, jugador in enumerate(jugadores[:6]):
+        asociacion = (db_test.query(EquipoJugador).filter_by(id_equipo=equipo.id_equipo, id_jugador=jugador.id_jugador).one())
+        estado_esperado = (EstadoJugador.TITULAR if indice < 3 else EstadoJugador.SUPLENTE)
+        assert asociacion.estado == estado_esperado

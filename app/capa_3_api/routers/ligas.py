@@ -5,7 +5,7 @@ import asyncio
 
 from app.capa_2_logica.servicios import Servicios
 from app.capa_2_logica.errores import *
-from app.capa_3_api.dtos.ligas import CrearLiga, UnirseLiga
+from app.capa_3_api.dtos.ligas import CrearLiga, UnirseLiga, CambiarAlineacion
 from app.capa_3_api.websockets.admin_conexiones import admin_conexiones
 from app.capa_3_api.dependencias import obtener_servicio
 from app.partido.administrar_partidos import administrador_partidas
@@ -357,3 +357,70 @@ def obtener_equipo_de_liga(liga_id: int, equipo_id: int, servicio: Servicios = D
             status_code=404,
             content={"error": "EQUIPO_NO_ENCONTRADO", "mensaje": "El equipo no pertenece a la liga"},
         )
+
+@liga_router.put("/liga/{liga_id}/alineacion/{usuario_id}", status_code=status.HTTP_200_OK)
+async def cambiar_alineacion(liga_id: int, usuario_id: int, datos: CambiarAlineacion, servicio: Servicios = Depends(obtener_servicio)):
+    try:
+        resultado = servicio.cambiar_alineacion(
+            liga_id=liga_id,
+            usuario_id=usuario_id,
+            jugadores_comportamientos=[
+                (jugador.id_jugador, jugador.id_comportamiento)
+                for jugador in datos.jugadores
+            ],
+            formacion=datos.formacion)
+        participacion = resultado.participacion
+        payload = {
+            "id_usuario": usuario_id,
+            "id_equipo": participacion.id_equipo,
+            "formacion": datos.formacion.value,
+            "jugadores": [
+                {
+                    "id": asociacion.jugador.id_jugador,
+                    "nombre": asociacion.jugador.nombre_jugador,
+                    "estado": asociacion.estado.value,
+                    "comportamiento": (
+                        {
+                            "id": asociacion.comportamiento.id,
+                            "nombre": asociacion.comportamiento.nombre,
+                        }
+                        if asociacion.comportamiento is not None
+                        else None
+                    ),
+                }
+                for asociacion in servicio.obtener_equipo_de_liga(liga_id, participacion.id_equipo).equipo.jugadores
+            ]
+        }
+        await admin_conexiones.emitir_lobby_liga(
+            liga_id=liga_id,
+            accion="alineacion_actualizada",
+            payload=payload)
+        return {"mensaje": "Alineación actualizada", **payload}
+    except LigaNoEncontrada:
+        return JSONResponse(
+            status_code=404,
+            content={"error": "LIGA_NO_ENCONTRADA", "mensaje": "La liga no existe"})
+    except UsuarioNoExisteEnLiga:
+        return JSONResponse(
+            status_code=404,
+            content={"error": "USUARIO_NO_EXISTE_EN_LIGA", "mensaje": "El usuario no pertenece a esta liga"})
+    except JugadorNoEncontrado:
+        return JSONResponse(
+            status_code=404,
+            content={"error": "JUGADOR_NO_ENCONTRADO", "mensaje": "El jugador no pertenece al usuario"})
+    except ComportamientoNoEncontrado:
+        return JSONResponse(
+            status_code=404,
+            content={"error": "COMPORTAMIENTO_NO_ENCONTRADO", "mensaje": "El comportamiento no pertenece al usuario"})
+    except DatosInvalidos:
+        return JSONResponse(
+            status_code=400,
+            content={"error": "DATOS_INVALIDOS", "mensaje": "Debe enviar entre uno y seis jugadores distintos de su equipo"})
+    except LigaNoDisponible:
+        return JSONResponse(
+            status_code=409,
+            content={"error": "LIGA_NO_DISPONIBLE", "mensaje": "No se puede cambiar la alineación de esta liga"})
+    except Exception:
+        return JSONResponse(
+            status_code=500,
+            content={"error": "ERROR_INTERNO", "mensaje": "Ocurrió un error interno del servidor"})

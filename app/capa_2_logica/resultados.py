@@ -126,3 +126,7 @@ class CambioComportamientoResultado:
     jugador_id: int
     codigo_comportamiento: str
     nombre_comportamiento: str
+
+@dataclass(slots=True)
+class CambiarAlineacionResultado:
+    participacion: LigaParticipante

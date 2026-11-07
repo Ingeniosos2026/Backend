@@ -852,3 +852,84 @@ class Servicios:
             raise ComportamientoNoEncontrado()
 
         return CambioComportamientoResultado(jugador_id=jugador_equipo.id_jugador, codigo_comportamiento=comportamiento.codigo, nombre_comportamiento=comportamiento.nombre)
+
+    def cambiar_alineacion(self, liga_id: int, usuario_id: int, jugadores_comportamientos: list[tuple[int, int]], formacion: Formacion) -> CambiarAlineacionResultado:
+        liga = self.ligas.obtener_por_id(liga_id)
+        if liga is None:
+            raise LigaNoEncontrada()
+
+        participacion = None
+        for participante in liga.participantes:
+            if participante.id_usuario == usuario_id:
+                participacion = participante
+                break
+
+        if participacion is None:
+            raise UsuarioNoExisteEnLiga()
+
+        if liga.estado not in (EstadoLiga.DISPONIBLE, EstadoLiga.EN_JUEGO):
+            raise LigaNoDisponible()
+
+        if not 1 <= len(jugadores_comportamientos) <= 6:
+            raise DatosInvalidos()
+
+        id_jugadores = [jugador_id for jugador_id, _ in jugadores_comportamientos]
+        if len(set(id_jugadores)) != len(jugadores_comportamientos):
+            raise DatosInvalidos()
+
+        for jugador_id, comportamiento_id in jugadores_comportamientos:
+            jugador = self.jugadores.obtener_por_id(jugador_id)
+            if jugador is None or jugador.id_usuario != usuario_id:
+                raise JugadorNoEncontrado()
+
+            comportamiento = self.comportamientos.obtener_comportamiento_por_id_y_usuario(comportamiento_id, usuario_id)
+            if comportamiento is None:
+                raise ComportamientoNoEncontrado()
+
+        self._actualizar_jugadores_equipo(participacion.id_equipo, jugadores_comportamientos)
+        participacion.formacion = formacion
+        self.ligas.actualizar()
+
+        return CambiarAlineacionResultado(participacion=participacion)
+
+    def _actualizar_jugadores_equipo(self, equipo_id: int, jugadores_comportamientos: list[tuple[int, int]]) -> None:
+        equipo = self.equipos.obtener_por_id(equipo_id)
+        if equipo is None:
+            raise EquipoNoEncontrado()
+
+        asociaciones = []
+        id_jugadores_del_equipo = []
+        for asociacion in equipo.jugadores:
+            asociaciones.append(asociacion)
+            id_jugadores_del_equipo.append(asociacion.id_jugador)
+
+        id_jugadores_de_la_alineacion = []
+        for jugador_id, _ in jugadores_comportamientos:
+            id_jugadores_de_la_alineacion.append(jugador_id)
+
+        if len(id_jugadores_de_la_alineacion) < 1 or len(id_jugadores_de_la_alineacion) > 6:
+            raise DatosInvalidos()
+
+        for jugador_id in id_jugadores_de_la_alineacion:
+            if jugador_id not in id_jugadores_del_equipo:
+                raise DatosInvalidos()
+
+        for jugador_id, comportamiento_id in jugadores_comportamientos:
+            asociacion = None
+            for jugador_equipo in asociaciones:
+                if jugador_equipo.id_jugador == jugador_id:
+                    asociacion = jugador_equipo
+                    break
+
+            if asociacion is None:
+                raise DatosInvalidos()
+
+            asociacion.id_comportamiento = comportamiento_id
+
+        if len(jugadores_comportamientos) == 6:
+            for indice, (jugador_id, _) in enumerate(jugadores_comportamientos):
+                estado = EstadoJugador.TITULAR if indice < 3 else EstadoJugador.SUPLENTE
+                for jugador_equipo in asociaciones:
+                    if jugador_equipo.id_jugador == jugador_id:
+                        jugador_equipo.estado = estado
+                        break
