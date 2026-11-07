@@ -177,7 +177,7 @@ class EjecutorPartido:
         # si el partido esta en juego, guardo el cambio. si ya habia uno de antes lo piso (queda el ultimo cambio solicitado)
         self.cambios_pendientes[id_equipo] = (usuario_id, jugador_sale_id, resultado)
     
-    async def realizar_cambio(self, usuario_id: int, id_equipo:int, jugador_sale_id: int, resultado: CambioJugadorResultado):
+    async def realizar_cambio(self, usuario_id: int, id_equipo: int, jugador_sale_id: int, resultado: CambioJugadorResultado):
         # compruebo que el equipo pueda realizar un cambio
         if not self.puede_realizar_cambio(id_equipo):
             raise NoSePuedeCambiarJugador()
@@ -191,38 +191,24 @@ class EjecutorPartido:
         if jugador_sale is None:
             raise NoSePuedeCambiarJugador()
 
-
+        # busco al jugador que entra entre los que no juegan
         clave_entra = (usuario_id, resultado.id_jugador)
+        jugador_entra = estado.suplentes.get(clave_entra)
 
-        # compruebo que el jugador que entra no esta jugando
-        if clave_entra in estado.jugadores:
+        if jugador_entra is None:
             raise NoSePuedeCambiarJugador()
 
         # copio la posicion del jugador que sale
-        posicion = jugador_sale.posicion
-        nueva_posicion = Coordenada(x=posicion.x, y=posicion.y)
-
-        # creo el estado del jugador que entra
-        nuevo_jugador = JugadorEstado(
-            id_jugador=resultado.id_jugador,
-            id_equipo=id_equipo,
-            id_usuario=usuario_id,
-            nombre=resultado.nombre,
-            posicion=nueva_posicion,
-            control=resultado.control,
-            agilidad=resultado.agilidad,
-            fuerza=resultado.fuerza,
-            poder=resultado.poder,
-            velocidad=resultado.velocidad)
+        jugador_entra.posicion = Coordenada(x=jugador_sale.posicion.x, y=jugador_sale.posicion.y)
+        jugador_entra.destino = None
 
         # realizo el remplazo en memoria
         # elimino al jugador del partido
         del estado.jugadores[clave_sale]
         del estado.comportamientos[clave_sale]
-        
-        #ingreso al nuevo
-        estado.jugadores[clave_entra] = nuevo_jugador
-        estado.comportamientos[clave_entra] = resultado.codigo_comportamiento
+
+        estado.suplentes[clave_sale] = jugador_sale
+        estado.jugadores[clave_entra] = jugador_entra
 
         # registro que el equipo realizo  un cambio en esta pausa 
         self.equipos_que_cambiaron.add((self.pausas_realizadas, id_equipo))
@@ -234,7 +220,9 @@ class EjecutorPartido:
                 "id_equipo": id_equipo,
                 "id_usuario": usuario_id,
                 "jugador_sale_id": jugador_sale_id,
-                "jugador_entra_id":resultado.id_jugador})
+                "nombre_jugador_sale": jugador_sale.nombre,
+                "jugador_entra_id":resultado.id_jugador,
+                "nombre_jugador_entra": jugador_entra.nombre})
 
     async def procesar_cambios_pendientes(self):
         for id_equipo, cambio in list(self.cambios_pendientes.items()):
