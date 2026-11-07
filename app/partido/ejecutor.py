@@ -205,7 +205,8 @@ class EjecutorPartido:
         # realizo el remplazo en memoria
         # elimino al jugador del partido
         del estado.jugadores[clave_sale]
-        del estado.comportamientos[clave_sale]
+        # elimino al jugador de los que estan fuera de la cancha
+        del estado.suplentes[clave_entra]
 
         estado.suplentes[clave_sale] = jugador_sale
         estado.jugadores[clave_entra] = jugador_entra
