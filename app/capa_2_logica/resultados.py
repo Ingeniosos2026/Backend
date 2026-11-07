@@ -109,6 +109,7 @@ class TablaCompletaResultado:
 @dataclass(slots=True, frozen=True)
 class CambioJugadorResultado:
     id_jugador: int
+    nombre: str
     control: int
     agilidad: int
     fuerza: int

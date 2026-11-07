@@ -89,6 +89,7 @@ def crear_jugadores_estado(jugadores: list[EquipoJugador], id_usuario: int, id_e
             id_jugador=jugador.id_jugador,
             id_equipo=id_equipo,
             id_usuario=id_usuario,
+            nombre=jugador.nombre_jugador,
             posicion=posicion,
             control=jugador.control,
             agilidad=jugador.agilidad,

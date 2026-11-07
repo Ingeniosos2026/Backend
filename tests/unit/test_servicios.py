@@ -1835,6 +1835,7 @@ def test_obtener_datos_cambio_jugador_correctamente():
 
     assert resultado == CambioJugadorResultado(
         id_jugador=3,
+        nombre="ronaldo",
         control=60,
         agilidad=60,
         fuerza=60,
