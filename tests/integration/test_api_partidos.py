@@ -6,6 +6,7 @@ from app.capa_0_definicion_bd.models.equipo_modelos import Equipo
 from app.capa_0_definicion_bd.models.equipos_jugadores_modelos import EstadoJugador, EquipoJugador
 from app.capa_0_definicion_bd.models.comportamientos_modelos import Comportamiento
 from app.capa_0_definicion_bd.models.partidos_modelos import (EstadoPartido, Formacion, TipoPartido, Partido)
+from app.capa_0_definicion_bd.models.usuarios_modelos import Usuario
 from app.capa_2_logica.errores import *
 from app.capa_2_logica.resultados import CrearPartidoResultado, CambioJugadorResultado
 from app.capa_3_api.dependencias import obtener_servicio
@@ -641,3 +642,90 @@ def test_cambiar_comportamiento_comportamiento_no_encontrado(client, db_test, mo
     assert response.json() == {
         "error": "NO_SE_PUEDE_CAMBIAR_COMPORTAMIENTO",
         "mensaje": "No se puede realizar el cambio de comportamiento solicitado"}
+
+def test_obtener_usuario_de_partido_devuelve_datos_y_emite_evento_websocket(client, db_test):
+    partido, _ = crear_partido_pendiente_test(client, db_test)
+    equipos_y_jugadores = {
+        partido.id_usuario_1: (partido.id_equipo_1, preparar_jugadores_equipo_test(
+            db_test, partido.id_usuario_1, partido.id_equipo_1)),
+        partido.id_usuario_2: (partido.id_equipo_2, preparar_jugadores_equipo_test(
+            db_test, partido.id_usuario_2, partido.id_equipo_2))
+    }
+
+    with client.websocket_connect(f"/ws/partido/{partido.id_partido}") as websocket:
+        for usuario_id, (equipo_id, jugadores) in equipos_y_jugadores.items():
+            response = client.get(f"/partido/{partido.id_partido}/{usuario_id}")
+
+            assert response.status_code == 200
+            datos = response.json()
+            usuario = db_test.get(Usuario, usuario_id)
+            assert datos["usuario"] == {
+                "id": usuario_id,
+                "nombre": usuario.nombre,
+                "club": usuario.nombre_club,
+                "avatar": usuario.id_avatar,
+            }
+            assert datos["id_equipo"] == equipo_id
+            assert datos["formacion"] == (
+                partido.formacion_1.value
+                if usuario_id == partido.id_usuario_1
+                else partido.formacion_2.value
+            )
+            asociaciones = db_test.get(Equipo, equipo_id).jugadores
+            jugadores_por_id = {jugador["id"]: jugador for jugador in datos["jugadores"]}
+            assert set(jugadores_por_id) == {jugador.id_jugador for jugador in jugadores}
+            for asociacion in asociaciones:
+                jugador = jugadores_por_id[asociacion.id_jugador]
+                assert jugador == {
+                    "id": asociacion.jugador.id_jugador,
+                    "nombre": asociacion.jugador.nombre_jugador,
+                    "estado": asociacion.estado.value,
+                    "comportamiento": {
+                        "id": asociacion.comportamiento.id,
+                        "nombre": asociacion.comportamiento.nombre,
+                    },
+                }
+
+            payload_websocket = {
+                "avatar": usuario.id_avatar,
+                "jugadores": [
+                    {
+                        "id": asociacion.jugador.id_jugador,
+                        "nombre": asociacion.jugador.nombre_jugador,
+                    }
+                    for asociacion in asociaciones
+                ]}
+            assert websocket.receive_json() == {
+                "action": "informacion_usuario_partido",
+                "payload": payload_websocket}
+
+
+def test_obtener_usuario_de_partido_mapea_partido_no_encontrado(client, db_test):
+    partido_id_inexistente = 51
+    assert db_test.get(Partido, partido_id_inexistente) is None
+
+    response = client.get(f"/partido/{partido_id_inexistente}/10")
+
+    assert response.status_code == 404
+    assert response.json()["error"] == "PARTIDO_NO_ENCONTRADO"
+
+
+def test_obtener_usuario_de_partido_mapea_usuario_no_encontrado(client, db_test):
+    partido, _ = crear_partido_pendiente_test(client, db_test)
+    usuario_que_no_participa = 999
+
+    response = client.get(f"/partido/{partido.id_partido}/{usuario_que_no_participa}")
+
+    assert response.status_code == 404
+    assert response.json()["error"] == "USUARIO_NO_ENCONTRADO"
+
+
+def test_obtener_usuario_de_partido_mapea_equipo_no_encontrado(client, db_test):
+    partido, _ = crear_partido_pendiente_test(client, db_test)
+    partido.id_equipo_2 = None
+    db_test.commit()
+
+    response = client.get(f"/partido/{partido.id_partido}/{partido.id_usuario_2}")
+
+    assert response.status_code == 404
+    assert response.json()["error"] == "EQUIPO_NO_ENCONTRADO"

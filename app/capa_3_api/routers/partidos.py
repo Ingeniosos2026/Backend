@@ -285,3 +285,58 @@ def cambiar_comportamiento(partido_id: int, datos: CambiarComportamiento, servic
     
     return {"mensaje": "solicitud de cambio de comportamiento recibida",
             "Nuevo_comportamiento": resultado.nombre_comportamiento}
+
+@partido_router.get("/partido/{partido_id}/{usuario_id}", status_code=status.HTTP_200_OK)
+async def obtener_usuario_de_partido(partido_id: int, usuario_id: int, servicio: Servicios = Depends(obtener_servicio)):
+    try:
+        resultado = servicio.obtener_usuario_de_partido(partido_id, usuario_id)
+        respuesta = {
+            "usuario": {
+                "id": resultado.usuario.id_usuario,
+                "nombre": resultado.usuario.nombre,
+                "club": resultado.usuario.nombre_club,
+                "avatar": resultado.usuario.id_avatar},
+            "id_equipo": resultado.equipo.id_equipo,
+            "formacion": resultado.formacion.value,
+            "jugadores": [{
+                    "id": asociacion.jugador.id_jugador,
+                    "nombre": asociacion.jugador.nombre_jugador,
+                    "estado": asociacion.estado.value,
+                    "comportamiento": (
+                        {
+                            "id": asociacion.comportamiento.id,
+                            "nombre": asociacion.comportamiento.nombre
+                        }
+                        if asociacion.comportamiento is not None
+                        else None
+                    ),
+                }
+                for asociacion in resultado.equipo.jugadores
+            ],
+        }
+        payload_websocket = {
+            "avatar": resultado.usuario.id_avatar,
+            "jugadores": [
+                {
+                    "id": asociacion.jugador.id_jugador,
+                    "nombre": asociacion.jugador.nombre_jugador,
+                }
+                for asociacion in resultado.equipo.jugadores
+            ]}
+        await admin_conexiones.emitir_partido(partido_id, "informacion_usuario_partido", payload_websocket)
+        return respuesta
+    except PartidoNoEncontrado:
+        return JSONResponse(
+            status_code=404,
+            content={"error": "PARTIDO_NO_ENCONTRADO", "mensaje": "El partido no existe"},
+        )
+    except UsuarioNoEncontrado:
+        return JSONResponse(
+            status_code=404,
+            content={"error": "USUARIO_NO_ENCONTRADO", "mensaje": "El usuario no participa en este partido"},
+        )
+    except EquipoNoEncontrado:
+        return JSONResponse(
+            status_code=404,
+            content={"error": "EQUIPO_NO_ENCONTRADO", "mensaje": "El equipo del usuario no existe"},
+        )
