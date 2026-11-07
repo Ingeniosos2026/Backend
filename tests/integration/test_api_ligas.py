@@ -639,7 +639,8 @@ def test_cambiar_alineacion_en_juego_actualiza_formacion_y_titulares(client, db_
         for indice in range(1, 8)
     ]
     comportamiento_actual = Comportamiento(id_usuario=usuario_1.id_usuario, nombre="Actual", codigo="")
-    db_test.add_all(jugadores_1 + [comportamiento_actual])
+    comportamiento_nuevo = Comportamiento(id_usuario=usuario_1.id_usuario, nombre="Nuevo", codigo="")
+    db_test.add_all(jugadores_1 + [comportamiento_actual, comportamiento_nuevo])
     db_test.commit()
 
     participacion_1 = LigaParticipante(
@@ -698,6 +699,28 @@ def test_cambiar_alineacion_en_juego_actualiza_formacion_y_titulares(client, db_
         if jugador["estado"] == EstadoJugador.TITULAR.value:
             titulares_en_respuesta.append(jugador["id"])
     assert sorted(titulares_en_respuesta) == sorted(jugador.id_jugador for jugador in jugadores_1[3:6])
+
+##todo esto es solo para chequear que se cambian los comportamientos si no se eligen suplentes
+    response_comportamientos = client.put(f"/liga/{liga.id}/alineacion/{usuario_1.id_usuario}",
+        json={
+            "formacion": "defensiva",
+            "jugadores": [
+                {
+                    "id_jugador": jugador.id_jugador,
+                    "id_comportamiento": comportamiento_nuevo.id,
+                }
+                for jugador in jugadores_1[3:6]
+            ]}
+    )
+
+    assert response_comportamientos.status_code == 200
+    asociaciones_actualizadas = {asociacion.id_jugador: asociacion for asociacion in db_test.query(EquipoJugador).filter_by(id_equipo=equipo_1.id_equipo).all()}
+    for jugador in jugadores_1[3:6]:
+        assert asociaciones_actualizadas[jugador.id_jugador].id_comportamiento == comportamiento_nuevo.id
+        assert asociaciones_actualizadas[jugador.id_jugador].estado == EstadoJugador.TITULAR
+    for jugador in jugadores_1[:3]:
+        assert asociaciones_actualizadas[jugador.id_jugador].id_comportamiento == comportamiento_actual.id
+        assert asociaciones_actualizadas[jugador.id_jugador].estado == EstadoJugador.SUPLENTE
 
 
 def test_cambiar_alineacion_rechaza_jugador_no_seleccionado(client, db_test):

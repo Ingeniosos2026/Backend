@@ -870,14 +870,11 @@ class Servicios:
         if liga.estado not in (EstadoLiga.DISPONIBLE, EstadoLiga.EN_JUEGO):
             raise LigaNoDisponible()
 
-        if len(jugadores_comportamientos) != 6:
+        if not 1 <= len(jugadores_comportamientos) <= 6:
             raise DatosInvalidos()
 
-        id_jugadores = []
-        for jugador_id, _ in jugadores_comportamientos:
-            id_jugadores.append(jugador_id)
-
-        if len(set(id_jugadores)) != 6:
+        id_jugadores = [jugador_id for jugador_id, _ in jugadores_comportamientos]
+        if len(set(id_jugadores)) != len(jugadores_comportamientos):
             raise DatosInvalidos()
 
         for jugador_id, comportamiento_id in jugadores_comportamientos:
@@ -910,7 +907,7 @@ class Servicios:
         for jugador_id, _ in jugadores_comportamientos:
             id_jugadores_de_la_alineacion.append(jugador_id)
 
-        if len(id_jugadores_de_la_alineacion) != len(id_jugadores_del_equipo):
+        if len(id_jugadores_de_la_alineacion) < 1 or len(id_jugadores_de_la_alineacion) > 6:
             raise DatosInvalidos()
 
         for jugador_id in id_jugadores_de_la_alineacion:
@@ -927,12 +924,12 @@ class Servicios:
             if asociacion is None:
                 raise DatosInvalidos()
 
-            if asociacion.id_comportamiento != comportamiento_id:
-                raise DatosInvalidos()
+            asociacion.id_comportamiento = comportamiento_id
 
-        for indice, (jugador_id, _) in enumerate(jugadores_comportamientos):
-            estado = EstadoJugador.TITULAR if indice < 3 else EstadoJugador.SUPLENTE
-            for jugador_equipo in asociaciones:
-                if jugador_equipo.id_jugador == jugador_id:
-                    jugador_equipo.estado = estado
-                    break
+        if len(jugadores_comportamientos) == 6:
+            for indice, (jugador_id, _) in enumerate(jugadores_comportamientos):
+                estado = EstadoJugador.TITULAR if indice < 3 else EstadoJugador.SUPLENTE
+                for jugador_equipo in asociaciones:
+                    if jugador_equipo.id_jugador == jugador_id:
+                        jugador_equipo.estado = estado
+                        break

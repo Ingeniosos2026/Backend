@@ -415,7 +415,7 @@ async def cambiar_alineacion(liga_id: int, usuario_id: int, datos: CambiarAlinea
     except DatosInvalidos:
         return JSONResponse(
             status_code=400,
-            content={"error": "DATOS_INVALIDOS", "mensaje": "La alineación debe tener seis jugadores distintos"})
+            content={"error": "DATOS_INVALIDOS", "mensaje": "Debe enviar entre uno y seis jugadores distintos de su equipo"})
     except LigaNoDisponible:
         return JSONResponse(
             status_code=409,

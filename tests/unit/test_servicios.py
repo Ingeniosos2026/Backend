@@ -2068,7 +2068,7 @@ def crear_escenario_cambiar_alineacion():
     repo_jugadores.obtener_por_id.side_effect = jugadores.get
 
     def obtener_comportamiento(comportamiento_id, usuario):
-        if comportamiento_id == 100 and usuario == usuario_id:
+        if comportamiento_id in (100, 101) and usuario == usuario_id:
             return Mock(id=comportamiento_id)
         return None
 
@@ -2146,10 +2146,30 @@ def test_cambiar_alineacion_rechaza_jugador_de_otro_usuario():
 
 def test_cambiar_alineacion_rechaza_comportamiento_inexistente():
     servicio, repo_ligas, participacion, _, alineacion = crear_escenario_cambiar_alineacion()
-    alineacion[0] = (alineacion[0][0], 101)
+    alineacion[0] = (alineacion[0][0], 999)
 
     with pytest.raises(ComportamientoNoEncontrado):
         servicio.cambiar_alineacion(30, 7, alineacion, Formacion.DEFENSIVA)
 
     assert participacion.formacion == Formacion.OFENSIVA
     repo_ligas.actualizar.assert_not_called()
+
+
+def test_cambiar_alineacion_actualiza_comportamientos_sin_cambiar_estados():
+    servicio, repo_ligas, _, _, _ = crear_escenario_cambiar_alineacion()
+    equipo = servicio.equipos.obtener_por_id.return_value
+    titulares_antes = {asociacion.id_jugador: asociacion.estado for asociacion in equipo.jugadores}
+
+    resultado = servicio.cambiar_alineacion(30, 7, [(1, 101), (2, 101), (3, 101)], Formacion.OFENSIVA)
+
+    asociaciones = {asociacion.id_jugador: asociacion for asociacion in equipo.jugadores}
+    for jugador_id in (1, 2, 3):
+        assert asociaciones[jugador_id].id_comportamiento == 101
+    for jugador_id in (4, 5, 6):
+        assert asociaciones[jugador_id].id_comportamiento == 100
+    assert {
+        asociacion.id_jugador: asociacion.estado
+        for asociacion in equipo.jugadores
+    } == titulares_antes
+    assert resultado.participacion.formacion == Formacion.OFENSIVA
+    repo_ligas.actualizar.assert_called_once()
