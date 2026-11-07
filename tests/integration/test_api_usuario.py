@@ -35,6 +35,7 @@ def test_crear_usuario(client, db_test):
         "Defender",
         "Atacar",
         "Pasar compañero",
+        "DT predeterminado"
     }
 
 

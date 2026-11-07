@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Table, ForeignKey
+from sqlalchemy import Column, Integer, String, Table, ForeignKey, Boolean
 from sqlalchemy.orm import relationship
 from app.capa_0_definicion_bd.base_datos_sqlalchemy import Base
 
@@ -11,6 +11,8 @@ class Usuario(Base):
     id_avatar = Column(Integer, nullable=False)
     contraseña = Column(String, nullable=False)
     nombre_club = Column(String, nullable=False)
+    dt = Column(Boolean, nullable=False, default=False)
+    id_comportamiento_dt = Column(Integer, nullable=True)
 
     comportamientos = relationship(
         "Comportamiento",

@@ -4,14 +4,24 @@ from app.capa_0_definicion_bd.models.tabla_liga_modelos import TablaLiga
 
 def estado_a_dict(estado: EstadoPartido) -> dict:
     jugadores = []
+    suplentes = []
 
     for jugador in estado.jugadores.values():
         jugadores.append({
             "id_jugador": jugador.id_jugador,
             "id_usuario": jugador.id_usuario,
             "id_equipo": jugador.id_equipo,
+            "nombre": jugador.nombre,
             "x": jugador.posicion.x,
             "y": jugador.posicion.y})
+    
+    for jugador in estado.suplentes.values():
+        suplentes.append({
+            "id_jugador": jugador.id_jugador,
+            "id_usuario": jugador.id_usuario,
+            "id_equipo": jugador.id_equipo,
+            "nombre": jugador.nombre
+        })
 
     return {
         "tiempo": estado.tiempo,
@@ -19,6 +29,7 @@ def estado_a_dict(estado: EstadoPartido) -> dict:
             "x": estado.pelota.posicion.x,
             "y": estado.pelota.posicion.y},
         "jugadores": jugadores,
+        "suplentes": suplentes,
         "goles": {
             "izquierdo": estado.goles_izquierdo,
             "derecho": estado.goles_derecho}}

@@ -5,7 +5,7 @@ from app.partido.inicializacion import crear_jugadores_estado, obtener_posicione
 from app.capa_0_definicion_bd.models.partidos_modelos import Formacion
 
 
-def test_crear_jugadores_estado_selecciona_titulares_y_omite_suplentes():
+def test_crear_jugadores_estado_selecciona_titulares_y_suplentes():
     jugadores = [EquipoJugador(
         jugador=Jugador(
             id_jugador=jugador_id,
@@ -30,14 +30,22 @@ def test_crear_jugadores_estado_selecciona_titulares_y_omite_suplentes():
     ]
 ]
     posiciones = obtener_posiciones_formacion(Formacion.OFENSIVA, "izquierdo", crear_cancha())
-    jugadores_estado, comportamientos = crear_jugadores_estado(jugadores, id_usuario=1, id_equipo=10, posiciones=posiciones)
+    jugadores_estado, suplentes_estado, comportamientos = crear_jugadores_estado(jugadores, id_usuario=1, id_equipo=10, posiciones=posiciones)
 
-    assert set(jugadores_estado) == {(1, 1), (1, 2), (1, 3)}
-    assert comportamientos == {
-        (1, 1): "comportamiento_1",
-        (1, 2): "comportamiento_2",
-        (1, 3): "comportamiento_3"
-    }
+    assert len(suplentes_estado) == 3
+    assert len(jugadores_estado) == 3
+    assert len(comportamientos) == 6
+    
+    for jugador_id in [1, 2, 3]:
+        clave = (1, jugador_id)
+        assert clave in jugadores_estado
+        assert clave not in suplentes_estado
+    
+    for jugador_id in [4, 5, 6]:
+        clave = (1, jugador_id)
+        assert clave in suplentes_estado
+        assert clave not in jugadores_estado
+
 
 
 def test_comportamiento_de_jugador_se_resuelve_por_equipo():
@@ -51,32 +59,27 @@ def test_comportamiento_de_jugador_se_resuelve_por_equipo():
             fuerza=60,
             poder=60,
             velocidad=60)
-        for id_jugador in range(1, 4)
+        for id_jugador in range(1, 7)
     ]
     equipos_jugadores_partido_1 = [
-        EquipoJugador(jugador=jugador, estado=EstadoJugador.TITULAR, comportamiento=Comportamiento(
+        EquipoJugador(jugador=jugador, estado=(EstadoJugador.TITULAR if jugador.id_jugador <= 3 else EstadoJugador.SUPLENTE), comportamiento=Comportamiento(
                 codigo="comportamiento_partido_1" if jugador.id_jugador == 1 else "comportamiento_compartido"
             ))
         for jugador in jugadores
     ]
     equipos_jugadores_partido_2 = [
-        EquipoJugador(jugador=jugador, estado=EstadoJugador.TITULAR, comportamiento=Comportamiento(
+        EquipoJugador(jugador=jugador, estado=(EstadoJugador.TITULAR if jugador.id_jugador <= 3 else EstadoJugador.SUPLENTE), comportamiento=Comportamiento(
                 codigo="comportamiento_partido_2" if jugador.id_jugador == 1 else "comportamiento_compartido"
             ))
         for jugador in jugadores
     ]
     posiciones = obtener_posiciones_formacion(Formacion.OFENSIVA, "izquierdo", crear_cancha())
 
-    _, comportamientos_partido_1 = crear_jugadores_estado(equipos_jugadores_partido_1, id_usuario=1, id_equipo=10, posiciones=posiciones)
-    _, comportamientos_partido_2 = crear_jugadores_estado(equipos_jugadores_partido_2, id_usuario=1, id_equipo=11, posiciones=posiciones)
+    _, _, comportamientos_partido_1 = crear_jugadores_estado(equipos_jugadores_partido_1, id_usuario=1, id_equipo=10, posiciones=posiciones)
+    _, _, comportamientos_partido_2 = crear_jugadores_estado(equipos_jugadores_partido_2, id_usuario=2, id_equipo=11, posiciones=posiciones)
 
-    assert comportamientos_partido_1 == {
-        (1, 1): "comportamiento_partido_1",
-        (1, 2): "comportamiento_compartido",
-        (1, 3): "comportamiento_compartido",
-    }
-    assert comportamientos_partido_2 == {
-        (1, 1): "comportamiento_partido_2",
-        (1, 2): "comportamiento_compartido",
-        (1, 3): "comportamiento_compartido",
-    }
+    assert comportamientos_partido_1[(1, 1)] == "comportamiento_partido_1"
+    assert comportamientos_partido_2[(2, 1)] == "comportamiento_partido_2"
+
+    assert len(comportamientos_partido_1) == 6
+    assert len(comportamientos_partido_2) == 6

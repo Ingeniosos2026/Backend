@@ -168,6 +168,7 @@ def test_crear_usuario_correctamente():
         "Defender",
         "Atacar",
         "Pasar compañero",
+        "DT predeterminado"
     ]
     assert usuario.contraseña != "123456"
     assert usuario.contraseña is not None
