@@ -60,3 +60,17 @@ def login_usuario(datos: LoginUsuario, servicio: Servicios = Depends(obtener_ser
     
     except Exception:
         return JSONResponse(status_code=500, content={"error": "ERROR_INTERNO", "mensaje": "Ocurrió un error interno del servidor"})
+
+@usuario_router.get("/ranking")
+def obtener_ranking_usuarios(servicio: Servicios = Depends(obtener_servicio)):
+    usuarios = servicio.obtener_ranking_usuarios()
+    return [
+        {
+            "id": usuario.id_usuario,
+            "nombre": usuario.nombre,
+            "avatar": usuario.id_avatar,
+            "club": usuario.nombre_club,
+            "puntos": usuario.puntos,
+        }
+        for usuario in usuarios
+    ]

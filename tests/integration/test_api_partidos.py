@@ -9,7 +9,7 @@ from app.capa_0_definicion_bd.models.partidos_modelos import (EstadoPartido, For
 from app.capa_0_definicion_bd.models.usuarios_modelos import Usuario
 from app.capa_2_logica.errores import *
 from app.capa_2_logica.resultados import CrearPartidoResultado, CambioJugadorResultado
-from app.capa_3_api.dependencias import obtener_servicio
+from app.capa_3_api.dependencias import obtener_servicio, crear_servicio
 from app.capa_3_api.websockets.admin_conexiones import admin_conexiones
 
 
@@ -729,3 +729,26 @@ def test_obtener_usuario_de_partido_mapea_equipo_no_encontrado(client, db_test):
 
     assert response.status_code == 404
     assert response.json()["error"] == "EQUIPO_NO_ENCONTRADO"
+
+@pytest.mark.parametrize(("goles_izq", "goles_der", "puntos_izq", "puntos_der"), [(3, 1, 3, 0), (2, 2, 1, 1), (0, 1, 0, 3)])
+def test_resultado_amistoso_acumula_puntos_una_sola_vez(client, db_test, goles_izq, goles_der, puntos_izq, puntos_der):
+    partido, usuario_izq_id = crear_partido_pendiente_test(client, db_test)
+    partido.estado_partido = EstadoPartido.EN_CURSO
+    db_test.commit()
+
+    servicio = crear_servicio(db_test)
+    servicio.registrar_resultado_amistoso(partido_id=partido.id_partido, goles_izq=goles_izq, goles_der=goles_der)
+
+    usuario_izq = db_test.get(Usuario, usuario_izq_id)
+    usuario_der = db_test.get(Usuario, partido.id_usuario_2)
+    db_test.refresh(partido)
+    assert usuario_izq.puntos == puntos_izq
+    assert usuario_der.puntos == puntos_der
+    assert partido.estado_partido == EstadoPartido.TERMINADO
+
+    servicio.registrar_resultado_amistoso(partido_id=partido.id_partido, goles_izq=goles_izq, goles_der=goles_der)
+
+    db_test.refresh(usuario_izq)
+    db_test.refresh(usuario_der)
+    assert usuario_izq.puntos == puntos_izq
+    assert usuario_der.puntos == puntos_der

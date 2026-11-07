@@ -13,6 +13,7 @@ class Usuario(Base):
     nombre_club = Column(String, nullable=False)
     dt = Column(Boolean, nullable=False, default=False)
     id_comportamiento_dt = Column(Integer, nullable=True)
+    puntos = Column(Integer, nullable=False, default=0)
 
     comportamientos = relationship(
         "Comportamiento",

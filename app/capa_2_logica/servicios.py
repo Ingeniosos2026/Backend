@@ -28,6 +28,7 @@ class _RepoUsuariosProtocol(Protocol):
     def obtener_por_email(self, email: str) -> UsuarioModelo | None: ...
     def obtener_por_id(self, id_usuario: int) -> UsuarioModelo | None: ...
     def actualizar(self) -> None: ...
+    def obtener_ranking(self) -> list[UsuarioModelo]: ...
 
 class _RepoJugadoresProtocol(Protocol):
     def crear(self, jugador: JugadorModelo) -> JugadorModelo: ...
@@ -643,7 +644,13 @@ class Servicios:
         self.ligas.actualizar()
 
         return CrearPartidoResultado(partido=partido)
-    
+
+    def _puntos_por_resultado(self, goles_izq: int, goles_der: int) -> tuple[int, int]:
+        if goles_izq > goles_der:
+            return 3, 0
+        if goles_der > goles_izq:
+            return 0, 3
+        return 1, 1
 
     def registrar_resultado_partido_liga(self, id_liga: int, turno: int, goles_izq: int, goles_der: int) -> RegistrarResultadoPartidoLiga:
         fixture = self.ligas.obtener_fixture_por_turno(id_liga, turno)
@@ -651,13 +658,21 @@ class Servicios:
         tabla_izq = self.ligas.obtener_registro_tabla(id_liga, fixture.id_equipo_izq)
         tabla_der = self.ligas.obtener_registro_tabla(id_liga, fixture.id_equipo_der)
 
+        if tabla_izq is None or tabla_der is None:
+            raise NoSeEncontraronLasTablas()
+
+        if fixture.goles_equipo_izq is not None and fixture.goles_equipo_der is not None:
+            return RegistrarResultadoPartidoLiga(fixture=fixture, tabla_izq=tabla_izq, tabla_der=tabla_der)
+
         partido = self.partidos.obtener_por_id(fixture.id_partido)
 
         if partido is None:
             raise PartidoNoEncontrado()
 
-        if tabla_izq is None or tabla_der is None:
-            raise NoSeEncontraronLasTablas()
+        usuario_izq = self.usuarios.obtener_por_id(tabla_izq.id_usuario)
+        usuario_der = self.usuarios.obtener_por_id(tabla_der.id_usuario)
+        if usuario_izq is None or usuario_der is None:
+            raise UsuarioNoEncontrado()
 
         # guardo los goles en el fixture
         fixture.goles_equipo_izq = goles_izq
@@ -671,21 +686,24 @@ class Servicios:
         tabla_der.goles_en_contra += goles_izq
 
         # actualizo el resultado del partido
-        if goles_izq > goles_der:
+        puntos_izq, puntos_der = self._puntos_por_resultado(goles_izq, goles_der)
+        usuario_izq.puntos += puntos_izq
+        usuario_der.puntos += puntos_der
+
+        if puntos_izq > puntos_der:
             tabla_izq.partidos_ganados += 1
-            tabla_izq.puntos += 3
             tabla_der.partidos_perdidos += 1
 
-        elif goles_der > goles_izq:
+        elif puntos_der > puntos_izq:
             tabla_der.partidos_ganados += 1
-            tabla_der.puntos += 3
             tabla_izq.partidos_perdidos += 1
 
         else:
             tabla_izq.partidos_empatados += 1
             tabla_der.partidos_empatados += 1
-            tabla_izq.puntos += 1
-            tabla_der.puntos += 1
+
+        tabla_izq.puntos += puntos_izq
+        tabla_der.puntos += puntos_der
 
         self.ligas.actualizar()
 
@@ -964,3 +982,35 @@ class Servicios:
             raise EquipoNoEncontrado()
 
         return UsuarioPartidoResultado(usuario=usuario, equipo=equipo, formacion=formacion)
+
+    def obtener_ranking_usuarios(self) -> list[UsuarioModelo]:
+            return self.usuarios.obtener_ranking()
+
+    def registrar_resultado_amistoso(self, partido_id: int, goles_izq: int, goles_der: int) -> PartidoModelo:
+            partido = self.partidos.obtener_por_id(partido_id)
+            if partido is None or partido.tipo_partido != TipoPartido.AMISTOSO:
+                raise AmistosoNoEncontrado()
+    
+            if goles_izq < 0 or goles_der < 0:
+                raise DatosInvalidos()
+    
+            if partido.estado_partido == EstadoPartido.TERMINADO:
+                return partido
+    
+            if partido.estado_partido != EstadoPartido.EN_CURSO:
+                raise AmistosoNoPuedeIniciar()
+    
+            if partido.id_usuario_2 is None:
+                raise DatosInvalidos()
+    
+            usuario_izq = self.usuarios.obtener_por_id(partido.id_usuario_1)
+            usuario_der = self.usuarios.obtener_por_id(partido.id_usuario_2)
+            if usuario_izq is None or usuario_der is None:
+                raise UsuarioNoEncontrado()
+    
+            puntos_izq, puntos_der = self._puntos_por_resultado(goles_izq, goles_der)
+            usuario_izq.puntos += puntos_izq
+            usuario_der.puntos += puntos_der
+            partido.estado_partido = EstadoPartido.TERMINADO
+    
+            return self.partidos.actualizar(partido)

@@ -2,7 +2,7 @@ import asyncio
 from .motor import MotorPartido, T
 from .convertidor import estado_a_dict, estados_jugadores_a_dict, eventos_a_dict, cancha_a_dict
 from app.capa_0_definicion_bd.base_datos_sqlalchemy import SessionLocal
-from app.capa_0_definicion_bd.models.partidos_modelos import EstadoPartido
+from app.capa_0_definicion_bd.models.partidos_modelos import EstadoPartido, TipoPartido
 from app.capa_2_logica.resultados import CambioJugadorResultado
 from app.capa_2_logica.errores import NoSePuedeCambiarJugador
 from app.capa_3_api.websockets.admin_conexiones import admin_conexiones
@@ -77,8 +77,14 @@ class EjecutorPartido:
             if partido is None:
                 raise ValueError("No se encontro el partido")
 
-            partido.estado_partido = EstadoPartido.TERMINADO
-            servicio.partidos.actualizar(partido)
+            if partido.tipo_partido == TipoPartido.AMISTOSO:
+                servicio.registrar_resultado_amistoso(
+                    partido_id=self.partido_id,
+                    goles_izq=goles_izquierdo,
+                    goles_der=goles_derecho)
+            else:
+                partido.estado_partido = EstadoPartido.TERMINADO
+                servicio.partidos.actualizar(partido)
 
         finally:
                 db.close()
