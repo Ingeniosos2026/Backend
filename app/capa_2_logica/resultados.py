@@ -1,7 +1,7 @@
 from app.capa_0_definicion_bd.models.usuarios_modelos import Usuario as UsuarioModelo
 from app.capa_0_definicion_bd.models.jugadores_modelos import Jugador as JugadorModelo
 from app.capa_0_definicion_bd.models.equipo_modelos import Equipo as EquipoModelo
-from app.capa_0_definicion_bd.models.partidos_modelos import Partido as PartidoModelo
+from app.capa_0_definicion_bd.models.partidos_modelos import Formacion, Partido as PartidoModelo
 from app.capa_0_definicion_bd.models.comportamientos_modelos import Comportamiento as ComportamientoModelo
 from app.capa_0_definicion_bd.models.liga_modelos import Liga as LigaModelo
 from app.capa_0_definicion_bd.models.fixture_liga_modelos import FixtureLiga
@@ -131,3 +131,9 @@ class CambioComportamientoResultado:
 @dataclass(slots=True)
 class CambiarAlineacionResultado:
     participacion: LigaParticipante
+
+@dataclass(slots=True)
+class UsuarioPartidoResultado:
+    usuario: UsuarioModelo
+    equipo: EquipoModelo
+    formacion: Formacion

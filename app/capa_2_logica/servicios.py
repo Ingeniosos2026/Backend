@@ -934,3 +934,26 @@ class Servicios:
                     if jugador_equipo.id_jugador == jugador_id:
                         jugador_equipo.estado = estado
                         break
+
+    def obtener_usuario_de_partido(self, partido_id: int, usuario_id: int) -> UsuarioPartidoResultado:
+        partido = self.partidos.obtener_por_id(partido_id)
+        if partido is None:
+            raise PartidoNoEncontrado()
+
+        if partido.id_usuario_1 == usuario_id:
+            usuario = partido.usuario_1
+            equipo = partido.equipo_1
+            formacion = partido.formacion_1
+        elif partido.id_usuario_2 == usuario_id:
+            usuario = partido.usuario_2
+            equipo = partido.equipo_2
+            formacion = partido.formacion_2
+        else:
+            raise UsuarioNoEncontrado()
+
+        if usuario is None:
+            raise UsuarioNoEncontrado()
+        if equipo is None:
+            raise EquipoNoEncontrado()
+
+        return UsuarioPartidoResultado(usuario=usuario, equipo=equipo, formacion=formacion)
