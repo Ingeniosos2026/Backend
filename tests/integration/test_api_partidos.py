@@ -729,3 +729,19 @@ def test_obtener_usuario_de_partido_mapea_equipo_no_encontrado(client, db_test):
 
     assert response.status_code == 404
     assert response.json()["error"] == "EQUIPO_NO_ENCONTRADO"
+
+def test_obtener_info_partido_correctamente(client, db_test):
+    partido, _ = crear_partido_pendiente_test(client, db_test)
+
+    response = client.get(f"/partido/{partido.id_partido}/info")
+
+    assert response.status_code == 200
+    datos = response.json()
+    assert datos["id_usuario_izq"] == partido.id_usuario_1
+    assert datos["id_usuario_der"] == partido.id_usuario_2
+    assert datos["nombre_usuario_izq"] == db_test.get(Usuario, partido.id_usuario_1).nombre
+    assert datos["nombre_usuario_der"] == db_test.get(Usuario, partido.id_usuario_2).nombre
+    assert datos["club_usuario_izq"] == db_test.get(Usuario, partido.id_usuario_1).nombre_club
+    assert datos["club_usuario_der"] == db_test.get(Usuario, partido.id_usuario_2).nombre_club
+    assert datos["avatar_usuario_izq"] == db_test.get(Usuario, partido.id_usuario_1).id_avatar
+    assert datos["avatar_usuario_der"] == db_test.get(Usuario, partido.id_usuario_2).id_avatar
