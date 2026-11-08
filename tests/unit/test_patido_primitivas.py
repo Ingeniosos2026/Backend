@@ -57,7 +57,6 @@ def crear_estado_partido():
         jugadores={(1, 1): jugador_1, (1, 2): jugador_2, (2, 3): jugador_3},
         suplentes={},
         comportamientos={},
-        comportamientos_disponibles={},
         codigo_dt={},
         dt_activo={1: False, 2: False},
         pelota=pelota)

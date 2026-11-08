@@ -67,3 +67,12 @@ def posicion_valida(posicion: Coordenada, cancha: Cancha) -> bool:
     return (0 <= posicion.x <= cancha.ancho and 0 <= posicion.y <= cancha.alto)
 
 
+def obtener_goles(estado, id_usuario: int) -> tuple[int, int]:
+
+    if id_usuario == estado.id_usuario_izquierdo:
+        return (estado.goles_izquierdo, estado.goles_derecho)
+
+    if id_usuario == estado.id_usuario_derecho:
+        return (estado.goles_derecho, estado.goles_izquierdo)
+
+    raise ValueError("El usuario no pertenece al partido")

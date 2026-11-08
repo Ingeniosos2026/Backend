@@ -50,11 +50,6 @@ class PelotaEstado:
     # se tendra que ver el tema de la friccion para que reduzca el la velocidad de pateo hasta que no avance mas
     velocidad: Coordenada
 
-@dataclass
-class ComportamientosDisponible:
-    id_comportamiento: int
-    nombre: str
-    codigo: str
 
 @dataclass
 class EstadoPartido:
@@ -67,7 +62,6 @@ class EstadoPartido:
     jugadores: dict[tuple[int, int], JugadorEstado]  # este va a representar a los jugadores que estan en la cancha
     suplentes: dict[tuple[int, int], JugadorEstado]  # este va a representar los jugadores que no estan en la cancha
     comportamientos: dict[tuple[int, int], str] 
-    comportamientos_disponibles: dict[int, list[ComportamientosDisponible]]
     pelota: PelotaEstado
 
     codigo_dt: dict[int, str]  # este va a guardar el comportamiento de dt

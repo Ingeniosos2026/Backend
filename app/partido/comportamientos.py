@@ -39,7 +39,10 @@ def comportamiento(primitivas):
         primitivas.cambiar_jugador()
 
     if primitivas.voy_perdiendo():
-        primitivas.cambiar_comportamiento()
+        primitivas.cambiar_comportamiento_ataque()
+
+    if primitivas.voy_ganando():
+        primitivas.cambiar_comportamiento_defensa()
 """
 
 

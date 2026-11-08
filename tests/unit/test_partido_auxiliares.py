@@ -108,7 +108,6 @@ def test_obtener_jugador():
         jugadores={(1, 1): jugador1, (2, 1): jugador2},
         comportamientos={},
         suplentes={},
-        comportamientos_disponibles={},
         codigo_dt={},
         dt_activo={1: False, 2: False},
         pelota=pelota)
