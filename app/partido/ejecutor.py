@@ -22,7 +22,6 @@ class EjecutorPartido:
         self.duracion = duracion
         self.duracion_pausa_entretiempo = duracion_pausa_entretiempo
         self.duracion_pausa_cooling_break = duracion_pausa_cooling_break
-        self.pausado = False
         self.admin = admin
 
         self.tiempos_pausa = [ 
@@ -97,11 +96,12 @@ class EjecutorPartido:
         return {"goles_izquierdo": goles_izquierdo, "goles_derecho": goles_derecho}
         
     async def pausar(self):
-        if self.pausado:
+        if self.motor.estado.en_pausa:
             return  # ya esta en pausa, no hacemos nada
         
-        self.pausado = True
+        self.motor.estado.en_pausa = True
         self.pausas_realizadas += 1
+        self.motor.ejecutar_dt()
 
         if (self.pausas_realizadas == 2):
             tiempo_espera = self.duracion_pausa_entretiempo
@@ -122,10 +122,10 @@ class EjecutorPartido:
         await asyncio.sleep(tiempo_espera)
 
     async def reanudar(self): 
-        if not self.pausado:
+        if not self.motor.estado.en_pausa:
             return 
         
-        self.pausado = False
+        self.motor.estado.en_pausa = False
 
         await self.admin.emitir_partido(
             partido_id=self.partido_id, 
@@ -136,7 +136,7 @@ class EjecutorPartido:
     # esto comproueba si puedo cambiar o no en una pasa
     def puede_realizar_cambio(self, id_equipo: int) -> bool:
 
-        if not self.pausado:
+        if not self.motor.estado.en_pausa:
             return False
 
         if not 1 <= self.pausas_realizadas <= 3:
@@ -149,6 +149,8 @@ class EjecutorPartido:
     
     async def solicitar_cambio(self, usuario_id: int, jugador_sale_id: int, resultado: CambioJugadorResultado):
         estado = self.motor.estado
+        if estado.dt_activo.get(usuario_id, False):
+            raise NoSePuedeCambiarJugador()
 
         # busco al equipo
         if usuario_id == estado.id_usuario_izquierdo:
@@ -170,7 +172,7 @@ class EjecutorPartido:
             raise NoSePuedeCambiarJugador()
 
         # si esta en una pausa, realizp el cambio
-        if self.pausado:
+        if self.motor.estado.en_pausa:
             await self.realizar_cambio(usuario_id=usuario_id, id_equipo=id_equipo, jugador_sale_id=jugador_sale_id, resultado=resultado)
             return
 
@@ -201,6 +203,10 @@ class EjecutorPartido:
         # copio la posicion del jugador que sale
         jugador_entra.posicion = Coordenada(x=jugador_sale.posicion.x, y=jugador_sale.posicion.y)
         jugador_entra.destino = None
+        jugador_entra.ultimo_pateo = -10.0
+
+        posicion_inicial = self.motor.fisica.posiciones_iniciales[clave_sale]
+        self.motor.fisica.posiciones_iniciales[clave_entra] = Coordenada(x=posicion_inicial.x, y=posicion_inicial.y)
 
         # realizo el remplazo en memoria
         # elimino al jugador del partido
@@ -242,6 +248,8 @@ class EjecutorPartido:
 
     
     def solicitar_cambio_comportamiento(self, usuario_id: int, jugador_id: int, comportamiento: str):
+        if self.motor.estado.dt_activo.get(usuario_id, False):
+            raise ValueError("El DT está activo")
         clave = (usuario_id, jugador_id)
         self.comportamientos_pendientes[clave] = comportamiento
 

@@ -54,7 +54,7 @@ def test_configuracion_inicial_de_pausas():
     assert ejecutor.duracion_pausa_cooling_break == DURACION_PAUSA_COOLING_BREAK
     assert ejecutor.tiempos_pausa == [75.0, 150.0, 225.0]
     assert ejecutor.pausas_realizadas == 0
-    assert ejecutor.pausado is False
+    assert motor.estado.en_pausa is False
 
 def test_pausar_y_reanudar_emiten_eventos_ws():
     motor = crear_motor_prueba()
@@ -65,7 +65,7 @@ def test_pausar_y_reanudar_emiten_eventos_ws():
 
     # pausamos el partido
     ejecutar(ejecutor.pausar())
-    assert ejecutor.pausado is True
+    assert motor.estado.en_pausa is True
     admin_mock.emitir_partido.assert_awaited_once_with(
         partido_id=10,
         accion="partido_pausado",
@@ -74,7 +74,7 @@ def test_pausar_y_reanudar_emiten_eventos_ws():
 
     # reanudamos el partido
     ejecutar(ejecutor.reanudar())
-    assert ejecutor.pausado is False
+    assert motor.estado.en_pausa is False
     admin_mock.emitir_partido.assert_awaited_with(
         partido_id=10,
         accion="partido_reanudado",
@@ -101,7 +101,7 @@ def test_ejecutor_realiza_exactamente_3_pausas_durante_el_partido(monkeypatch):
     ejecutar(ejecutor.ejecutar())
 
     assert ejecutor.pausas_realizadas == 3
-    assert ejecutor.pausado is False
+    assert motor.estado.en_pausa is False
 
     acciones_emitidas = [
         llamada.kwargs["accion"]
@@ -119,7 +119,7 @@ def test_puede_realizar_cambio():
 
     assert ejecutor.puede_realizar_cambio(10) is False
 
-    ejecutor.pausado = True
+    motor.estado.en_pausa = True
 
     # no puede cambiar si todavia no hay una pausa
     assert ejecutor.puede_realizar_cambio(10) is False
@@ -253,7 +253,7 @@ def test_realizar_cambio_correctamente():
         duracion=100,
         admin=admin_mock)
 
-    ejecutor.pausado = True
+    motor.estado.en_pausa = True
     ejecutor.pausas_realizadas = 1
 
     resultado = CambioJugadorResultado(

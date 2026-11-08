@@ -113,10 +113,10 @@ class FisicaPartido:
         pelota.velocidad = Coordenada(x=pelota.velocidad.x * factor, y=pelota.velocidad.y * factor)
 
     def reiniciar_posiciones(self) -> None:
-        for clave, posicion_inicial in self.posiciones_iniciales.items(): 
-            jugador = self.estado.jugadores.get(clave)
+        for clave, jugador in self.estado.jugadores.items(): 
+            posicion_inicial = self.posiciones_iniciales.get(clave)
 
-            if jugador is None: 
+            if posicion_inicial is None:
                 continue
 
             jugador.posicion = Coordenada(x=posicion_inicial.x, y=posicion_inicial.y)
