@@ -645,7 +645,7 @@ class Servicios:
         return CrearPartidoResultado(partido=partido)
     
 
-    def registrar_resultado_partido_liga(self, id_liga: int, turno: int, goles_izq: int, goles_der: int) -> RegistrarResultadoPartidoLiga:
+    def registrar_resultado_partido_liga(self, id_liga: int, turno: int, goles_izq: int, goles_der: int, id_equipo_ganador_penales: int | None = None) -> RegistrarResultadoPartidoLiga:
         fixture = self.ligas.obtener_fixture_por_turno(id_liga, turno)
 
         tabla_izq = self.ligas.obtener_registro_tabla(id_liga, fixture.id_equipo_izq)
@@ -684,9 +684,18 @@ class Servicios:
         else:
             tabla_izq.partidos_empatados += 1
             tabla_der.partidos_empatados += 1
-            tabla_izq.puntos += 1
-            tabla_der.puntos += 1
 
+            if id_equipo_ganador_penales is not None:
+                if id_equipo_ganador_penales == fixture.id_equipo_izq:
+                    tabla_izq.puntos += 2
+                elif id_equipo_ganador_penales == fixture.id_equipo_der:
+                    tabla_der.puntos += 2
+
+            else:
+                tabla_izq.puntos += 1
+                tabla_der.puntos += 1
+
+            
         self.ligas.actualizar()
 
         return RegistrarResultadoPartidoLiga(fixture=fixture, tabla_izq=tabla_izq, tabla_der=tabla_der)

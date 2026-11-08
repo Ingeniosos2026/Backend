@@ -27,7 +27,7 @@ class Liga(Base):
     min_jugadores = Column(Integer, nullable=False)
     max_jugadores = Column(Integer, nullable=False)
     duracion_partido = Column(Integer, nullable=False)
-    empate = Column(Boolean, nullable=False)
+    empate = Column(Boolean, nullable=False, default=False)
 
     usuario = relationship(
         "Usuario",

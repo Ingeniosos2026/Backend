@@ -29,7 +29,9 @@ class EjecutorLiga:
         self.penales = penales 
         self.config_penales: dict[int, dict] = {}
         self.esperando_config_penales: bool = False
-        # self.titulares_finales: dict[tuple[int, int], JugadorEstado] = {} ahoras los llamo directamente desde el estado del partido
+        self.penales_izquierdo = 0
+        self.penales_derecho = 0
+        self.titulares_finales: dict[tuple[int, int], JugadorEstado] = {}
 
         #agregar un campo de BD para saber si es empate 
         
@@ -54,8 +56,8 @@ class EjecutorLiga:
                 # si termina en empate, definimos por penales
                 if self.penales and goles_izq == goles_der:
                     await self.ejecutar_tanda_penales()
-                    penales_izq = self.motor.estado.penales_izquierdo
-                    penales_der = self.motor.estado.penales_derecho
+                    penales_izq = self.motor.penales_izquierdo
+                    penales_der = self.motor.penales_derecho
 
                     if penales_izq > penales_der:
                         id_ganador_penales = self.motor.estado.id_equipo_izquierdo
@@ -128,19 +130,19 @@ class EjecutorLiga:
         finally:
             db.close()
 
-    def obtener_ids_titulares_usuario(self, estado: EstadoPartido, usuario_id: int) -> list[int]:
-        return [j.id_jugador for (u_id, _), j in estado.jugadores.items() 
-                if u_id == usuario_id]
+    def obtener_ids_jugadores_en_cancha_usuario(self, estado: EstadoPartido, usuario_id: int) -> list[int]:
+        enCancha = self.titulares_finales if self.titulares_finales else estado.jugadores
+        return [j.id_jugador for (u_id, _), j in enCancha.items() if u_id == usuario_id]
     
     def configurar_penales_usuario(self,usuario_id: int,id_arquero: int,comportamiento_arquero: str,comportamiento_pateadores: list[tuple[int, str]],estado: EstadoPartido):
 
-        ids_titulares = self.obtener_ids_titulares_usuario(estado, usuario_id)
+        ids_titulares = self.obtener_ids_jugadores_en_cancha_usuario(estado, usuario_id)
         if id_arquero not in ids_titulares:
-            raise ValueError ("El arquero debe ser uno de los titulares del usuario")
+            raise NoSePuedeElegirComoArquero()
 
         ids_pateadores = [id_j for id_j, _ in comportamiento_pateadores]
         if len(ids_pateadores) != 3 or set(ids_pateadores) != set(ids_titulares):
-            raise ValueError ("Los pateadores deben ser los 3 titulares del usuario")
+            raise SoloPuedenPatearLosTitulares()
 
         self.config_penales[usuario_id] = {
             "id_arquero": id_arquero,
@@ -153,7 +155,7 @@ class EjecutorLiga:
             return self.config_penales[usuario_id]
         
         # si el usuario no hace o se le acaba el tiempo, se elige esta configuracion por default
-        ids_titulares = self.obtener_ids_titulares_usuario(estado, usuario_id)
+        ids_titulares = self.obtener_ids_jugadores_en_cancha_usuario(estado, usuario_id)
         primer_titular = ids_titulares[0]
         return {
             "id_arquero": primer_titular,
@@ -170,8 +172,10 @@ class EjecutorLiga:
         centro_x = cancha.ancho / 2
         centro_y = cancha.alto / 2
 
-        estado.en_penales = True
-        estado.lado_pateador_penal = lado_pateador
+        self.motor.fisica.en_penales = True
+        self.motor.fisica.hubo_gol_penal = False
+        self.motor.fisica.lado_pateador_penal = lado_pateador
+        self.penales = True 
 
         estado.pelota.posicion = Coordenada(centro_x, centro_y)
         estado.pelota.velocidad = Coordenada(0, 0)
@@ -179,14 +183,12 @@ class EjecutorLiga:
         if lado_pateador == "derecho":
             pos_pateador = Coordenada(centro_x + 3, centro_y)  # (53, 30)
             pos_arquero = Coordenada(cancha.arco_izquierdo.centro.x, cancha.arco_izquierdo.centro.y)  # (0, 30)
-            penales_antes = estado.penales_derecho
         else:
             pos_pateador = Coordenada(centro_x - 3, centro_y)  # (47, 30)
             pos_arquero = Coordenada(cancha.arco_derecho.centro.x, cancha.arco_derecho.centro.y)  # (100, 30)
-            penales_antes = estado.penales_izquierdo
 
-        base_pateador = titulares_finales[(id_usuario_pateador, id_jugador_pateador)]
-        base_arquero = titulares_finales[(id_usuario_arquero, id_jugador_arquero)]
+        base_pateador = self.titulares_finales[(id_usuario_pateador, id_jugador_pateador)]
+        base_arquero = self.titulares_finales[(id_usuario_arquero, id_jugador_arquero)]
 
         jugador_pateador = JugadorEstado(
           id_jugador=base_pateador.id_jugador, id_equipo=base_pateador.id_equipo,
@@ -209,11 +211,11 @@ class EjecutorLiga:
         estado.comportamientos = {clave_pateador: comportamiento_pateador, clave_arquero: comportamiento_arquero}
 
         tiempo_inicio_penal = estado.tiempo
-        fue_gol = False
-
+  
         while (estado.tiempo - tiempo_inicio_penal) < DURACION_PENAL:
 
             estado, estados_jugadores, eventos = self.motor.tick()
+
             await admin_conexiones.emitir_partido(
                 partido_id=self.partido_id,
                 accion="estado_partido",
@@ -230,15 +232,21 @@ class EjecutorLiga:
                 },
             )
 
-            penales_ahora = estado.penales_derecho if lado_pateador == "derecho" else estado.penales_izquierdo
-            if penales_ahora > penales_antes:
-                fue_gol = True
-                return fue_gol
+            if self.motor.fisica.hubo_gol_penal:
+                if lado_pateador == "derecho":
+                    self.penales_derecho += 1
+                else:
+                    self.penales_izquierdo += 1
+                    
+                self.motor.fisica.en_penales = False
+                return True
 
+            # si no hubo gol, se espera hasta que termine el tiepmo del penal
             if (estado.tiempo - tiempo_inicio_penal) < DURACION_PENAL:
                 await asyncio.sleep(T)
 
-        return fue_gol
+        self.motor.fisica.en_penales = False
+        return False
     
     # devuelve la tupla donde especifica el motivo del desempate
     def desempatar_por_tabla_o_sorteo(self, servicio) -> tuple[int, str]:
@@ -281,8 +289,11 @@ class EjecutorLiga:
         comportamientos_finales = dict(estado.comportamientos)
         self.esperando_config_penales = True
 
+        self.penales_izquierdo = 0
+        self.penales_derecho = 0
+
         await admin_conexiones.emitir_partido(
-            liga_id=self.liga_id,
+            partido_id= self.partido_id,
             accion= "inicio_definicion_penales",
             payload={
                 "tiempo_espera": DURACION_PREPARACION_PENALES,
@@ -302,24 +313,22 @@ class EjecutorLiga:
 
         for id_pateador, comportamiento_pateador in config_der["pateadores"]:
             await self.ejecutar_un_penal(
-                lado_pateador="derecho",
-                id_usuario_pateador=id_der,
+                lado_pateador="derecho", 
+                id_usuario_pateador=id_der, 
                 id_jugador_pateador=id_pateador,
-                comportamiento_pateador=comportamiento_pateador,
+                comportamiento_pateador=comportamiento_pateador, 
                 id_usuario_arquero=id_izq,
-                id_jugador_arquero=config_izq["id_arquero"],
-                comportamiento_arquero=config_izq["comportamiento_arquero"],
-                titulares_finales=self.titulares_finales
+                id_jugador_arquero=config_izq["id_arquero"], 
+                comportamiento_arquero=config_izq["comportamiento_arquero"]
             )
 
         for id_pateador, comportamiento_pateador in config_izq["pateadores"]:
             await self.ejecutar_un_penal(
-                lado_pateador="izquierdo",
-                id_usuario_pateador=id_izq,
+                lado_pateador="izquierdo", 
+                id_usuario_pateador=id_izq, 
                 id_jugador_pateador=id_pateador,
-                comportamiento_pateador=comportamiento_pateador,
+                comportamiento_pateador=comportamiento_pateador, 
                 id_usuario_arquero=id_der,
-                id_jugador_arquero=config_der["id_arquero"],
-                comportamiento_arquero=config_der["comportamiento_arquero"],
-                titulares_finales=self.titulares_finales
+                id_jugador_arquero=config_der["id_arquero"], 
+                comportamiento_arquero=config_der["comportamiento_arquero"]
             )

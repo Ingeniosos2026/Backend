@@ -20,3 +20,9 @@ class UnirseLiga(BaseModel): # esto es para evitar que se mande la contraseña e
 class CambiarAlineacion(BaseModel):
     formacion: Formacion
     jugadores: list[JugadorConComportamiento]
+
+class ConfigurarPenales(BaseModel):
+    id_usuario: int
+    id_arquero: int
+    id_comportamiento_arquero: int
+    pateadores: list[JugadorConComportamiento]

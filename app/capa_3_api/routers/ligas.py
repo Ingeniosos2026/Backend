@@ -5,7 +5,7 @@ import asyncio
 
 from app.capa_2_logica.servicios import Servicios
 from app.capa_2_logica.errores import *
-from app.capa_3_api.dtos.ligas import CrearLiga, UnirseLiga, CambiarAlineacion
+from app.capa_3_api.dtos.ligas import CrearLiga, UnirseLiga, CambiarAlineacion, ConfigurarPenales
 from app.capa_3_api.websockets.admin_conexiones import admin_conexiones
 from app.capa_3_api.dependencias import obtener_servicio
 from app.partido.administrar_partidos import administrador_partidas
@@ -254,7 +254,7 @@ async def iniciar_liga(liga_id: int, usuario_id: int, servicio: Servicios = Depe
         motor = MotorPartido(estado=estado)
         ejecutor_partido = EjecutorPartido(partido_id=partido.id_partido, motor=motor, duracion=duracion_segundos)
         ejecutor_liga = EjecutorLiga(liga_id=liga_id, partido_id=partido.id_partido, motor=motor, duracion=duracion_segundos, ejecutor_partido=ejecutor_partido,penales=liga.empate, turno=1 )
-        administrador_partidas.agregar(partido_id=partido.id_partido, ejecutor=ejecutor_partido)
+        administrador_partidas.agregar(partido_id=partido.id_partido, ejecutor=ejecutor_partido, ejecutor_liga=ejecutor_liga)
 
         fixture = [fixture_a_dict(fix) for fix in resultado.fixture]
         tabla = [tabla_a_dict(tab) for tab in resultado.tabla]
@@ -425,4 +425,48 @@ async def cambiar_alineacion(liga_id: int, usuario_id: int, datos: CambiarAlinea
     except Exception:
         return JSONResponse(
             status_code=500,
+            content={"error": "ERROR_INTERNO", "mensaje": "Ocurrió un error interno del servidor"})
+    
+@liga_router.put("/liga/partido/{partido_id}/penales", status_code=status.HTTP_200_OK)
+async def configurar_penales_partido(
+    partido_id: int,
+    datos: ConfigurarPenales,
+    servicio: Servicios = Depends(obtener_servicio),
+):
+    try:
+        servicio.configurar_penales(
+            partido_id=partido_id,
+            usuario_id=datos.id_usuario,
+            id_arquero=datos.id_arquero,
+            id_comportamiento_arquero=datos.id_comportamiento_arquero,
+            pateadores=[(p.id_jugador, p.id_comportamiento) for p in datos.pateadores]
+        )
+        return {"mensaje": "Configuracion de penales registrada correctamente"}
+    except PartidoNoEncontrado:
+        return JSONResponse(
+            status_code=404, 
+            content={"error": "PARTIDO_NO_ENCONTRADO", "mensaje": "El partido no existe"})
+    except PartidoNoDisponible:
+        return JSONResponse(
+            status_code=409, 
+            content={"error": "PARTIDO_NO_DISPONIBLE", "mensaje": "El partido no esta en preparación de penales"})
+    except UsuarioNoEncontrado:
+        return JSONResponse(
+            status_code=404, 
+            content={"error": "USUARIO_NO_ENCONTRADO", "mensaje": "El usuario no pertenece al partido"})
+    except ComportamientoNoEncontrado:
+        return JSONResponse(
+            status_code=404, 
+            content={"error": "COMPORTAMIENTO_NO_ENCONTRADO", "mensaje": "El comportamiento no existe"})
+    except DatosInvalidos:
+        return JSONResponse(
+            status_code=400, 
+            content={"error": "DATOS_INVALIDOS", "mensaje": "Solo jugadores titulares se pueden elgir"})
+    except (NoSePuedeElegirComoArquero, SoloPuedenPatearLosTitulares):
+        return JSONResponse(
+            status_code=400, 
+            content={"error": "REGLAS_PENALES_INVALIDAS", "mensaje": "El arquero y pateadores deben ser los titulares actuales"})
+    except Exception:
+        return JSONResponse(
+            status_code=500, 
             content={"error": "ERROR_INTERNO", "mensaje": "Ocurrió un error interno del servidor"})
