@@ -6,11 +6,12 @@ from app.capa_0_definicion_bd.models.equipo_modelos import Equipo
 from app.capa_0_definicion_bd.models.jugadores_modelos import Jugador
 from app.capa_0_definicion_bd.models.comportamientos_modelos import Comportamiento
 from app.capa_0_definicion_bd.models.equipos_jugadores_modelos import EquipoJugador, EstadoJugador
-from app.capa_0_definicion_bd.models.partidos_modelos import Formacion
+from app.capa_0_definicion_bd.models.partidos_modelos import Formacion, EstadoPartido, TipoPartido, Partido
 from app.capa_0_definicion_bd.models.usuarios_modelos import Usuario
 from app.capa_0_definicion_bd.models.fixture_liga_modelos import FixtureLiga
 from app.capa_0_definicion_bd.models.tabla_liga_modelos import TablaLiga
 from app.capa_3_api.websockets.admin_conexiones import admin_conexiones
+from app.capa_3_api.dependencias import crear_servicio
 
 
 def test_endpoint_listar_ligas_disponibles(client, db_test):
@@ -798,3 +799,65 @@ def test_cambiar_alineacion_rechaza_jugador_no_seleccionado(client, db_test):
         asociacion = (db_test.query(EquipoJugador).filter_by(id_equipo=equipo.id_equipo, id_jugador=jugador.id_jugador).one())
         estado_esperado = (EstadoJugador.TITULAR if indice < 3 else EstadoJugador.SUPLENTE)
         assert asociacion.estado == estado_esperado
+
+def test_resultado_liga_acumula_puntos_en_usuario_una_sola_vez(db_test):
+    usuario_izq = Usuario(
+        email="pepito@gmail.com",
+        nombre="pepito",
+        id_avatar=1,
+        contraseña="gdfgfda",
+        nombre_club="boca"
+    )
+    usuario_der = Usuario(
+        email="jorgito@gmail.com",
+        nombre="jorgito",
+        id_avatar=2,
+        contraseña="adfña",
+        nombre_club="river")
+    db_test.add_all([usuario_izq, usuario_der])
+    db_test.commit()
+
+    equipo_izq = Equipo(id_usuario=usuario_izq.id_usuario)
+    equipo_der = Equipo(id_usuario=usuario_der.id_usuario)
+    liga = Liga(
+        id_usuario=usuario_izq.id_usuario,
+        nombre="ya basta por dios",
+        estado=EstadoLiga.EN_JUEGO,
+        min_jugadores=2,
+        max_jugadores=2,
+        duracion_partido=5)
+    db_test.add_all([equipo_izq, equipo_der, liga])
+    db_test.commit()
+
+    partido = Partido(
+        id_usuario_1=usuario_izq.id_usuario,
+        id_usuario_2=usuario_der.id_usuario,
+        id_equipo_1=equipo_izq.id_equipo,
+        id_equipo_2=equipo_der.id_equipo,
+        duracion_partido=5,
+        formacion_1=Formacion.OFENSIVA,
+        formacion_2=Formacion.DEFENSIVA,
+        tipo_partido=TipoPartido.LIGA,
+        estado_partido=EstadoPartido.TERMINADO
+    )
+    db_test.add(partido)
+    db_test.flush()
+
+    fixture = FixtureLiga(id_liga=liga.id, id_equipo_izq=equipo_izq.id_equipo, id_equipo_der=equipo_der.id_equipo, id_partido=partido.id_partido, turno=1)
+    tabla_izq = TablaLiga(id_liga=liga.id, id_equipo=equipo_izq.id_equipo, id_usuario=usuario_izq.id_usuario)
+    tabla_der = TablaLiga(id_liga=liga.id, id_equipo=equipo_der.id_equipo, id_usuario=usuario_der.id_usuario)
+    db_test.add_all([fixture, tabla_izq, tabla_der])
+    db_test.commit()
+
+    servicio = crear_servicio(db_test)
+    servicio.registrar_resultado_partido_liga(id_liga=liga.id, turno=1, goles_izq=2, goles_der=0)
+    servicio.registrar_resultado_partido_liga(id_liga=liga.id, turno=1, goles_izq=2, goles_der=0)
+
+    db_test.refresh(usuario_izq)
+    db_test.refresh(usuario_der)
+    db_test.refresh(tabla_izq)
+    db_test.refresh(tabla_der)
+    assert usuario_izq.puntos == 3
+    assert usuario_der.puntos == 0
+    assert tabla_izq.puntos == 3
+    assert tabla_der.puntos == 0

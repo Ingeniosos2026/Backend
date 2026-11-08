@@ -29,6 +29,7 @@ class _RepoUsuariosProtocol(Protocol):
     def obtener_por_email(self, email: str) -> UsuarioModelo | None: ...
     def obtener_por_id(self, id_usuario: int) -> UsuarioModelo | None: ...
     def actualizar(self) -> None: ...
+    def obtener_ranking(self) -> list[UsuarioModelo]: ...
 
 class _RepoJugadoresProtocol(Protocol):
     def crear(self, jugador: JugadorModelo) -> JugadorModelo: ...
@@ -645,21 +646,36 @@ class Servicios:
         self.ligas.actualizar()
 
         return CrearPartidoResultado(partido=partido)
-    
+
+    def _puntos_por_resultado(self, goles_izq: int, goles_der: int) -> tuple[int, int]:
+        if goles_izq > goles_der:
+            return 3, 0
+        if goles_der > goles_izq:
+            return 0, 3
+        return 1, 1
 
     def registrar_resultado_partido_liga(self, id_liga: int, turno: int, goles_izq: int, goles_der: int, id_equipo_ganador_penales: int | None = None) -> RegistrarResultadoPartidoLiga:
         fixture = self.ligas.obtener_fixture_por_turno(id_liga, turno)
+        liga = self.ligas.obtener_por_id(id_liga)
 
         tabla_izq = self.ligas.obtener_registro_tabla(id_liga, fixture.id_equipo_izq)
         tabla_der = self.ligas.obtener_registro_tabla(id_liga, fixture.id_equipo_der)
+
+        if tabla_izq is None or tabla_der is None:
+            raise NoSeEncontraronLasTablas()
+
+        if fixture.goles_equipo_izq is not None and fixture.goles_equipo_der is not None:
+            return RegistrarResultadoPartidoLiga(fixture=fixture, tabla_izq=tabla_izq, tabla_der=tabla_der)
 
         partido = self.partidos.obtener_por_id(fixture.id_partido)
 
         if partido is None:
             raise PartidoNoEncontrado()
 
-        if tabla_izq is None or tabla_der is None:
-            raise NoSeEncontraronLasTablas()
+        usuario_izq = self.usuarios.obtener_por_id(tabla_izq.id_usuario)
+        usuario_der = self.usuarios.obtener_por_id(tabla_der.id_usuario)
+        if usuario_izq is None or usuario_der is None:
+            raise UsuarioNoEncontrado()
 
         # guardo los goles en el fixture
         fixture.goles_equipo_izq = goles_izq
@@ -673,20 +689,23 @@ class Servicios:
         tabla_der.goles_en_contra += goles_izq
 
         # actualizo el resultado del partido
-        if goles_izq > goles_der:
+        puntos_izq, puntos_der = self._puntos_por_resultado(goles_izq, goles_der)
+        if liga.contraseña is None:
+            usuario_izq.puntos += puntos_izq
+            usuario_der.puntos += puntos_der
+
+        if puntos_izq > puntos_der:
             tabla_izq.partidos_ganados += 1
-            tabla_izq.puntos += 3
             tabla_der.partidos_perdidos += 1
 
-        elif goles_der > goles_izq:
+        elif puntos_der > puntos_izq:
             tabla_der.partidos_ganados += 1
-            tabla_der.puntos += 3
             tabla_izq.partidos_perdidos += 1
 
         else:
             tabla_izq.partidos_empatados += 1
             tabla_der.partidos_empatados += 1
-
+            
             if id_equipo_ganador_penales is not None:
                 if id_equipo_ganador_penales == fixture.id_equipo_izq:
                     tabla_izq.puntos += 2
@@ -697,7 +716,9 @@ class Servicios:
                 tabla_izq.puntos += 1
                 tabla_der.puntos += 1
 
-            
+        tabla_izq.puntos += puntos_izq
+        tabla_der.puntos += puntos_der
+ 
         self.ligas.actualizar()
 
         return RegistrarResultadoPartidoLiga(fixture=fixture, tabla_izq=tabla_izq, tabla_der=tabla_der)
@@ -975,13 +996,18 @@ class Servicios:
             raise EquipoNoEncontrado()
 
         return UsuarioPartidoResultado(usuario=usuario, equipo=equipo, formacion=formacion)
-    
-    def configurar_penales(self,partido_id: int,usuario_id: int,id_arquero: int,id_comportamiento_arquero: int,pateadores: list[tuple[int, int]]) -> None:
 
+    def obtener_ranking_usuarios(self) -> list[UsuarioModelo]:
+            return self.usuarios.obtener_ranking()
+
+    def obtener_info_partido(self, partido_id: int) -> ObtenerInfoPartidoResultado:
         partido = self.partidos.obtener_por_id(partido_id)
         if partido is None:
             raise PartidoNoEncontrado()
+        
+        return ObtenerInfoPartidoResultado(partido=partido)
 
+    def configurar_penales(self,partido_id: int,usuario_id: int,id_arquero: int,id_comportamiento_arquero: int,pateadores: list[tuple[int, int]]) -> None:
         if usuario_id not in (partido.id_usuario_1, partido.id_usuario_2):
             raise UsuarioNoEncontrado()
 

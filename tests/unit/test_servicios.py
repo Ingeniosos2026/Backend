@@ -1490,7 +1490,7 @@ def test_crear_siguiente_partido_liga_no_encontrada():
     repo_ligas.obtener_siguiente_fixture.assert_not_called()
 
 def test_registrar_resultado_partido_liga_gana_izquierda():
-    servicio, _, repo_ligas, repo_partidos = crear_servicio_liga()
+    servicio, repo_usuarios, repo_ligas, repo_partidos = crear_servicio_liga()
 
     fixture = FixtureLiga(
         id_liga=10,
@@ -1533,8 +1533,28 @@ def test_registrar_resultado_partido_liga_gana_izquierda():
         tipo_partido=TipoPartido.LIGA,
         estado_partido=EstadoPartido.TERMINADO)
 
+    usuario_izq = Usuario(
+        id_usuario=1,
+        email="pepito@gmail.com",
+        nombre="pepitoizq",
+        id_avatar=1,
+        contraseña="asdgsad321",
+        nombre_club="boca",
+        puntos=0
+    )
+    usuario_der = Usuario(
+        id_usuario=2,
+        email="jorgito@gmail.com",
+        nombre="jorgitoder",
+        id_avatar=2,
+        contraseña="hdfga",
+        nombre_club="river",
+        puntos=0
+    )
+    repo_usuarios.obtener_por_id.side_effect = [usuario_izq, usuario_der]
     repo_ligas.obtener_fixture_por_turno.return_value = fixture
-    repo_ligas.obtener_registro_tabla.side_effect = [tabla_izq, tabla_der]
+    repo_ligas.obtener_por_id.return_value = Mock(contraseña=None)
+    repo_ligas.obtener_registro_tabla.side_effect = [tabla_izq, tabla_der, tabla_izq, tabla_der]
 
     repo_partidos.obtener_por_id.return_value = partido
 
@@ -1557,6 +1577,7 @@ def test_registrar_resultado_partido_liga_gana_izquierda():
     assert tabla_izq.partidos_empatados == 0
     assert tabla_izq.partidos_perdidos == 0
     assert tabla_izq.puntos == 3
+    assert usuario_izq.puntos == 3
 
     assert tabla_der.goles_a_favor == 1
     assert tabla_der.goles_en_contra == 3
@@ -1564,6 +1585,16 @@ def test_registrar_resultado_partido_liga_gana_izquierda():
     assert tabla_der.partidos_empatados == 0
     assert tabla_der.partidos_perdidos == 1
     assert tabla_der.puntos == 0
+    assert usuario_der.puntos == 0
+
+    resultado_repetido = servicio.registrar_resultado_partido_liga(id_liga=10, turno=1, goles_izq=3, goles_der=1)
+
+    assert resultado_repetido.fixture == fixture
+    assert usuario_izq.puntos == 3
+    assert usuario_der.puntos == 0
+    assert tabla_izq.puntos == 3
+    assert tabla_der.puntos == 0
+    repo_ligas.actualizar.assert_called_once()
 
 def test_eliminar_comportamiento():
     repo_comportamientos = Mock()
