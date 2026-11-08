@@ -654,6 +654,7 @@ class Servicios:
 
     def registrar_resultado_partido_liga(self, id_liga: int, turno: int, goles_izq: int, goles_der: int) -> RegistrarResultadoPartidoLiga:
         fixture = self.ligas.obtener_fixture_por_turno(id_liga, turno)
+        liga = self.ligas.obtener_por_id(id_liga)
 
         tabla_izq = self.ligas.obtener_registro_tabla(id_liga, fixture.id_equipo_izq)
         tabla_der = self.ligas.obtener_registro_tabla(id_liga, fixture.id_equipo_der)
@@ -687,8 +688,9 @@ class Servicios:
 
         # actualizo el resultado del partido
         puntos_izq, puntos_der = self._puntos_por_resultado(goles_izq, goles_der)
-        usuario_izq.puntos += puntos_izq
-        usuario_der.puntos += puntos_der
+        if liga.contraseña is None:
+            usuario_izq.puntos += puntos_izq
+            usuario_der.puntos += puntos_der
 
         if puntos_izq > puntos_der:
             tabla_izq.partidos_ganados += 1

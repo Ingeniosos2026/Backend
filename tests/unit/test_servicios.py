@@ -1553,6 +1553,7 @@ def test_registrar_resultado_partido_liga_gana_izquierda():
     )
     repo_usuarios.obtener_por_id.side_effect = [usuario_izq, usuario_der]
     repo_ligas.obtener_fixture_por_turno.return_value = fixture
+    repo_ligas.obtener_por_id.return_value = Mock(contraseña=None)
     repo_ligas.obtener_registro_tabla.side_effect = [tabla_izq, tabla_der, tabla_izq, tabla_der]
 
     repo_partidos.obtener_por_id.return_value = partido
