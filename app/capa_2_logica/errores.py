@@ -91,3 +91,6 @@ class NoEsPosibleVerLaTabla(Exception):
 
 class NoSePuedeCambiarJugador(Exception):
     pass
+
+class NoPuedeUnirseASuPropioPartido(Exception):
+    pass

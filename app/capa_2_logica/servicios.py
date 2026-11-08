@@ -275,6 +275,7 @@ class Servicios:
 
     def listar_amistosos_disponibles(self) -> ListarAmistososResultado:
         amistosos = self.partidos.obtener_partidos_amistosos_disponibles()
+        
         return ListarAmistososResultado(amistosos=amistosos)
 
     def unirse_amistoso(self, partido_id: int, usuario_id: int, jugadores_comportamientos: list[tuple[int, int]], formacion: Formacion) -> UnirseAmistosoResultado:
@@ -313,6 +314,9 @@ class Servicios:
 
         if len(set(id_jugadores)) != 6:
             raise DatosInvalidos()
+        
+        if partido.id_usuario_1 == usuario_id:
+            raise NoPuedeUnirseASuPropioPartido()
 
         jugadores = []
 
