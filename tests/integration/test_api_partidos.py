@@ -664,6 +664,7 @@ def test_obtener_usuario_de_partido_devuelve_datos_y_emite_evento_websocket(clie
                 "nombre": usuario.nombre,
                 "club": usuario.nombre_club,
                 "avatar": usuario.id_avatar,
+                "dt": usuario.dt
             }
             assert datos["id_equipo"] == equipo_id
             assert datos["formacion"] == (

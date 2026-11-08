@@ -324,7 +324,8 @@ async def obtener_usuario_de_partido(partido_id: int, usuario_id: int, servicio:
                 "id": resultado.usuario.id_usuario,
                 "nombre": resultado.usuario.nombre,
                 "club": resultado.usuario.nombre_club,
-                "avatar": resultado.usuario.id_avatar},
+                "avatar": resultado.usuario.id_avatar,
+                "dt": resultado.usuario.dt},
             "id_equipo": resultado.equipo.id_equipo,
             "formacion": resultado.formacion.value,
             "jugadores": [{
