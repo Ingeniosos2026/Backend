@@ -987,3 +987,14 @@ class Servicios:
 
     def obtener_ranking_usuarios(self) -> list[UsuarioModelo]:
             return self.usuarios.obtener_ranking()
+
+    def validar_usuario_en_partido(self, partido_id: int, usuario_id: int) -> None:
+        partido = self.partidos.obtener_por_id(partido_id)
+
+        if partido is None:
+            raise PartidoNoEncontrado()
+
+        if partido.id_usuario_1 != usuario_id and partido.id_usuario_2 != usuario_id:
+            raise UsuarioNoEncontrado()
+        
+        

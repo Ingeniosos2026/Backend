@@ -258,3 +258,10 @@ class EjecutorPartido:
             self.motor.estado.comportamientos[clave] = comportamiento
 
         self.comportamientos_pendientes.clear()
+        
+    def alternar_estado_dt(self, usuario_id: int) -> bool:
+        estado = self.motor.estado
+
+        estado.dt_activo[usuario_id] = not estado.dt_activo[usuario_id]
+
+        return estado.dt_activo[usuario_id]

@@ -340,3 +340,27 @@ async def obtener_usuario_de_partido(partido_id: int, usuario_id: int, servicio:
             status_code=404,
             content={"error": "EQUIPO_NO_ENCONTRADO", "mensaje": "El equipo del usuario no existe"},
         )
+
+
+@partido_router.put("/partido/{partido_id}/{usuario_id}/dt", status_code=status.HTTP_200_OK)
+def alternar_estado_dt(partido_id: int, usuario_id: int, servicio: Servicios = Depends(obtener_servicio)):
+    try:
+        ejecutor = administrador_partidas.obtener(partido_id)
+
+        if ejecutor is None:
+            raise PartidoNoEncontrado()
+
+        servicio.validar_usuario_en_partido(partido_id=partido_id, usuario_id=usuario_id)
+
+        nuevo_estado = ejecutor.alternar_estado_dt(usuario_id)
+
+        return {"mensaje": "Estado del DT actualizado", "dt_activo": nuevo_estado}
+
+    except PartidoNoEncontrado:
+        return JSONResponse(status_code=404, content={"error": "PARTIDO_NO_ENCONTRADO", "mensaje": "El partido no existe o no se encuentra en ejecucion"})
+
+    except UsuarioNoEncontrado:
+        return JSONResponse(status_code=404, content={"error": "USUARIO_NO_ENCONTRADO", "mensaje": "El usuario no participa en este partido"})
+
+    except Exception:
+        return JSONResponse(status_code=500, content={"error": "ERROR_INTERNO", "mensaje": "No se pudo cambiar el estado del DT"})
