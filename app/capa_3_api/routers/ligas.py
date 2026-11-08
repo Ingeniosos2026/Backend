@@ -254,7 +254,7 @@ async def iniciar_liga(liga_id: int, usuario_id: int, servicio: Servicios = Depe
         motor = MotorPartido(estado=estado)
         ejecutor_partido = EjecutorPartido(partido_id=partido.id_partido, motor=motor, duracion=duracion_segundos)
         ejecutor_liga = EjecutorLiga(liga_id=liga_id, partido_id=partido.id_partido, motor=motor, duracion=duracion_segundos, ejecutor_partido=ejecutor_partido,penales=liga.empate, turno=1 )
-        administrador_partidas.agregar(partido_id=partido.id_partido, ejecutor=ejecutor_partido, ejecutor_liga=ejecutor_liga)
+        administrador_partidas.agregar(partido_id=partido.id_partido, ejecutor=ejecutor_partido)
 
         fixture = [fixture_a_dict(fix) for fix in resultado.fixture]
         tabla = [tabla_a_dict(tab) for tab in resultado.tabla]

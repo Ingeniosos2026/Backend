@@ -86,7 +86,7 @@ class FisicaPartido:
                     self.registrar_gol("izquierdo")
             else:
                 # no es gol, rebota la pelota
-                pelota.posicion.x = cancha.ancho
+                pelota.posicion.x = 0
                 pelota.velocidad.x = abs(pelota.velocidad.x)
 
         # Borde derecho

@@ -14,7 +14,7 @@ from app.partido.administrar_partidos import administrador_partidas
 from app.capa_2_logica.errores import NoSePuedeElegirComoArquero, SoloPuedenPatearLosTitulares
 
 DURACION_PREPARACION_PENALES = 20.0  # SEGUNDOS
-DURACION_PENAL = 15.0  # SEGUNDOS
+DURACION_PENAL = 20.0  # SEGUNDOS
 
 
 class EjecutorLiga:
@@ -44,7 +44,8 @@ class EjecutorLiga:
 
                 self.config_penales.clear()
                 self.esperando_config_penales = False
-
+                self.titulares_finales.clear()
+                
                 # ejecutamos el partido actual
                 resultado_partido = await self.ejecutor_partido.ejecutar()
                 goles_izq = resultado_partido["goles_izquierdo"]
@@ -55,9 +56,10 @@ class EjecutorLiga:
 
                 # si termina en empate, definimos por penales
                 if self.penales and goles_izq == goles_der:
+                    administrador_partidas.agregar(partido_id=self.partido_id, ejecutor=self)
                     await self.ejecutar_tanda_penales()
-                    penales_izq = self.motor.penales_izquierdo
-                    penales_der = self.motor.penales_derecho
+                    penales_izq = self.penales_izquierdo
+                    penales_der = self.penales_derecho
 
                     if penales_izq > penales_der:
                         id_ganador_penales = self.motor.estado.id_equipo_izquierdo
@@ -165,7 +167,7 @@ class EjecutorLiga:
     
     async def ejecutar_un_penal (self, lado_pateador: str, id_usuario_pateador: int, id_jugador_pateador: int,
                                 comportamiento_pateador: str,id_usuario_arquero: int,id_jugador_arquero: int,
-                                comportamiento_arquero: str, titulares_finales: dict ) -> bool:
+                                comportamiento_arquero: str) -> bool:
 
         estado = self.motor.estado
         cancha = estado.cancha
@@ -224,8 +226,8 @@ class EjecutorLiga:
                     "estados_jugadores": estados_jugadores_a_dict(estados_jugadores, estado),
                     "acciones": eventos_a_dict(eventos),
                     "penales": {
-                        "izquierdo": estado.penales_izquierdo,
-                        "derecho": estado.penales_derecho,
+                        "izquierdo": self.penales_izquierdo,
+                        "derecho": self.penales_derecho,
                         "pateador_actual": id_jugador_pateador,
                         "arquero_actual": id_jugador_arquero,
                     },

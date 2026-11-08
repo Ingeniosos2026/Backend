@@ -20,6 +20,7 @@ from app.partido.comportamientos import COMPORTAMIENTOS_PREDETERMINADOS, COMPORT
 from sqlalchemy.exc import IntegrityError
 from .errores import *
 from .resultados import *
+from app.partido.administrar_partidos import administrador_partidas
 
 password_hash = PasswordHash.recommended()
 
@@ -973,3 +974,44 @@ class Servicios:
             raise EquipoNoEncontrado()
 
         return UsuarioPartidoResultado(usuario=usuario, equipo=equipo, formacion=formacion)
+    
+    def configurar_penales(self,partido_id: int,usuario_id: int,id_arquero: int,id_comportamiento_arquero: int,pateadores: list[tuple[int, int]]) -> None:
+
+        partido = self.partidos.obtener_por_id(partido_id)
+        if partido is None:
+            raise PartidoNoEncontrado()
+
+        if usuario_id not in (partido.id_usuario_1, partido.id_usuario_2):
+            raise UsuarioNoEncontrado()
+
+        ejecutor = administrador_partidas.obtener(partido_id)
+        if ejecutor is None or not getattr(ejecutor, "esperando_config_penales", False):
+            raise PartidoNoDisponible()
+
+        if len(pateadores) != 3:
+            raise DatosInvalidos()
+
+        ids_titulares = ejecutor.obtener_ids_jugadores_en_cancha_usuario(ejecutor.motor.estado, usuario_id)
+        if id_arquero not in ids_titulares:
+            raise NoSePuedeElegirComoArquero()
+
+        ids_pateadores = [id_j for id_j, _ in pateadores]
+        if len(set(ids_pateadores)) != 3 or set(ids_pateadores) != set(ids_titulares):
+            raise SoloPuedenPatearLosTitulares()
+
+        comp_arquero = self.comportamientos.obtener_comportamiento_por_id_y_usuario(id_comportamiento_arquero, usuario_id)
+        if comp_arquero is None:
+            raise ComportamientoNoEncontrado()
+
+        comportamientos_pateadores = []
+        for id_j, id_comp in pateadores:
+            comp = self.comportamientos.obtener_comportamiento_por_id_y_usuario(id_comp, usuario_id)
+            if comp is None:
+                raise ComportamientoNoEncontrado()
+            
+            comportamientos_pateadores.append((id_j, comp.codigo))
+
+        ejecutor.configurar_penales_usuario(usuario_id=usuario_id,id_arquero=id_arquero,
+                                            comportamiento_arquero=comp_arquero.codigo,
+                                            comportamiento_pateadores=comportamientos_pateadores,
+                                            estado=ejecutor.motor.estado)
