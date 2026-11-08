@@ -985,32 +985,3 @@ class Servicios:
 
     def obtener_ranking_usuarios(self) -> list[UsuarioModelo]:
             return self.usuarios.obtener_ranking()
-
-    def registrar_resultado_amistoso(self, partido_id: int, goles_izq: int, goles_der: int) -> PartidoModelo:
-            partido = self.partidos.obtener_por_id(partido_id)
-            if partido is None or partido.tipo_partido != TipoPartido.AMISTOSO:
-                raise AmistosoNoEncontrado()
-    
-            if goles_izq < 0 or goles_der < 0:
-                raise DatosInvalidos()
-    
-            if partido.estado_partido == EstadoPartido.TERMINADO:
-                return partido
-    
-            if partido.estado_partido != EstadoPartido.EN_CURSO:
-                raise AmistosoNoPuedeIniciar()
-    
-            if partido.id_usuario_2 is None:
-                raise DatosInvalidos()
-    
-            usuario_izq = self.usuarios.obtener_por_id(partido.id_usuario_1)
-            usuario_der = self.usuarios.obtener_por_id(partido.id_usuario_2)
-            if usuario_izq is None or usuario_der is None:
-                raise UsuarioNoEncontrado()
-    
-            puntos_izq, puntos_der = self._puntos_por_resultado(goles_izq, goles_der)
-            usuario_izq.puntos += puntos_izq
-            usuario_der.puntos += puntos_der
-            partido.estado_partido = EstadoPartido.TERMINADO
-    
-            return self.partidos.actualizar(partido)
