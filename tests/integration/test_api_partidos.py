@@ -9,7 +9,7 @@ from app.capa_0_definicion_bd.models.partidos_modelos import (EstadoPartido, For
 from app.capa_0_definicion_bd.models.usuarios_modelos import Usuario
 from app.capa_2_logica.errores import *
 from app.capa_2_logica.resultados import CrearPartidoResultado, CambioJugadorResultado
-from app.capa_3_api.dependencias import obtener_servicio
+from app.capa_3_api.dependencias import obtener_servicio, crear_servicio
 from app.capa_3_api.websockets.admin_conexiones import admin_conexiones
 
 
