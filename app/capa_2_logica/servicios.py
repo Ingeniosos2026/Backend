@@ -987,3 +987,10 @@ class Servicios:
 
     def obtener_ranking_usuarios(self) -> list[UsuarioModelo]:
             return self.usuarios.obtener_ranking()
+
+    def obtener_info_partido(self, partido_id: int) -> ObtenerInfoPartidoResultado:
+        partido = self.partidos.obtener_por_id(partido_id)
+        if partido is None:
+            raise PartidoNoEncontrado()
+
+        return ObtenerInfoPartidoResultado(partido=partido)

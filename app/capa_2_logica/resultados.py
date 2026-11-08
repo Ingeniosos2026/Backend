@@ -137,3 +137,7 @@ class UsuarioPartidoResultado:
     usuario: UsuarioModelo
     equipo: EquipoModelo
     formacion: Formacion
+
+@dataclass(slots=True)
+class ObtenerInfoPartidoResultado:
+    partido: PartidoModelo
