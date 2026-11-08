@@ -366,7 +366,7 @@ class Servicios:
 
         return PartidoResultado(partido=partido)
 
-    def crear_liga(self, usuario_id: int, nombre: str, contraseña: str | None, min_jugadores: int, max_jugadores: int, duracion_partido: int, jugadores_comportamientos: list[tuple[int, int]], formacion: Formacion) -> CrearLigaResultado:
+    def crear_liga(self, usuario_id: int, nombre: str, contraseña: str | None, min_jugadores: int, max_jugadores: int, duracion_partido: int, jugadores_comportamientos: list[tuple[int, int]], formacion: Formacion, empate: bool = False) -> CrearLigaResultado:
 
         if not nombre.strip():
             raise DatosLigaInvalidos()
@@ -420,6 +420,7 @@ class Servicios:
             min_jugadores=min_jugadores,
             max_jugadores=max_jugadores,
             duracion_partido=duracion_partido,
+            empate=empate
         )
 
         liga = self.ligas.crear(nueva_liga)

@@ -29,7 +29,8 @@ async def crear_liga(usuario_id: int, datos: CrearLiga, servicio: Servicios = De
             max_jugadores=datos.max_jugadores,
             duracion_partido=datos.duracion_partido,
             jugadores_comportamientos=[(j.id_jugador, j.id_comportamiento) for j in datos.jugadores],
-            formacion=datos.formacion
+            formacion=datos.formacion,
+            empate=datos.empate
         )
 
         liga = resultado.liga
@@ -52,7 +53,8 @@ async def crear_liga(usuario_id: int, datos: CrearLiga, servicio: Servicios = De
             "duracion_partido": liga.duracion_partido,
             "estado": liga.estado.name,
             "id_equipo": participacion.id_equipo,
-            "formacion": participacion.formacion.value
+            "formacion": participacion.formacion.value,
+            "empate": liga.empate
         }
 
     except DatosInvalidos:
@@ -253,7 +255,7 @@ async def iniciar_liga(liga_id: int, usuario_id: int, servicio: Servicios = Depe
         duracion_segundos = partido.duracion_partido * 60
         motor = MotorPartido(estado=estado)
         ejecutor_partido = EjecutorPartido(partido_id=partido.id_partido, motor=motor, duracion=duracion_segundos)
-        ejecutor_liga = EjecutorLiga(liga_id=liga_id, partido_id=partido.id_partido, motor=motor, duracion=duracion_segundos, ejecutor_partido=ejecutor_partido,penales=liga.empate, turno=1 )
+        ejecutor_liga = EjecutorLiga(liga_id=liga_id, partido_id=partido.id_partido, motor=motor, duracion=duracion_segundos, ejecutor_partido=ejecutor_partido, penales=liga.empate, turno=1 )
         administrador_partidas.agregar(partido_id=partido.id_partido, ejecutor=ejecutor_partido)
 
         fixture = [fixture_a_dict(fix) for fix in resultado.fixture]
