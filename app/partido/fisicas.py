@@ -70,16 +70,24 @@ class FisicaPartido:
         # Borde izquierdo
         if pelota.posicion.x <= 0:
             if self.esta_dentro_arco(pelota.posicion.y, cancha.arco_izquierdo):
-                self.registrar_gol("izquierdo")
+                if self.estado.en_penales and self.estado.lado_pateador_penal != "derecho":
+                    pelota.posicion.x = cancha.ancho 
+                    pelota.velocidad = Coordenada(0, 0)
+                else:
+                    self.registrar_gol("izquierdo")
             else:
                 # no es gol, rebota la pelota
-                pelota.posicion.x = 0
+                pelota.posicion.x = cancha.ancho
                 pelota.velocidad.x = abs(pelota.velocidad.x)
 
         # Borde derecho
         elif pelota.posicion.x >= cancha.ancho:
             if self.esta_dentro_arco(pelota.posicion.y, cancha.arco_derecho):
-                self.registrar_gol("derecho")
+                if self.estado.en_penales and self.estado.lado_pateador_penal != "izquierdo":
+                    pelota.posicion.x = cancha.ancho
+                    pelota.velocidad = Coordenada(0, 0)
+                else:
+                    self.registrar_gol("derecho")
             else:
                 # no es gol, rebota la pelota
                 pelota.posicion.x = cancha.ancho
@@ -89,6 +97,13 @@ class FisicaPartido:
         return (arco.poste_inferior.y <= y <= arco.poste_superior.y)
 
     def registrar_gol(self, lado_arco: str) -> None:
+        if self.estado.en_penales:
+            if lado_arco == "izquierdo" and self.estado.lado_pateador_penal == "derecho":
+                self.estado.penales_derecho += 1
+            elif lado_arco == "derecho" and self.estado.lado_pateador_penal == "izquierdo":
+                self.estado.penales_izquierdo += 1
+            return
+
         # registra un gol y reinicia las posiciones del partido
         if lado_arco == "izquierdo": 
             self.estado.goles_derecho += 1

@@ -247,13 +247,13 @@ def listar_ligas(servicio: Servicios = Depends(obtener_servicio)):
 async def iniciar_liga(liga_id: int, usuario_id: int, servicio: Servicios = Depends(obtener_servicio)):
     try:
         resultado = servicio.iniciar_liga(id_liga=liga_id, usuario_id=usuario_id)
-
+        liga = resultado.liga
         partido = resultado.partido
         estado = crear_estado_partido(partido)
         duracion_segundos = partido.duracion_partido * 60
         motor = MotorPartido(estado=estado)
         ejecutor_partido = EjecutorPartido(partido_id=partido.id_partido, motor=motor, duracion=duracion_segundos)
-        ejecutor_liga = EjecutorLiga(liga_id=liga_id, partido_id=partido.id_partido, motor=motor, duracion=duracion_segundos, ejecutor_partido=ejecutor_partido, turno=1)
+        ejecutor_liga = EjecutorLiga(liga_id=liga_id, partido_id=partido.id_partido, motor=motor, duracion=duracion_segundos, ejecutor_partido=ejecutor_partido,penales=liga.empate, turno=1 )
         administrador_partidas.agregar(partido_id=partido.id_partido, ejecutor=ejecutor_partido)
 
         fixture = [fixture_a_dict(fix) for fix in resultado.fixture]
