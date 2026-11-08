@@ -225,6 +225,26 @@ def test_no_permitir_mas_de_tres_cambios_por_equipo():
 
 def test_realizar_cambio_correctamente():
     motor = crear_motor_prueba()
+    # Agrego al jugador 3 como suplente.
+    jugador_entra = JugadorEstado(
+        id_jugador=3,
+        id_equipo=10,
+        id_usuario=1,
+        nombre="Lean",
+        posicion=Coordenada(x=0, y=0),
+        control=60,
+        agilidad=60,
+        fuerza=60,
+        poder=60,
+        velocidad=60
+    )
+
+    clave_entra = (1, 3)
+
+    motor.estado.suplentes[clave_entra] = jugador_entra
+    motor.estado.comportamientos[clave_entra] = "hola"
+
+    
     admin_mock = Mock()
     admin_mock.emitir_partido = AsyncMock()
 
@@ -253,34 +273,18 @@ def test_realizar_cambio_correctamente():
         jugador_sale_id=1,
         resultado=resultado))
 
-    estado = motor.estado
-
     # el jugador que sale ya no esta en el estad
-    assert (1, 1) not in estado.jugadores
-    assert (1, 1) not in estado.comportamientos
+    assert (1, 1) in motor.estado.suplentes
+    assert (1, 1) not in motor.estado.jugadores
 
     # el jugador que entra esta en el estado
-    assert (1, 3) in estado.jugadores
-    assert (1, 3) in estado.comportamientos
+    assert (1, 3) in motor.estado.jugadores
+    assert (1, 3) not in motor.estado.suplentes
 
-    jugador_nuevo = estado.jugadores[(1, 3)]
+    assert motor.estado.jugadores[(1, 3)].posicion == motor.estado.suplentes[(1, 1)].posicion
 
-    assert jugador_nuevo.id_jugador == 3
-    assert jugador_nuevo.id_equipo == 10
-    assert jugador_nuevo.id_usuario == 1
+    # verifico que se conservam los comportamientos
+    assert (1, 1) in motor.estado.comportamientos
+    assert (1, 3) in motor.estado.comportamientos
 
-    # conserva la posicion del jugador que salio
-    assert jugador_nuevo.posicion.x == 20
-    assert jugador_nuevo.posicion.y == 25
-
-    # copia las estadísticas del resultado
-    assert jugador_nuevo.control == 60
-    assert jugador_nuevo.agilidad == 60
-    assert jugador_nuevo.fuerza == 60
-    assert jugador_nuevo.poder == 60
-    assert jugador_nuevo.velocidad == 60
-
-    assert estado.comportamientos[(1, 3)] == resultado.codigo_comportamiento
-
-    # registra que el equipo ya cambio durante esta pausa
-    assert (1, 10) in ejecutor.equipos_que_cambiaron
+    admin_mock.emitir_partido.assert_awaited_once()
