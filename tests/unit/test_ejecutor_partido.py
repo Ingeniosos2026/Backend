@@ -40,7 +40,6 @@ def crear_motor_prueba() -> MotorPartido:
             (2, 2): "def comportamiento(primitivas):\n    pass",
         },
         suplentes={},
-        comportamientos_disponibles={},
         codigo_dt={},
         dt_activo={1: False, 2: False},
         pelota=PelotaEstado(posicion=Coordenada(50, 25), velocidad=Coordenada(0, 0)),
