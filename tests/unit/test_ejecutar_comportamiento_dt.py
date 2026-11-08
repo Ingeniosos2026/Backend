@@ -83,27 +83,32 @@ def crear_estado_partido():
         ))
 
 
-def test_ejecutar_comportamiento_dt_cambia_jugador_con_primitiva():
+def test_ejecutar_comportamiento_dt_cambia_jugador_con_primitiva(monkeypatch):
     estado = crear_estado_partido()
     estado.en_pausa = True
     jugador_que_sale = estado.jugadores[(1, 1)]
     suplente_que_entra = estado.suplentes[(1, 3)]
     codigo = """def comportamiento(primitivas): primitivas.cambiar_jugador()"""
+    posiciones_iniciales = {(1, 1): Coordenada(20, 25), (1, 2): Coordenada(40, 25), (2, 4): Coordenada(80, 25)}
 
-    ejecutar_comportamiento_dt(estado, 1, codigo)
+    # le decimos que cuadno haga un random devuelva el primer elemento (ya como la eleccion es aleatoria puede ser que cambie al jugador que queremos o no)
+    monkeypatch.setattr("app.partido.primitivas_dt.random.choice", lambda elementos: elementos[0])
+    ejecutar_comportamiento_dt(estado, 1, codigo, posiciones_iniciales)    
 
     assert (1, 1) not in estado.jugadores
     assert estado.jugadores[(1, 3)] is suplente_que_entra
     assert estado.suplentes[(1, 1)] is jugador_que_sale
     assert suplente_que_entra.posicion == jugador_que_sale.posicion
     assert suplente_que_entra.destino is None
+    assert posiciones_iniciales[(1, 3)] == Coordenada(20, 25)
 
 
 def test_ejecutar_comportamiento_dt_cambia_comportamiento_con_primitiva():
     estado = crear_estado_partido()
     codigo = """def comportamiento(primitivas): primitivas.cambiar_comportamiento_ataque()"""
+    posiciones_iniciales = {(1, 1): Coordenada(20, 25), (1, 2): Coordenada(40, 25), (2, 4): Coordenada(80, 25)}
 
-    ejecutar_comportamiento_dt(estado, 1, codigo)
+    ejecutar_comportamiento_dt(estado, 1, codigo, posiciones_iniciales)
 
     assert estado.comportamientos[(1, 1)] == comportamiento_atacar
     assert estado.comportamientos[(1, 2)] == comportamiento_atacar
