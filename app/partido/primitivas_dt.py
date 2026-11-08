@@ -6,9 +6,10 @@ import random
 
 class PrimitivasDT:
 
-    def __init__(self, estado: EstadoPartido, id_usuario: int):
+    def __init__(self, estado: EstadoPartido, id_usuario: int, posiciones_iniciales: dict):
         self.estado = estado
         self.id_usuario = id_usuario
+        self.posiciones_iniciales = posiciones_iniciales
 
     def cambiar_comportamiento_ataque(self) -> None:
         for clave in self.estado.jugadores:
@@ -40,6 +41,9 @@ class PrimitivasDT:
         # el suplente ingresa en la posicion del jugador que sale
         jugador_entra.posicion = Coordenada(x=jugador_sale.posicion.x, y=jugador_sale.posicion.y)
         jugador_entra.destino = None
+
+        posicion_inicial = self.posiciones_iniciales[clave_sale]
+        self.posiciones_iniciales[clave_entra] = Coordenada(x=posicion_inicial.x, y=posicion_inicial.y)
 
         # intercambio los jugadores
         self.estado.jugadores[clave_entra] = jugador_entra
