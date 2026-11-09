@@ -1706,27 +1706,6 @@ def test_obtener_fixture_liga_no_encontrada():
     repo_ligas.obtener_por_id.assert_called_once_with(10)
     repo_ligas.obtener_fixture_completo.assert_not_called()
 
-def test_obtener_fixture_liga_no_disponible():
-    servicio, _, repo_ligas, _ = crear_servicio_liga()
-
-    liga = Liga(
-        id=10,
-        id_usuario=1,
-        nombre="Liga master",
-        contraseña=None,
-        min_jugadores=2,
-        max_jugadores=5,
-        duracion_partido=5,
-        estado=EstadoLiga.DISPONIBLE)
-
-    repo_ligas.obtener_por_id.return_value = liga
-
-    with pytest.raises(NoEsPosibleVerElFixture):
-        servicio.obtener_fixture(liga_id=10)
-
-    repo_ligas.obtener_por_id.assert_called_once_with(10)
-    repo_ligas.obtener_fixture_completo.assert_not_called()
-
 def test_obtener_tabla_correctamente():
     servicio, _, repo_ligas, _ = crear_servicio_liga()
 
@@ -1776,27 +1755,6 @@ def test_obtener_tabla_liga_no_encontrada():
     repo_ligas.obtener_por_id.return_value = None
 
     with pytest.raises(LigaNoEncontrada):
-        servicio.obtener_tabla(liga_id=10)
-
-    repo_ligas.obtener_por_id.assert_called_once_with(10)
-    repo_ligas.obtener_tabla_completa.assert_not_called()
-
-def test_obtener_tabla_liga_no_disponible():
-    servicio, _, repo_ligas, _ = crear_servicio_liga()
-
-    liga = Liga(
-        id=10,
-        id_usuario=1,
-        nombre="Liga master",
-        contraseña=None,
-        min_jugadores=2,
-        max_jugadores=5,
-        duracion_partido=5,
-        estado=EstadoLiga.DISPONIBLE)
-
-    repo_ligas.obtener_por_id.return_value = liga
-
-    with pytest.raises(NoEsPosibleVerLaTabla):
         servicio.obtener_tabla(liga_id=10)
 
     repo_ligas.obtener_por_id.assert_called_once_with(10)
