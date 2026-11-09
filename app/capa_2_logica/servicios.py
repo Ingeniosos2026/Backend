@@ -1019,9 +1019,6 @@ class Servicios:
         if comportamiento.id == usuario.id_comportamiento_dt:
             raise ComportamientoYaAsignado()
         
-        comportamiento.tipo = TipoComportamiento.DT
-        self.comportamientos.actualizar(comportamiento)
-
         usuario.id_comportamiento_dt = id_comportamiento_dt
         self.usuarios.actualizar()
 

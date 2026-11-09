@@ -2217,7 +2217,7 @@ def test_asignar_comportamiento_dt():
         id_usuario=1,
         nombre="todos al fondo",
         codigo="def comportamiento(primitivas):\n    pass",
-        tipo=TipoComportamiento.JUGADOR,
+        tipo=TipoComportamiento.DT
     )
 
     repo_usuarios.obtener_por_id.return_value = usuario
@@ -2233,7 +2233,6 @@ def test_asignar_comportamiento_dt():
 
     repo_usuarios.obtener_por_id.assert_called_once_with(1)
     repo_comportamientos.obtener_comportamiento_dt_por_id_y_usuario.assert_called_once_with(10, 1)
-    repo_comportamientos.actualizar.assert_called_once_with(comportamiento)
     repo_usuarios.actualizar.assert_called_once()
 
 def test_asignar_comportamiento_dt_usuario_no_encontrado():
