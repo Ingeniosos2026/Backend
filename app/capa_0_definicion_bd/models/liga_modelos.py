@@ -2,7 +2,7 @@ from enum import Enum
 
 from app.capa_0_definicion_bd.models.usuarios_modelos import Usuario
 from sqlalchemy import Enum as SQLEnum
-from sqlalchemy import ForeignKey, String, Text, Column, Integer
+from sqlalchemy import ForeignKey, String, Text, Column, Integer, Boolean
 from sqlalchemy.orm import relationship
 
 from app.capa_0_definicion_bd.base_datos_sqlalchemy import Base
@@ -27,6 +27,7 @@ class Liga(Base):
     min_jugadores = Column(Integer, nullable=False)
     max_jugadores = Column(Integer, nullable=False)
     duracion_partido = Column(Integer, nullable=False)
+    empate = Column(Boolean, nullable=False, default=False)
 
     usuario = relationship(
         "Usuario",

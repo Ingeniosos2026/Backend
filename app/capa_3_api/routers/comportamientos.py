@@ -190,3 +190,61 @@ def eliminar_comportamiento(usuario_id: int, comp_id: int, servicio: Servicios =
                 "mensaje": "Ocurrió un error interno del servidor"
             }
         )
+
+@comportamiento_router.get("/comportamientos_dt/{usuario_id}")
+def obtener_comportamientos_dt(usuario_id: int, servicio: Servicios = Depends(obtener_servicio)):
+    try:
+        resultado = servicio.listar_comportamientos_dt(usuario_id)
+
+        return {
+            "comportamientos": [
+                {
+                    "id": comportamiento.id,
+                    "nombre": comportamiento.nombre,
+                    "codigo": comportamiento.codigo
+                }
+                for comportamiento in resultado.comportamientos
+            ],
+            "id_comportamiento_dt_actual": resultado.comportamiento_dt.id
+        }
+
+    except ComportamientosNoEncontrados:
+        return JSONResponse(status_code=404, content={"error": "COMPORTAMIENTOS_NO_ENCONTRADOS", "mensaje": "No hay comportamientos DT disponibles"})
+    
+    except Exception:
+        return JSONResponse(status_code=500, content={"error": "ERROR_INTERNO", "mensaje": "Ocurrió un error interno del servidor"})
+
+@comportamiento_router.post("/comportamiento_dt/{usuario_id}", status_code=status.HTTP_201_CREATED)
+def crear_comportamiento_dt(usuario_id: int, datos: CrearComportamiento, servicio: Servicios= Depends(obtener_servicio)):
+    try:
+        resultado = servicio.crear_comportamiento_dt(usuario_id=usuario_id, nombre=datos.nombre, codigo=datos.codigo)
+        comp = resultado.comportamiento
+
+        return {
+            "id": comp.id,
+            "id_usuario": comp.id_usuario,
+            "nombre": comp.nombre,
+            "codigo": comp.codigo
+        }
+
+    except DatosInvalidos:
+        return JSONResponse(
+            status_code=400,
+            content={
+                "error": "DATOS_INVALIDOS",
+                "mensaje": "El nombre o los datos del comportamiento no son validos"}
+        )
+    except UsuarioNoEncontrado:
+        return JSONResponse(
+                status_code=404,
+                content={
+                    "error": "USUARIO_NO_ENCONTRADO",
+                    "mensaje": "El usaurio no existe"}
+            )
+    except Exception:
+        return JSONResponse(
+                status_code=500,
+                content={
+                    "error": "ERROR_INTERNO",
+                    "mensaje": "Ocurrio un error interno del servidor"}
+            )

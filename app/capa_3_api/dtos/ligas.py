@@ -11,6 +11,7 @@ class CrearLiga(BaseModel):
     duracion_partido: int 
     jugadores: list[JugadorConComportamiento]
     formacion: Formacion
+    empate: bool = False
 
 class UnirseLiga(BaseModel): # esto es para evitar que se mande la contraseña en la url por obvias razones.......
     contraseña: Optional[str] = None
@@ -20,3 +21,9 @@ class UnirseLiga(BaseModel): # esto es para evitar que se mande la contraseña e
 class CambiarAlineacion(BaseModel):
     formacion: Formacion
     jugadores: list[JugadorConComportamiento]
+
+class ConfigurarPenales(BaseModel):
+    id_usuario: int
+    id_arquero: int
+    id_comportamiento_arquero: int
+    pateadores: list[JugadorConComportamiento]

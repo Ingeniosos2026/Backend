@@ -137,3 +137,12 @@ class UsuarioPartidoResultado:
     usuario: UsuarioModelo
     equipo: EquipoModelo
     formacion: Formacion
+
+@dataclass(slots=True)
+class ObtenerInfoPartidoResultado:
+    partido: PartidoModelo
+
+@dataclass(slots=True)
+class ListarComportamientosDTResultado:
+    comportamientos: list[ComportamientoModelo]
+    comportamiento_dt: ComportamientoModelo

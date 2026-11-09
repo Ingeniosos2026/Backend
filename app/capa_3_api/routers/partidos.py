@@ -136,6 +136,16 @@ async def unirse_amistoso(partido_id: int, usuario_id: int, datos: UnirseAmistos
             status_code=404,
             content={"error": "COMPORTAMIENTO_NO_ENCONTRADO", "mensaje": "El jugador no tiene un comportamiento válido"},
         )
+    except NoPuedeUnirseASuPropioPartido:
+        return JSONResponse(
+            status_code=400,
+            content={"error": "NO_PUEDE_UNIRSE_A_SU_PROPIO_PARTIDO", "mensaje": "No puede unirse a su propio partido"}
+        )
+    except Exception:
+        return JSONResponse(
+            status_code=500,
+            content={"error": "ERROR_INTERNO", "mensaje": "Ocurrió un error interno del servidor"}
+        )
     
 @partido_router.get("/partidos", status_code=status.HTTP_200_OK)
 def listar_amistosos_disponibles(servicio: Servicios = Depends(obtener_servicio)):
@@ -277,6 +287,35 @@ def cambiar_comportamiento(partido_id: int, datos: CambiarComportamiento, servic
     return {"mensaje": "solicitud de cambio de comportamiento recibida",
             "Nuevo_comportamiento": resultado.nombre_comportamiento}
 
+@partido_router.get("/partido/{partido_id}/info", status_code=status.HTTP_200_OK)
+def obtener_info_partido(partido_id: int, servicio: Servicios = Depends(obtener_servicio)):
+    try:
+        resultado = servicio.obtener_info_partido(partido_id)
+        partido = resultado.partido
+        return {
+            "id_usuario_izq": partido.id_usuario_1,
+            "id_usuario_der": partido.id_usuario_2,
+            "nombre_usuario_izq": partido.usuario_1.nombre,
+            "nombre_usuario_der": partido.usuario_2.nombre,
+            "club_usuario_izq": partido.usuario_1.nombre_club,
+            "club_usuario_der": partido.usuario_2.nombre_club,
+            "avatar_usuario_izq": partido.usuario_1.id_avatar,
+            "avatar_usuario_der": partido.usuario_2.id_avatar
+        }
+    except PartidoNoEncontrado:
+        return JSONResponse(
+            status_code=404,
+            content={"error": "PARTIDO_NO_ENCONTRADO", "mensaje": "El partido no existe"},
+        )
+    except Exception:
+        return JSONResponse(
+            status_code=500, 
+            content={
+                "error": "ERROR_INTERNO", 
+                "mensaje": "Ocurrió un error interno del servidor"
+            }
+        )
+
 @partido_router.get("/partido/{partido_id}/{usuario_id}", status_code=status.HTTP_200_OK)
 async def obtener_usuario_de_partido(partido_id: int, usuario_id: int, servicio: Servicios = Depends(obtener_servicio)):
     try:
@@ -286,7 +325,8 @@ async def obtener_usuario_de_partido(partido_id: int, usuario_id: int, servicio:
                 "id": resultado.usuario.id_usuario,
                 "nombre": resultado.usuario.nombre,
                 "club": resultado.usuario.nombre_club,
-                "avatar": resultado.usuario.id_avatar},
+                "avatar": resultado.usuario.id_avatar,
+                "dt": resultado.usuario.dt},
             "id_equipo": resultado.equipo.id_equipo,
             "formacion": resultado.formacion.value,
             "jugadores": [{
@@ -329,8 +369,7 @@ async def obtener_usuario_de_partido(partido_id: int, usuario_id: int, servicio:
     except EquipoNoEncontrado:
         return JSONResponse(
             status_code=404,
-            content={"error": "EQUIPO_NO_ENCONTRADO", "mensaje": "El equipo del usuario no existe"},
-        )
+            content={"error": "EQUIPO_NO_ENCONTRADO", "mensaje": "El equipo del usuario no existe"})
 
 
 @partido_router.put("/partido/{partido_id}/{usuario_id}/dt", status_code=status.HTTP_200_OK)
@@ -355,3 +394,4 @@ def alternar_estado_dt(partido_id: int, usuario_id: int, servicio: Servicios = D
 
     except Exception:
         return JSONResponse(status_code=500, content={"error": "ERROR_INTERNO", "mensaje": "No se pudo cambiar el estado del DT"})
+
