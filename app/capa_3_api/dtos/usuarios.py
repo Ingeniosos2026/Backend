@@ -11,3 +11,7 @@ class CrearUsuario(BaseModel):
 class LoginUsuario(BaseModel):
     email: str
     contraseña: str
+
+class AsignarComportamientoDT(BaseModel):
+    id_usuario: int
+    id_comportamiento_dt: int

@@ -4,7 +4,7 @@ from app.capa_0_definicion_bd.models.usuarios_modelos import Usuario
 from app.capa_0_definicion_bd.models.jugadores_modelos import Jugador
 from app.capa_0_definicion_bd.models.equipo_modelos import Equipo
 from app.capa_0_definicion_bd.models.equipos_jugadores_modelos import EstadoJugador, EquipoJugador
-from app.capa_0_definicion_bd.models.comportamientos_modelos import Comportamiento
+from app.capa_0_definicion_bd.models.comportamientos_modelos import Comportamiento, TipoComportamiento
 from app.capa_0_definicion_bd.models.partidos_modelos import Partido, TipoPartido, EstadoPartido, Formacion
 from app.capa_0_definicion_bd.models.liga_modelos import Liga, EstadoLiga
 from app.capa_0_definicion_bd.models.liga_participantes_modelos import LigaParticipante
@@ -13,7 +13,7 @@ from app.capa_0_definicion_bd.models.fixture_liga_modelos import FixtureLiga
 from app.capa_2_logica.errores import *
 from app.capa_2_logica.servicios import Servicios, password_hash
 from app.capa_2_logica.resultados import *
-from app.partido.comportamientos import COMPORTAMIENTOS_PREDETERMINADOS
+from app.partido.comportamientos import COMPORTAMIENTOS_PREDETERMINADOS, COMPORTAMIENTO_DT_PREDETERMINADO
 
 def test_crear_usuario_datos_invalidos():
     repositorio = Mock()
@@ -2206,3 +2206,61 @@ def test_cambiar_alineacion_actualiza_comportamientos_sin_cambiar_estados():
     } == titulares_antes
     assert resultado.participacion.formacion == Formacion.OFENSIVA
     repo_ligas.actualizar.assert_called_once()
+
+def test_asignar_comportamiento_dt():
+    repo_usuarios = Mock()
+    repo_comportamientos = Mock()
+
+    usuario = Usuario(id_usuario=1, dt=False, id_comportamiento_dt=None)
+    comportamiento = Comportamiento(
+        id=10,
+        id_usuario=1,
+        nombre="todos al fondo",
+        codigo="def comportamiento(primitivas):\n    pass",
+        tipo=TipoComportamiento.JUGADOR,
+    )
+
+    repo_usuarios.obtener_por_id.return_value = usuario
+    repo_comportamientos.obtener_por_id_y_usuario.return_value = comportamiento
+
+    servicio = Servicios(usuarios=repo_usuarios, comportamientos=repo_comportamientos)
+    resultado = servicio.asignar_comportamiento_dt(usuario_id=1, id_comportamiento_dt=10)
+
+    assert resultado.usuario == usuario
+    assert resultado.comportamiento == comportamiento
+    assert comportamiento.tipo == TipoComportamiento.DT
+    assert usuario.id_comportamiento_dt == 10
+    assert usuario.dt is True
+
+    repo_usuarios.obtener_por_id.assert_called_once_with(1)
+    repo_comportamientos.obtener_por_id_y_usuario.assert_called_once_with(10, 1)
+    repo_comportamientos.actualizar.assert_called_once_with(comportamiento)
+    repo_usuarios.actualizar.assert_called_once()
+
+def test_asignar_comportamiento_dt_usuario_no_encontrado():
+    repo_usuarios = Mock()
+    repo_comportamientos = Mock()
+    repo_usuarios.obtener_por_id.return_value = None
+
+    servicio = Servicios(usuarios=repo_usuarios, comportamientos=repo_comportamientos)
+
+    with pytest.raises(UsuarioNoEncontrado):
+        servicio.asignar_comportamiento_dt(usuario_id=99, id_comportamiento_dt=10)
+
+    repo_comportamientos.obtener_por_id_y_usuario.assert_not_called()
+    repo_comportamientos.actualizar.assert_not_called()
+    repo_usuarios.actualizar.assert_not_called()
+
+def test_asignar_comportamiento_dt_comportamiento_no_encontrado():
+    repo_usuarios = Mock()
+    repo_comportamientos = Mock()
+    repo_usuarios.obtener_por_id.return_value = Usuario(id_usuario=1)
+    repo_comportamientos.obtener_por_id_y_usuario.return_value = None
+
+    servicio = Servicios(usuarios=repo_usuarios, comportamientos=repo_comportamientos)
+
+    with pytest.raises(ComportamientoNoEncontrado):
+        servicio.asignar_comportamiento_dt(usuario_id=1, id_comportamiento_dt=999)
+
+    repo_comportamientos.actualizar.assert_not_called()
+    repo_usuarios.actualizar.assert_not_called()
