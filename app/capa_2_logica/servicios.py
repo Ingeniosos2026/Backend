@@ -542,8 +542,8 @@ class Servicios:
 
         return AbandonarLigaResultado(liga=liga_actualizada, usuario_abandonado=usuario)
 
-    def listar_ligas_disponibles(self) -> ListarLigasResultado:
-        ligas = self.ligas.obtener_ligas_disponibles()
+    def listar_ligas_disponibles(self, usuario_id: int) -> ListarLigasResultado:
+        ligas = self.ligas.obtener_ligas_disponibles(usuario_id)
         return ListarLigasResultado(ligas=ligas)
 
 

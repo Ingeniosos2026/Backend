@@ -38,10 +38,14 @@ async def crear_liga(usuario_id: int, datos: CrearLiga, servicio: Servicios = De
         await admin_conexiones.difundir("liga creada",
             {
                 "id_liga": liga.id,
+                "id_usuario": liga.id_usuario,
                 "duracion": liga.duracion_partido,
                 "nombre": liga.nombre,
+                "estado": liga.estado.value,
                 "min_jugadores": liga.min_jugadores,
                 "max_jugadores": liga.max_jugadores,
+                "es_privada": bool(liga.contraseña),
+                "empate": liga.empate
             })
 
         return {
@@ -217,10 +221,10 @@ async def abandonar_liga(liga_id: int, usuario_id: int, servicio: Servicios = De
         return JSONResponse(
             status_code=500, 
             content={"error": "ERROR_INTERNO", "mensaje": "Ocurrió un error interno del servidor"})
-@liga_router.get("/ligas", status_code=status.HTTP_200_OK)
-def listar_ligas(servicio: Servicios = Depends(obtener_servicio)):
+@liga_router.get("/ligas/{usuario_id}", status_code=status.HTTP_200_OK)
+def listar_ligas(usuario_id: int, servicio: Servicios = Depends(obtener_servicio)):
     try:
-        resultado = servicio.listar_ligas_disponibles()
+        resultado = servicio.listar_ligas_disponibles(usuario_id=usuario_id)
 
         return [
             {
@@ -231,7 +235,8 @@ def listar_ligas(servicio: Servicios = Depends(obtener_servicio)):
                 "min_jugadores": liga.min_jugadores,
                 "max_jugadores": liga.max_jugadores,
                 "duracion_partido": liga.duracion_partido,
-                "es_privada": bool(liga.contraseña)
+                "es_privada": bool(liga.contraseña),
+                "empate": liga.empate
             }
             for liga in resultado.ligas
         ]

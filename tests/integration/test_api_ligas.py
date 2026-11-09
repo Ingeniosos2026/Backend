@@ -21,9 +21,18 @@ def test_endpoint_listar_ligas_disponibles(client, db_test):
         id_avatar=1,
         contraseña="asd123",
         nombre_club="Boca")
-    db_test.add(usuario)
+    
+    usuario_2 = Usuario(
+        email="tomas@gmail.com",
+        nombre="Tomas",
+        id_avatar=2,
+        contraseña="asd123",
+        nombre_club="Talleres")
+    
+    db_test.add_all([usuario, usuario_2])
     db_test.commit()
     db_test.refresh(usuario)
+    db_test.refresh(usuario_2)
 
     liga_disponible = Liga(
         id_usuario=usuario.id_usuario,
@@ -50,7 +59,7 @@ def test_endpoint_listar_ligas_disponibles(client, db_test):
     db_test.add_all([liga_disponible, liga_privada, liga_en_juego])
     db_test.commit()
 
-    response = client.get("/ligas")
+    response = client.get(f"/ligas/{usuario_2.id_usuario}")
 
     assert response.status_code == 200
     ligas_por_nombre = {liga["nombre"]: liga for liga in response.json()}
@@ -64,6 +73,7 @@ def test_endpoint_listar_ligas_disponibles(client, db_test):
             "max_jugadores": 10,
             "duracion_partido": 10,
             "es_privada": False,
+            "empate": False
         },
         "Liga privada": {
             "id_liga": liga_privada.id,
@@ -74,13 +84,14 @@ def test_endpoint_listar_ligas_disponibles(client, db_test):
             "max_jugadores": 8,
             "duracion_partido": 15,
             "es_privada": True,
+            "empate": False
         },
     }
     assert "contraseña" not in response.text
 
 
 def test_endpoint_listar_ligas_sin_ligas_disponibles(client):
-    response = client.get("/ligas")
+    response = client.get("/ligas/1")
 
     assert response.status_code == 200
     assert response.json() == []
