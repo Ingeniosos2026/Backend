@@ -26,7 +26,7 @@ class EjecutorLiga:
         self.duracion = duracion
         self.ejecutor_partido = ejecutor_partido
         self.turno = turno
-        self.penales = penales 
+        self.penales = not penales 
         self.config_penales: dict[int, dict] = {}
         self.esperando_config_penales: bool = False
         self.penales_izquierdo = 0

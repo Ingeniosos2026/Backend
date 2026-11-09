@@ -430,11 +430,7 @@ async def cambiar_alineacion(liga_id: int, usuario_id: int, datos: CambiarAlinea
             content={"error": "ERROR_INTERNO", "mensaje": "Ocurrió un error interno del servidor"})
     
 @liga_router.put("/liga/partido/{partido_id}/penales", status_code=status.HTTP_200_OK)
-async def configurar_penales_partido(
-    partido_id: int,
-    datos: ConfigurarPenales,
-    servicio: Servicios = Depends(obtener_servicio),
-):
+async def configurar_penales_partido(partido_id: int,datos: ConfigurarPenales,servicio: Servicios = Depends(obtener_servicio)):
     try:
         servicio.configurar_penales(
             partido_id=partido_id,
