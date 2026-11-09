@@ -57,7 +57,7 @@ def crear_motor_y_ejecutores(codigo_izq="def c(p): pass", codigo_der="def c(p): 
         id_equipo_izquierdo=10, id_equipo_derecho=20,
         cancha=cancha, jugadores=jugadores, suplentes={}, comportamientos=comportamientos,
         pelota=PelotaEstado(posicion=Coordenada(50, 30), velocidad=Coordenada(0, 0)),
-        codigo_dt={1: "", 2: ""}, dt_activo={1: False, 2: False}
+        codigo_dt={1: "", 2: ""}, dt_activo={1: False, 2: False}, equipos_que_cambiaron=set()
     )
     motor = MotorPartido(estado)
     admin_mock = Mock()
