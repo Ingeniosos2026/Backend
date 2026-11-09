@@ -22,12 +22,7 @@ class AdministradorConexiones:
     async def conectar_lobby_liga(self, websocket: WebSocket, liga_id: int):
         await self._conectar_a_lobby(websocket, ("liga", liga_id), self.conexiones_lobby)
 
-    async def _conectar_a_lobby(
-        self,
-        websocket: WebSocket,
-        lobby_id: ClaveLobby,
-        conexiones: Dict[ClaveLobby, List[WebSocket]],
-    ):
+    async def _conectar_a_lobby(self, websocket: WebSocket, lobby_id: ClaveLobby, conexiones: Dict[ClaveLobby, List[WebSocket]]):
         await websocket.accept()
 
         if lobby_id not in conexiones:
@@ -41,12 +36,7 @@ class AdministradorConexiones:
     def desconectar_lobby_liga(self, websocket: WebSocket, liga_id: int):
         self._desconectar_de_lobby(websocket, ("liga", liga_id), self.conexiones_lobby)
 
-    def _desconectar_de_lobby(
-        self,
-        websocket: WebSocket,
-        lobby_id: ClaveLobby,
-        conexiones: Dict[ClaveLobby, List[WebSocket]],
-    ):
+    def _desconectar_de_lobby(self, websocket: WebSocket, lobby_id: ClaveLobby, conexiones: Dict[ClaveLobby, List[WebSocket]]):
         if lobby_id in conexiones:
             try:
                 conexiones[lobby_id].remove(websocket)
@@ -62,16 +52,9 @@ class AdministradorConexiones:
     async def emitir_lobby_liga(self, liga_id: int, accion: str, payload: dict):
         await self._emitir_en_lobby(("liga", liga_id), accion, payload, self.conexiones_lobby)
 
-    async def _emitir_en_lobby(
-        self,
-        lobby_id: ClaveLobby,
-        accion: str,
-        payload: dict,
-        conexiones: Dict[ClaveLobby, List[WebSocket]],
-    ):
+    async def _emitir_en_lobby(self, lobby_id: ClaveLobby, accion: str, payload: dict, conexiones: Dict[ClaveLobby, List[WebSocket]]):
         if lobby_id not in conexiones:
             return
-
         mensaje = {"action": accion, "payload": payload}
 
         for conexion in list(conexiones[lobby_id]):
@@ -86,11 +69,7 @@ class AdministradorConexiones:
     async def cerrar_lobby_liga(self, liga_id: int):
         await self._cerrar_lobby(("liga", liga_id), self.conexiones_lobby)
 
-    async def _cerrar_lobby(
-        self,
-        lobby_id: ClaveLobby,
-        conexiones: Dict[ClaveLobby, List[WebSocket]],
-    ):
+    async def _cerrar_lobby(self, lobby_id: ClaveLobby, conexiones: Dict[ClaveLobby, List[WebSocket]]):
         if lobby_id not in conexiones:
             return
 
@@ -122,20 +101,7 @@ class AdministradorConexiones:
             if not self.conexiones_activas[partido_id]:
                 del self.conexiones_activas[partido_id]
 
-    async def emitir_estado_partido(self, partido_id: int, estado: dict):
-        if partido_id in self.conexiones_activas:
-            for conexion in list(self.conexiones_activas[partido_id]):
-                try:
-                    mensaje = {
-                        "action": "estado_partido",
-                        "payload": estado
-                    }
-                    await conexion.send_json(mensaje)
-                
-                except RuntimeError:
-                    self.desconectar(conexion, partido_id)
     
-    # de preferencia esta pero no estoy seguro si usaron la de arriba 
     async def emitir_partido(self, partido_id: int, accion: str, payload: dict):
         if partido_id not in self.conexiones_activas:
             return

@@ -87,7 +87,7 @@ def test_conectar_y_desconectar_partido_registra_y_limpia_conexion():
 def test_emitir_estado_partido_sin_conexiones_no_hace_nada():
     admin = AdministradorConexiones()
 
-    ejecutar(admin.emitir_estado_partido(12, {"estado": "en_curso"}))
+    ejecutar(admin.emitir_partido(12, "estado_partido", {"estado": "en_curso"}))
 
     assert admin.conexiones_activas == {}
 
@@ -99,7 +99,7 @@ def test_emitir_estado_partido_difunde_y_limpia_conexion_con_error():
     websocket_cerrado.send_json.side_effect = RuntimeError("socket cerrado")
     admin.conexiones_activas[12] = [websocket_activo, websocket_cerrado]
 
-    ejecutar(admin.emitir_estado_partido(12, {"estado": "en_curso"}))
+    ejecutar(admin.emitir_partido(12, "estado_partido", {"estado": "en_curso"}))
 
     websocket_activo.send_json.assert_awaited_once_with({
         "action": "estado_partido",
