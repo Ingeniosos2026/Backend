@@ -24,6 +24,21 @@ class PrimitivasDT:
     def cambiar_jugador(self) -> None:
         if not self.estado.en_pausa:
             return
+        
+        if self.id_usuario == self.estado.id_usuario_izquierdo:
+            id_equipo = self.estado.id_equipo_izquierdo
+
+        elif self.id_usuario == self.estado.id_usuario_derecho:
+            id_equipo = self.estado.id_equipo_derecho
+
+        else:
+            return
+        
+        if not 1 <= self.estado.pausas_realizadas <= 3:
+            return
+        
+        if (self.estado.pausas_realizadas, id_equipo) in self.estado.equipos_que_cambiaron:
+            return
 
         jugadores_equipo = [clave for clave in self.estado.jugadores if clave[0] == self.id_usuario]
 
@@ -51,6 +66,8 @@ class PrimitivasDT:
 
         del self.estado.jugadores[clave_sale]
         del self.estado.suplentes[clave_entra]
+
+        self.estado.equipos_que_cambiaron.add((self.estado.pausas_realizadas, id_equipo))
     
     def voy_perdiendo(self) -> bool:
         goles_propios, goles_rival = obtener_goles(self.estado, self.id_usuario)

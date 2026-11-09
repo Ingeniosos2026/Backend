@@ -29,8 +29,7 @@ class EjecutorPartido:
             self.duracion * 0.5, # pausa de entretiempo
             self.duracion * 0.75 # pausa al tercer cuarto del partido (cooling break)
         ]
-        self.pausas_realizadas = 0
-        self.equipos_que_cambiaron = set()
+
         self.cambios_pendientes = {}
         self.comportamientos_pendientes = {}
 
@@ -38,6 +37,7 @@ class EjecutorPartido:
     async def ejecutar(self):
 
         # avisamos que el partido comenzo
+        await asyncio.sleep(5) 
         await self.admin.emitir_partido(partido_id=self.partido_id, accion="partido_iniciado", payload={"tiempo": 0})
 
         # mandamos el estado inicial antes del primer tick
@@ -55,7 +55,7 @@ class EjecutorPartido:
                 payload={** estado_a_dict(estado), "estados_jugadores": estados_jugadores_a_dict(estados_jugadores, estado), "acciones": eventos_a_dict(eventos)})
     
 
-            if (self.pausas_realizadas < len(self.tiempos_pausa) and self.motor.estado.tiempo < self.duracion and self.motor.estado.tiempo >= self.tiempos_pausa[self.pausas_realizadas]):
+            if (self.motor.estado.pausas_realizadas < len(self.tiempos_pausa) and self.motor.estado.tiempo < self.duracion and self.motor.estado.tiempo >= self.tiempos_pausa[self.motor.estado.pausas_realizadas]):
                 await self.pausar()
                 await self.reanudar()
 
@@ -100,10 +100,10 @@ class EjecutorPartido:
             return  # ya esta en pausa, no hacemos nada
         
         self.motor.estado.en_pausa = True
-        self.pausas_realizadas += 1
+        self.motor.estado.pausas_realizadas += 1
         self.motor.ejecutar_dt()
 
-        if (self.pausas_realizadas == 2):
+        if (self.motor.estado.pausas_realizadas == 2):
             tiempo_espera = self.duracion_pausa_entretiempo
             self.motor.fisica.reiniciar_posiciones()
         else:
@@ -114,7 +114,7 @@ class EjecutorPartido:
         await self.admin.emitir_partido(
         partido_id=self.partido_id, 
         accion="partido_pausado", 
-        payload={"tiempo": self.motor.estado.tiempo, "numero_pausa": self.pausas_realizadas, "duracion_pausa" : tiempo_espera}
+        payload={"tiempo": self.motor.estado.tiempo, "numero_pausa": self.motor.estado.pausas_realizadas, "duracion_pausa" : tiempo_espera}
         ) 
 
             
@@ -135,14 +135,15 @@ class EjecutorPartido:
 
     # esto comproueba si puedo cambiar o no en una pasa
     def puede_realizar_cambio(self, id_equipo: int) -> bool:
+        estado = self.motor.estado
 
-        if not self.motor.estado.en_pausa:
+        if not estado.en_pausa:
             return False
 
-        if not 1 <= self.pausas_realizadas <= 3:
+        if not 1 <= estado.pausas_realizadas <= 3:
             return False
 
-        if (self.pausas_realizadas, id_equipo) in self.equipos_que_cambiaron:
+        if (estado.pausas_realizadas, id_equipo) in estado.equipos_que_cambiaron:
             return False
 
         return True
@@ -164,7 +165,7 @@ class EjecutorPartido:
     
         # se verifica que tenga cambios
         total_cambios = 0
-        for _, equipo in self.equipos_que_cambiaron:
+        for _, equipo in estado.equipos_que_cambiaron:
             if equipo == id_equipo:
                 total_cambios += 1
 
@@ -218,7 +219,7 @@ class EjecutorPartido:
         estado.jugadores[clave_entra] = jugador_entra
 
         # registro que el equipo realizo  un cambio en esta pausa 
-        self.equipos_que_cambiaron.add((self.pausas_realizadas, id_equipo))
+        estado.equipos_que_cambiaron.add((estado.pausas_realizadas, id_equipo))
 
         await self.admin.emitir_partido(
             partido_id=self.partido_id,
