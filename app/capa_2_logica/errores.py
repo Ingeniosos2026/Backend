@@ -91,3 +91,9 @@ class NoEsPosibleVerLaTabla(Exception):
 
 class NoSePuedeCambiarJugador(Exception):
     pass
+
+class NoSePuedeElegirComoArquero(Exception):
+    pass
+
+class SoloPuedenPatearLosTitulares(Exception):
+    pass
