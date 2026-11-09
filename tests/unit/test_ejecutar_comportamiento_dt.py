@@ -76,6 +76,7 @@ def crear_estado_partido():
             (2, 4): comportamiento_defender,
         },
         codigo_dt={},
+        equipos_que_cambiaron=set(),
         dt_activo={1: False, 2: False},
         pelota=PelotaEstado(
             posicion=Coordenada(50, 25),
@@ -86,6 +87,7 @@ def crear_estado_partido():
 def test_ejecutar_comportamiento_dt_cambia_jugador_con_primitiva(monkeypatch):
     estado = crear_estado_partido()
     estado.en_pausa = True
+    estado.pausas_realizadas = 1
     jugador_que_sale = estado.jugadores[(1, 1)]
     suplente_que_entra = estado.suplentes[(1, 3)]
     codigo = """def comportamiento(primitivas): primitivas.cambiar_jugador()"""
