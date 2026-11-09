@@ -1,4 +1,4 @@
-from fastapi import WebSocket
+from fastapi import WebSocket, WebSocketDisconnect
 from typing import Dict, List, Tuple, Union
 
 ClaveLobby = Union[int, Tuple[str, int]]            # esto fue necesario para que amistoso y liga no se pisen las conexiones
@@ -146,7 +146,7 @@ class AdministradorConexiones:
             try:
                 await conexion.send_json(mensaje)
 
-            except RuntimeError:
+            except (WebSocketDisconnect, RuntimeError):
                 self.desconectar(conexion, partido_id)
 
     # --- METODOS PARA USUARIOS ---

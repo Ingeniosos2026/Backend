@@ -41,9 +41,9 @@ class LigaRepositorio:
         return liga
     
 
-    def obtener_ligas_disponibles(self) -> list[LigaModelo]:
+    def obtener_ligas_disponibles(self, usuario_id: int) -> list[LigaModelo]:
         return(self.db.query(LigaModelo)
-               .filter(LigaModelo.estado == EstadoLiga.DISPONIBLE)
+               .filter(LigaModelo.estado == EstadoLiga.DISPONIBLE, LigaModelo.id_usuario != usuario_id)
                .all()
         )
     
