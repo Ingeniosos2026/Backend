@@ -1,6 +1,6 @@
 import pytest
 from app.capa_0_definicion_bd.models.usuarios_modelos import Usuario
-from app.capa_0_definicion_bd.models.comportamientos_modelos import Comportamiento
+from app.capa_0_definicion_bd.models.comportamientos_modelos import Comportamiento, TipoComportamiento
 from app.capa_0_definicion_bd.models.equipo_modelos import Equipo
 from app.capa_0_definicion_bd.models.jugadores_modelos import Jugador
 from app.capa_0_definicion_bd.models.equipos_jugadores_modelos import EquipoJugador, EstadoJugador
@@ -322,3 +322,29 @@ def test_endpoint_eliminar_comportamiento_en_uso(client, db_test):
         "mensaje": "No se puede eliminar un comportamiento que está en uso"
     }
     assert db_test.query(Comportamiento).filter_by(id=comp.id).first() is not None
+
+def test_endpoint_listar_comportamientos_dt_devuelve_id_actual_guardado(client, db_test):
+    response_usuario = client.post("/usuario",
+        json={
+            "email": "pepito@gmail.com",
+            "nombre": "pepito",
+            "avatar": 1,
+            "contraseña": "asd123",
+            "club": "boca"})
+    assert response_usuario.status_code == 201
+    usuario_id = response_usuario.json()["id"]
+
+    usuario = db_test.get(Usuario, usuario_id)
+    assert usuario is not None
+    assert usuario.id_comportamiento_dt is not None
+    comportamiento_actual = db_test.get(Comportamiento, usuario.id_comportamiento_dt)
+    assert comportamiento_actual is not None
+    assert comportamiento_actual.id_usuario == usuario_id
+    assert comportamiento_actual.tipo == TipoComportamiento.DT
+
+    response = client.get(f"/comportamientos_dt/{usuario_id}")
+
+    assert response.status_code == 200
+    datos = response.json()
+    assert datos["id_comportamiento_dt_actual"] == comportamiento_actual.id
+    assert any(comportamiento["id"] == comportamiento_actual.id for comportamiento in datos["comportamientos"])
