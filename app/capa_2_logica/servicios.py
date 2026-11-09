@@ -1027,6 +1027,11 @@ class Servicios:
 
       
     def configurar_penales(self,partido_id: int,usuario_id: int,id_arquero: int,id_comportamiento_arquero: int,pateadores: list[tuple[int, int]]) -> None:
+
+        partido = self.partidos.obtener_por_id(partido_id)
+        if partido is None:
+            raise PartidoNoEncontrado()
+
         if usuario_id not in (partido.id_usuario_1, partido.id_usuario_2):
             raise UsuarioNoEncontrado()
 
