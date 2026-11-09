@@ -213,6 +213,50 @@ def obtener_comportamientos_dt(usuario_id: int, servicio: Servicios = Depends(ob
     
     except Exception:
         return JSONResponse(status_code=500, content={"error": "ERROR_INTERNO", "mensaje": "Ocurrió un error interno del servidor"})
+    
+@comportamiento_router.put("/comportamiento_dt/{usuario_id}/{comp_id}/dt/asignar", status_code=status.HTTP_200_OK)
+def asignar_comportamiento_dt(usuario_id: int, comp_id: int, servicio: Servicios = Depends(obtener_servicio)):
+    try:
+        resultado = servicio.asignar_comportamiento_dt(
+            usuario_id=usuario_id,
+            id_comportamiento_dt=comp_id
+        )
+        return {
+            "mensaje": "Comportamiento asignado al DT exitosamente",
+            "id_usuario": resultado.usuario.id_usuario,
+            "id_comportamiento_dt": resultado.usuario.id_comportamiento_dt,
+            "nombre_comportamiento": resultado.comportamiento.nombre,
+            "dt_activo": resultado.usuario.dt
+        }
+    
+    except UsuarioNoEncontrado:
+        return JSONResponse(
+            status_code=404,
+            content={
+              "error": "USUARIO_NO_ENCONTRADO", 
+              "mensaje": "El usuario no existe"}
+        )
+    except ComportamientoNoEncontrado:
+        return JSONResponse(
+            status_code=404,
+            content={
+              "error": "COMPORTAMIENTO_NO_ENCONTRADO", 
+              "mensaje": "El comportamiento no existe o no pertenece al usuario"}
+        )
+    except ComportamientoYaAsignado:
+        return JSONResponse(
+            status_code=400,
+            content={
+              "error": "NO_SE_PUEDE_ASIGNAR_COMPORTAMIENTO_DT_DEFAULT", 
+              "mensaje": "No se puede asignar el mismo comportamiento que ya tiene asignado el DT"}
+        )
+    except Exception:
+        return JSONResponse(
+            status_code=500,
+            content={
+              "error": "ERROR_INTERNO", 
+              "mensaje": "Ocurrió un error interno del servidor"}
+        )   
 
 @comportamiento_router.post("/comportamiento_dt/{usuario_id}", status_code=status.HTTP_201_CREATED)
 def crear_comportamiento_dt(usuario_id: int, datos: CrearComportamiento, servicio: Servicios= Depends(obtener_servicio)):

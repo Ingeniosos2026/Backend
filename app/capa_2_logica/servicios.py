@@ -45,6 +45,7 @@ class _RepoComportamientosProtocol(Protocol):
     def crear(self, comportamiento: ComportamientoModelo) -> ComportamientoModelo: ...
     def actualizar(self, comportamiento: ComportamientoModelo) -> ComportamientoModelo: ...
     def eliminar(self, comportamiento: ComportamientoModelo) -> None: ...
+    def obtener_comportamiento_dt_por_id_y_usuario(self, comp_id: int, usuario_id: int) -> ComportamientoModelo | None: ...
 
 class _RepoPartidosProtocol(Protocol):
     def crear(self, partido: PartidoModelo) -> PartidoModelo: ...
@@ -1071,6 +1072,22 @@ class Servicios:
             
         return ListarComportamientosDTResultado(comportamientos=comportamientos, comportamiento_dt=comportamiento_actual)
 
+    def asignar_comportamiento_dt(self, usuario_id: int, id_comportamiento_dt: int) -> AsignarComportamientoDTResultado:
+        usuario = self.usuarios.obtener_por_id(usuario_id)
+        if usuario is None:
+            raise UsuarioNoEncontrado()
+
+        comportamiento = self.comportamientos.obtener_comportamiento_dt_por_id_y_usuario(id_comportamiento_dt, usuario_id)
+        if comportamiento is None:
+            raise ComportamientoNoEncontrado()
+        
+        if comportamiento.id == usuario.id_comportamiento_dt:
+            raise ComportamientoYaAsignado()
+        
+        usuario.id_comportamiento_dt = id_comportamiento_dt
+        self.usuarios.actualizar()
+
+        return AsignarComportamientoDTResultado(usuario=usuario, comportamiento=comportamiento)
       
     def crear_comportamiento_dt(self, usuario_id: int, nombre: str, codigo: str) -> CrearComportamientoResultado:
         if not nombre.strip():

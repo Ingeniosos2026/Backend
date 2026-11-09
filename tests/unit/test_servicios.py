@@ -2207,6 +2207,61 @@ def test_cambiar_alineacion_actualiza_comportamientos_sin_cambiar_estados():
     assert resultado.participacion.formacion == Formacion.OFENSIVA
     repo_ligas.actualizar.assert_called_once()
 
+def test_asignar_comportamiento_dt():
+    repo_usuarios = Mock()
+    repo_comportamientos = Mock()
+
+    usuario = Usuario(id_usuario=1, dt=False, id_comportamiento_dt=None)
+    comportamiento = Comportamiento(
+        id=10,
+        id_usuario=1,
+        nombre="todos al fondo",
+        codigo="def comportamiento(primitivas):\n    pass",
+        tipo=TipoComportamiento.DT
+    )
+
+    repo_usuarios.obtener_por_id.return_value = usuario
+    repo_comportamientos.obtener_comportamiento_dt_por_id_y_usuario.return_value = comportamiento
+
+    servicio = Servicios(usuarios=repo_usuarios, comportamientos=repo_comportamientos)
+    resultado = servicio.asignar_comportamiento_dt(usuario_id=1, id_comportamiento_dt=10)
+
+    assert resultado.usuario == usuario
+    assert resultado.comportamiento == comportamiento
+    assert comportamiento.tipo == TipoComportamiento.DT
+    assert usuario.id_comportamiento_dt == 10
+
+    repo_usuarios.obtener_por_id.assert_called_once_with(1)
+    repo_comportamientos.obtener_comportamiento_dt_por_id_y_usuario.assert_called_once_with(10, 1)
+    repo_usuarios.actualizar.assert_called_once()
+
+def test_asignar_comportamiento_dt_usuario_no_encontrado():
+    repo_usuarios = Mock()
+    repo_comportamientos = Mock()
+    repo_usuarios.obtener_por_id.return_value = None
+
+    servicio = Servicios(usuarios=repo_usuarios, comportamientos=repo_comportamientos)
+
+    with pytest.raises(UsuarioNoEncontrado):
+        servicio.asignar_comportamiento_dt(usuario_id=99, id_comportamiento_dt=10)
+
+    repo_comportamientos.obtener_por_id_y_usuario.assert_not_called()
+    repo_comportamientos.actualizar.assert_not_called()
+    repo_usuarios.actualizar.assert_not_called()
+
+def test_asignar_comportamiento_dt_comportamiento_no_encontrado():
+    repo_usuarios = Mock()
+    repo_comportamientos = Mock()
+    repo_usuarios.obtener_por_id.return_value = Usuario(id_usuario=1)
+    repo_comportamientos.obtener_comportamiento_dt_por_id_y_usuario.return_value = None
+
+    servicio = Servicios(usuarios=repo_usuarios, comportamientos=repo_comportamientos)
+
+    with pytest.raises(ComportamientoNoEncontrado):
+        servicio.asignar_comportamiento_dt(usuario_id=1, id_comportamiento_dt=999)
+
+    repo_comportamientos.actualizar.assert_not_called()
+    repo_usuarios.actualizar.assert_not_called()
 
 def test_validar_usuario_en_partido_correctamente():
     repo_partidos = Mock()

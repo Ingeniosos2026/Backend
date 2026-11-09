@@ -92,6 +92,9 @@ class NoEsPosibleVerLaTabla(Exception):
 class NoSePuedeCambiarJugador(Exception):
     pass
 
+class ComportamientoYaAsignado(Exception):
+    pass
+  
 class NoPuedeUnirseASuPropioPartido(Exception):
     pass
 

@@ -39,3 +39,10 @@ class ComportamientoRepositorio:
     def obtener_comportamiento_dt_actual(self, usuario_id: int) -> ComportamientoModelo:
         return (self.db.query(ComportamientoModelo).join(UsuarioModelo, UsuarioModelo.id_comportamiento_dt == ComportamientoModelo.id)
             .filter(UsuarioModelo.id_usuario == usuario_id, ComportamientoModelo.id_usuario == usuario_id, ComportamientoModelo.tipo == TipoComportamiento.DT).first())
+
+    def obtener_comportamiento_dt_por_id_y_usuario(self, comp_id: int, usuario_id: int) -> ComportamientoModelo | None:
+        return (
+            self.db.query(ComportamientoModelo)
+            .filter(ComportamientoModelo.id == comp_id,ComportamientoModelo.id_usuario == usuario_id,ComportamientoModelo.tipo == TipoComportamiento.DT)
+            .first()
+        )
