@@ -287,3 +287,32 @@ def test_realizar_cambio_correctamente():
     assert (1, 3) in motor.estado.comportamientos
 
     admin_mock.emitir_partido.assert_awaited_once()
+
+def test_alternar_estado_dt_de_false_a_true():
+    motor = crear_motor_prueba()
+    ejecutor = EjecutorPartido(partido_id=10, motor=motor, duracion=100)
+
+    assert motor.estado.dt_activo[1] is False
+
+    resultado = ejecutor.alternar_estado_dt(usuario_id=1)
+
+    assert resultado is True
+    assert motor.estado.dt_activo[1] is True
+
+    # El estado del otro usuario no se modifica.
+    assert motor.estado.dt_activo[2] is False
+
+
+def test_alternar_estado_dt_de_true_a_false():
+    motor = crear_motor_prueba()
+    ejecutor = EjecutorPartido(partido_id=10, motor=motor, duracion=100)
+
+    motor.estado.dt_activo[1] = True
+
+    resultado = ejecutor.alternar_estado_dt(usuario_id=1)
+
+    assert resultado is False
+    assert motor.estado.dt_activo[1] is False
+
+    # El estado del otro usuario no se modifica.
+    assert motor.estado.dt_activo[2] is False

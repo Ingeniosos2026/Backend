@@ -58,7 +58,8 @@ async def crear_amistoso(usuario_id: int, datos: CrearAmistoso, servicio: Servic
         {"id_partido": partido_bd.id_partido,
         "duracion": partido_bd.duracion_partido,
         "tipo": partido_bd.tipo_partido.name,
-        "estado": partido_bd.estado_partido.name})
+        "estado": partido_bd.estado_partido.name,
+        "nombre": f"Partido de {partido_bd.usuario_1.nombre}"})
 
     return {
             "id_partido": partido_bd.id_partido,
@@ -211,17 +212,7 @@ async def iniciar_partido(partido_id: int, usuario_id: int, servicio: Servicios 
     
     await admin_conexiones.emitir_lobby(partido_id, "iniciar_partido", {})
 
-    #devuelvo el tamaño de la cancha y las posiciones de los arcos, esto lo mando una vez ya que es fijo
-
-    return {"mensaje": "Partido amistoso iniciado", "id_partido": partido.id_partido,
-        "cancha": {"ancho": cancha.ancho, "alto": cancha.alto,
-                   "arco_izquierdo": 
-                   {"poste_superior": {"x": cancha.arco_izquierdo.poste_superior.x, "y": cancha.arco_izquierdo.poste_superior.y},
-                    "poste_inferior": {"x": cancha.arco_izquierdo.poste_inferior.x, "y": cancha.arco_izquierdo.poste_inferior.y}},
-                    "arco_derecho": {
-                    "poste_superior": {"x": cancha.arco_derecho.poste_superior.x, "y": cancha.arco_derecho.poste_superior.y},
-                    "poste_inferior": {"x": cancha.arco_derecho.poste_inferior.x, "y": cancha.arco_derecho.poste_inferior.y}
-                    }}}
+    return {"mensaje": "Partido amistoso iniciado", "id_partido": partido.id_partido}
 
 
 @partido_router.put("/partido/{partido_id}/{usuario_id}/cambio")
