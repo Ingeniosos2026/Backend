@@ -16,6 +16,10 @@ class FisicaPartido:
             posicion = Coordenada(jugador.posicion.x, jugador.posicion.y)
             self.posiciones_iniciales[clave] = posicion
 
+        self.en_penales = False
+        self.lado_pateador_penal = None
+        self.hubo_gol_penal = False
+
     def actualizar(self, t: float) -> None:
         self.actualizar_jugadores(t)
         self.actualizar_pelota(t)
@@ -70,7 +74,16 @@ class FisicaPartido:
         # Borde izquierdo
         if pelota.posicion.x <= 0:
             if self.esta_dentro_arco(pelota.posicion.y, cancha.arco_izquierdo):
-                self.registrar_gol("izquierdo")
+                if self.en_penales:
+                    if self.lado_pateador_penal != "derecho":
+                        pelota.posicion.x = 0
+                        pelota.velocidad = Coordenada(0, 0)
+                    else:
+                        self.hubo_gol_penal = True
+                        pelota.posicion.x = 0
+                        pelota.velocidad = Coordenada(0, 0)
+                else:
+                    self.registrar_gol("izquierdo")
             else:
                 # no es gol, rebota la pelota
                 pelota.posicion.x = 0
@@ -79,7 +92,16 @@ class FisicaPartido:
         # Borde derecho
         elif pelota.posicion.x >= cancha.ancho:
             if self.esta_dentro_arco(pelota.posicion.y, cancha.arco_derecho):
-                self.registrar_gol("derecho")
+                if self.en_penales:
+                    if self.lado_pateador_penal != "izquierdo":
+                        pelota.posicion.x = cancha.ancho 
+                        pelota.velocidad = Coordenada(0, 0)
+                    else:
+                        self.hubo_gol_penal = True
+                        pelota.posicion.x = cancha.ancho 
+                        pelota.velocidad = Coordenada(0, 0)
+                else:
+                    self.registrar_gol("derecho")
             else:
                 # no es gol, rebota la pelota
                 pelota.posicion.x = cancha.ancho
