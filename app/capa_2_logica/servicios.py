@@ -20,6 +20,7 @@ from app.partido.comportamientos import COMPORTAMIENTOS_PREDETERMINADOS, COMPORT
 from sqlalchemy.exc import IntegrityError
 from .errores import *
 from .resultados import *
+from app.partido.administrar_partidos import administrador_partidas
 
 password_hash = PasswordHash.recommended()
 
@@ -277,6 +278,7 @@ class Servicios:
 
     def listar_amistosos_disponibles(self) -> ListarAmistososResultado:
         amistosos = self.partidos.obtener_partidos_amistosos_disponibles()
+        
         return ListarAmistososResultado(amistosos=amistosos)
 
     def unirse_amistoso(self, partido_id: int, usuario_id: int, jugadores_comportamientos: list[tuple[int, int]], formacion: Formacion) -> UnirseAmistosoResultado:
@@ -315,6 +317,9 @@ class Servicios:
 
         if len(set(id_jugadores)) != 6:
             raise DatosInvalidos()
+        
+        if partido.id_usuario_1 == usuario_id:
+            raise NoPuedeUnirseASuPropioPartido()
 
         jugadores = []
 
@@ -368,7 +373,7 @@ class Servicios:
 
         return PartidoResultado(partido=partido)
 
-    def crear_liga(self, usuario_id: int, nombre: str, contraseña: str | None, min_jugadores: int, max_jugadores: int, duracion_partido: int, jugadores_comportamientos: list[tuple[int, int]], formacion: Formacion) -> CrearLigaResultado:
+    def crear_liga(self, usuario_id: int, nombre: str, contraseña: str | None, min_jugadores: int, max_jugadores: int, duracion_partido: int, jugadores_comportamientos: list[tuple[int, int]], formacion: Formacion, empate: bool = False) -> CrearLigaResultado:
 
         if not nombre.strip():
             raise DatosLigaInvalidos()
@@ -422,6 +427,7 @@ class Servicios:
             min_jugadores=min_jugadores,
             max_jugadores=max_jugadores,
             duracion_partido=duracion_partido,
+            empate=empate
         )
 
         liga = self.ligas.crear(nueva_liga)
@@ -654,7 +660,7 @@ class Servicios:
             return 0, 3
         return 1, 1
 
-    def registrar_resultado_partido_liga(self, id_liga: int, turno: int, goles_izq: int, goles_der: int) -> RegistrarResultadoPartidoLiga:
+    def registrar_resultado_partido_liga(self, id_liga: int, turno: int, goles_izq: int, goles_der: int, id_equipo_ganador_penales: int | None = None) -> RegistrarResultadoPartidoLiga:
         fixture = self.ligas.obtener_fixture_por_turno(id_liga, turno)
         liga = self.ligas.obtener_por_id(id_liga)
 
@@ -705,10 +711,20 @@ class Servicios:
         else:
             tabla_izq.partidos_empatados += 1
             tabla_der.partidos_empatados += 1
+            
+            if id_equipo_ganador_penales is not None:
+                if id_equipo_ganador_penales == fixture.id_equipo_izq:
+                    tabla_izq.puntos += 2
+                elif id_equipo_ganador_penales == fixture.id_equipo_der:
+                    tabla_der.puntos += 2
+
+            else:
+                tabla_izq.puntos += 1
+                tabla_der.puntos += 1
 
         tabla_izq.puntos += puntos_izq
         tabla_der.puntos += puntos_der
-
+ 
         self.ligas.actualizar()
 
         return RegistrarResultadoPartidoLiga(fixture=fixture, tabla_izq=tabla_izq, tabla_der=tabla_der)
@@ -994,8 +1010,44 @@ class Servicios:
         partido = self.partidos.obtener_por_id(partido_id)
         if partido is None:
             raise PartidoNoEncontrado()
-
+        
         return ObtenerInfoPartidoResultado(partido=partido)
+
+    def configurar_penales(self,partido_id: int,usuario_id: int,id_arquero: int,id_comportamiento_arquero: int,pateadores: list[tuple[int, int]]) -> None:
+        if usuario_id not in (partido.id_usuario_1, partido.id_usuario_2):
+            raise UsuarioNoEncontrado()
+
+        ejecutor = administrador_partidas.obtener(partido_id)
+        if ejecutor is None or not getattr(ejecutor, "esperando_config_penales", False):
+            raise PartidoNoDisponible()
+
+        if len(pateadores) != 3:
+            raise DatosInvalidos()
+
+        ids_titulares = ejecutor.obtener_ids_jugadores_en_cancha_usuario(ejecutor.motor.estado, usuario_id)
+        if id_arquero not in ids_titulares:
+            raise NoSePuedeElegirComoArquero()
+
+        ids_pateadores = [id_j for id_j, _ in pateadores]
+        if len(set(ids_pateadores)) != 3 or set(ids_pateadores) != set(ids_titulares):
+            raise SoloPuedenPatearLosTitulares()
+
+        comp_arquero = self.comportamientos.obtener_comportamiento_por_id_y_usuario(id_comportamiento_arquero, usuario_id)
+        if comp_arquero is None:
+            raise ComportamientoNoEncontrado()
+
+        comportamientos_pateadores = []
+        for id_j, id_comp in pateadores:
+            comp = self.comportamientos.obtener_comportamiento_por_id_y_usuario(id_comp, usuario_id)
+            if comp is None:
+                raise ComportamientoNoEncontrado()
+            
+            comportamientos_pateadores.append((id_j, comp.codigo))
+
+        ejecutor.configurar_penales_usuario(usuario_id=usuario_id,id_arquero=id_arquero,
+                                            comportamiento_arquero=comp_arquero.codigo,
+                                            comportamiento_pateadores=comportamientos_pateadores,
+                                            estado=ejecutor.motor.estado)
 
     def listar_comportamientos_dt(self, usuario_id: int) -> ListarComportamientosDTResultado:
         comportamientos = self.comportamientos.obtener_comportamientos_dt_usuario(usuario_id)
