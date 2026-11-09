@@ -145,4 +145,4 @@ class ObtenerInfoPartidoResultado:
 @dataclass(slots=True)
 class ListarComportamientosDTResultado:
     comportamientos: list[ComportamientoModelo]
-    comportamiento_dt: ComportamientoModelo | None
+    comportamiento_dt: ComportamientoModelo

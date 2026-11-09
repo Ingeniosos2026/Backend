@@ -348,3 +348,54 @@ def test_endpoint_listar_comportamientos_dt_devuelve_id_actual_guardado(client, 
     datos = response.json()
     assert datos["id_comportamiento_dt_actual"] == comportamiento_actual.id
     assert any(comportamiento["id"] == comportamiento_actual.id for comportamiento in datos["comportamientos"])
+
+
+def test_endpoint_crear_comportamiento_dt_persiste(client, db_test):
+    usuario = Usuario(
+        email="pepito@gmail.com",
+        nombre="pepito",
+        id_avatar=1,
+        contraseña="asd123",
+        nombre_club="boca")
+    db_test.add(usuario)
+    db_test.commit()
+    db_test.refresh(usuario)
+
+    codigo = ("def comportamiento(primitivas):\n"" if primitivas.voy_perdiendo():\n""  primitivas.cambiar_comportamiento_ataque()")
+    response = client.post(f"/comportamiento_dt/{usuario.id_usuario}", json={"nombre": "Ataque", "codigo": codigo})
+
+    assert response.status_code == 201
+    datos = response.json()
+    assert datos["id"] is not None
+    assert datos["id_usuario"] == usuario.id_usuario
+    assert datos["nombre"] == "Ataque"
+    assert datos["codigo"] == codigo
+
+    comportamiento_guardado = db_test.query(Comportamiento).filter_by(id=datos["id"]).one()
+    assert comportamiento_guardado.id_usuario == usuario.id_usuario
+    assert comportamiento_guardado.nombre == "Ataque"
+    assert comportamiento_guardado.codigo == codigo
+    assert comportamiento_guardado.tipo == TipoComportamiento.DT
+
+
+def test_endpoint_crear_comportamiento_dt_rechaza_primitiva_de_jugador(client, db_test):
+    usuario, _ = create_datos_prueba(db_test)
+    codigo_jugador = "def comportamiento(primitivas):\n    primitivas.correr((1, 2))"
+
+    response = client.post(f"/comportamiento_dt/{usuario.id_usuario}", json={"nombre": "comportamientoqueevidentementenoesdedt", "codigo": codigo_jugador})
+
+    assert response.status_code == 400
+    assert response.json() == {"error": "DATOS_INVALIDOS",
+        "mensaje": "El nombre o los datos del comportamiento no son validos"}
+    assert (db_test.query(Comportamiento).filter_by(id_usuario=usuario.id_usuario, tipo=TipoComportamiento.DT).count() == 0)
+
+
+def test_endpoint_crear_comportamiento_dt_usuario_inexistente(client, db_test):
+    codigo = "def comportamiento(primitivas):\n primitivas.cambiar_jugador()"
+
+    response = client.post("/comportamiento_dt/999", json={"nombre": "DT", "codigo": codigo})
+
+    assert response.status_code == 404
+    assert response.json() == {"error": "USUARIO_NO_ENCONTRADO",
+        "mensaje": "El usaurio no existe"}
+    assert db_test.query(Comportamiento).count() == 0

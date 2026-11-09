@@ -4,7 +4,7 @@ from app.capa_0_definicion_bd.models.usuarios_modelos import Usuario
 from app.capa_0_definicion_bd.models.jugadores_modelos import Jugador
 from app.capa_0_definicion_bd.models.equipo_modelos import Equipo
 from app.capa_0_definicion_bd.models.equipos_jugadores_modelos import EstadoJugador, EquipoJugador
-from app.capa_0_definicion_bd.models.comportamientos_modelos import Comportamiento
+from app.capa_0_definicion_bd.models.comportamientos_modelos import Comportamiento, TipoComportamiento
 from app.capa_0_definicion_bd.models.partidos_modelos import Partido, TipoPartido, EstadoPartido, Formacion
 from app.capa_0_definicion_bd.models.liga_modelos import Liga, EstadoLiga
 from app.capa_0_definicion_bd.models.liga_participantes_modelos import LigaParticipante
@@ -2206,3 +2206,32 @@ def test_cambiar_alineacion_actualiza_comportamientos_sin_cambiar_estados():
     } == titulares_antes
     assert resultado.participacion.formacion == Formacion.OFENSIVA
     repo_ligas.actualizar.assert_called_once()
+
+def test_crear_comportamiento_dt_usa_primitivas_dt_y_guarda_tipo_dt():
+
+    usuarios = Mock()
+    usuarios.obtener_por_id.return_value = Mock()
+    comportamientos = Mock()
+
+    ## como el mock toma una funcion la hago con lambda
+    comportamientos.crear.side_effect = lambda comportamiento: comportamiento
+    servicio = Servicios(usuarios=usuarios, comportamientos=comportamientos)
+    codigo = "def comportamiento(primitivas):\n primitivas.cambiar_jugador()"
+
+    resultado = servicio.crear_comportamiento_dt(usuario_id=7, nombre="DT", codigo=codigo)
+
+    assert resultado.comportamiento.codigo == codigo
+    assert resultado.comportamiento.tipo == TipoComportamiento.DT
+    comportamientos.crear.assert_called_once()
+
+
+def test_crear_comportamiento_dt_rechaza_primitivas_de_jugador():
+    usuarios = Mock()
+    usuarios.obtener_por_id.return_value = Mock()
+    comportamientos = Mock()
+    servicio = Servicios(usuarios=usuarios, comportamientos=comportamientos)
+
+    with pytest.raises(DatosInvalidos):
+        servicio.crear_comportamiento_dt(usuario_id=7, nombre="DT", codigo="def comportamiento(primitivas):\n primitivas.correr((1, 2))")
+
+    comportamientos.crear.assert_not_called()
