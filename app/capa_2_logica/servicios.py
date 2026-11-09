@@ -787,9 +787,6 @@ class Servicios:
 
         if liga is None:
             raise LigaNoEncontrada()
-
-        if liga.estado != EstadoLiga.EN_JUEGO:
-            raise NoEsPosibleVerElFixture()
         
         fixture = self.ligas.obtener_fixture_completo(liga_id)
 
@@ -803,9 +800,6 @@ class Servicios:
 
         if liga is None:
             raise LigaNoEncontrada()
-
-        if liga.estado != EstadoLiga.EN_JUEGO:
-            raise NoEsPosibleVerLaTabla()
         
         tabla = self.ligas.obtener_tabla_completa(liga_id)
 
