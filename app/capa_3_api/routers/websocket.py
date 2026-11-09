@@ -115,7 +115,10 @@ async def websocket_partido(websocket: WebSocket, partido_id: int):
             await websocket.receive_text()
 
     except WebSocketDisconnect:
-        admin_conexiones.desconectar(websocket, partido_id)
+        pass
 
     except RuntimeError:
+        pass
+
+    finally:
         admin_conexiones.desconectar(websocket, partido_id)

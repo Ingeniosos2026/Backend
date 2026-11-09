@@ -147,10 +147,10 @@ async def unirse_amistoso(partido_id: int, usuario_id: int, datos: UnirseAmistos
             content={"error": "ERROR_INTERNO", "mensaje": "Ocurrió un error interno del servidor"}
         )
     
-@partido_router.get("/partidos", status_code=status.HTTP_200_OK)
-def listar_amistosos_disponibles(servicio: Servicios = Depends(obtener_servicio)):
+@partido_router.get("/partidos/{usuario_id}", status_code=status.HTTP_200_OK)
+def listar_amistosos_disponibles(usuario_id: int, servicio: Servicios = Depends(obtener_servicio)):
     try:
-        resultado = servicio.listar_amistosos_disponibles()
+        resultado = servicio.listar_amistosos_disponibles(usuario_id=usuario_id)
         return [
             {
                 "id": partido.id_partido,

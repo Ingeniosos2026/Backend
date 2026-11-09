@@ -49,7 +49,7 @@ class _RepoComportamientosProtocol(Protocol):
 
 class _RepoPartidosProtocol(Protocol):
     def crear(self, partido: PartidoModelo) -> PartidoModelo: ...
-    def obtener_amistosos_disponibles(self) -> list[PartidoModelo]: ...
+    def obtener_amistosos_disponibles(self, usuario_id: int) -> list[PartidoModelo]: ...
     def obtener_por_id(self, id_partido: int) -> PartidoModelo | None: ...
     def actualizar(self, partido: PartidoModelo) -> PartidoModelo: ...
 
@@ -277,9 +277,8 @@ class Servicios:
         equipo_actualizado = self.equipos.agregar_jugador(equipo, jugador, estado, comportamiento)
         return CrearEquipoResultado(equipo=equipo_actualizado)
 
-    def listar_amistosos_disponibles(self) -> ListarAmistososResultado:
-        amistosos = self.partidos.obtener_partidos_amistosos_disponibles()
-        
+    def listar_amistosos_disponibles(self, usuario_id: int) -> ListarAmistososResultado:
+        amistosos = self.partidos.obtener_partidos_amistosos_disponibles(usuario_id)
         return ListarAmistososResultado(amistosos=amistosos)
 
     def unirse_amistoso(self, partido_id: int, usuario_id: int, jugadores_comportamientos: list[tuple[int, int]], formacion: Formacion) -> UnirseAmistosoResultado:

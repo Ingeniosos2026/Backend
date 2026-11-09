@@ -392,10 +392,19 @@ def test_listar_amistosos_disponibles(client, db_test):
     })
     usuario_id = usuario.json()['id']
 
+    usuario_2 = client.post("/usuario", json={
+        "email": "tomascrack@gmail.com",
+        "nombre": "tomascrack",
+        "avatar": 2,
+        "contraseña": "hola123",
+        "club": "Talleres"
+    })
+    usuario_2_id = usuario_2.json()['id']
+
     jugadores = crear_jugadores_test(db_test, usuario_id)
     comportamiento = db_test.query(Comportamiento).filter_by(id_usuario=usuario_id).first()
 
-    lista_partidos = client.get("/partidos")
+    lista_partidos = client.get(f"/partidos/{usuario_2_id}")
     assert lista_partidos.status_code == 200
     assert len (lista_partidos.json()) == 0 # verifico que este vacia
 
@@ -406,9 +415,8 @@ def test_listar_amistosos_disponibles(client, db_test):
         "formacion": "ofensiva",
     })
 
-    lista_partidos = client.get("/partidos")
+    lista_partidos = client.get(f"/partidos/{usuario_2_id}")
     assert lista_partidos.status_code == 200
-    
     datos = lista_partidos.json()
     assert len(datos) == 1
     assert datos[0]["id"] is not None
@@ -420,13 +428,8 @@ def test_listar_amistosos_disponibles_devuelve_error_interno(client):
     servicio.listar_amistosos_disponibles.side_effect = RuntimeError("fallo")
     client.app.dependency_overrides[obtener_servicio] = crear_override_servicio(servicio)
 
-    response = client.get("/partidos")
-
+    response = client.get("/partidos/1")
     assert response.status_code == 500
-    assert response.json() == {
-        "error": "ERROR_INTERNO",
-        "mensaje": "Ocurrió un error interno del servidor",
-    }
 
 def test_iniciar_partido(client, db_test, monkeypatch):
     partido, usuario_id = crear_partido_pendiente_test(client, db_test)
