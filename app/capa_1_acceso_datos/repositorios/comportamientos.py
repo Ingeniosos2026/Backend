@@ -1,6 +1,7 @@
 from typing import List
 from sqlalchemy.orm import Session
 from app.capa_0_definicion_bd.models.comportamientos_modelos import TipoComportamiento, Comportamiento as ComportamientoModelo
+from app.capa_0_definicion_bd.models.usuarios_modelos import Usuario as UsuarioModelo
 
 class ComportamientoRepositorio:
     def __init__(self, db: Session):
@@ -31,3 +32,10 @@ class ComportamientoRepositorio:
     def eliminar(self, comportamiento: ComportamientoModelo) -> None:
         self.db.delete(comportamiento)
         self.db.commit()
+
+    def obtener_comportamientos_dt_usuario(self, usuario_id: int) -> List[ComportamientoModelo]:
+        return (self.db.query(ComportamientoModelo).filter(ComportamientoModelo.id_usuario == usuario_id, ComportamientoModelo.tipo == TipoComportamiento.DT).all())
+
+    def obtener_comportamiento_dt_actual(self, usuario_id: int) -> ComportamientoModelo:
+        return (self.db.query(ComportamientoModelo).join(UsuarioModelo, UsuarioModelo.id_comportamiento_dt == ComportamientoModelo.id)
+            .filter(UsuarioModelo.id_usuario == usuario_id, ComportamientoModelo.id_usuario == usuario_id, ComportamientoModelo.tipo == TipoComportamiento.DT).first())
