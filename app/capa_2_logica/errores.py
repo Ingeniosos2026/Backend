@@ -94,3 +94,12 @@ class NoSePuedeCambiarJugador(Exception):
 
 class ComportamientoYaAsignado(Exception):
     pass
+  
+class NoPuedeUnirseASuPropioPartido(Exception):
+    pass
+
+class NoSePuedeElegirComoArquero(Exception):
+    pass
+  
+class SoloPuedenPatearLosTitulares(Exception):
+    pass

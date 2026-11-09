@@ -24,6 +24,8 @@ def estado_a_dict(estado: EstadoPartido) -> dict:
         })
 
     return {
+        "id_usuario_izquierdo":estado.id_usuario_izquierdo,
+        "id_usuario_derecho":estado.id_usuario_derecho,
         "tiempo": estado.tiempo,
         "pelota": {
             "x": estado.pelota.posicion.x,

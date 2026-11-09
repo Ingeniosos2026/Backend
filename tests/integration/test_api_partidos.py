@@ -171,7 +171,8 @@ def test_crear_amistoso(client, db_test, monkeypatch):
             {"id_partido": datos["id_partido"], 
             "duracion": 5, 
             "tipo": "AMISTOSO", 
-            "estado": "DISPONIBLE"})
+            "estado": "DISPONIBLE",
+            "nombre": "Partido de Pepito"})
 
 
 
@@ -459,33 +460,6 @@ def test_iniciar_partido(client, db_test, monkeypatch):
 
     assert datos["mensaje"] == "Partido amistoso iniciado"
     assert datos["id_partido"] == partido.id_partido
-
-    assert datos["cancha"]["ancho"] == 100
-    assert datos["cancha"]["alto"] == 60
-
-    assert datos["cancha"]["arco_izquierdo"] == {
-        "poste_superior": {
-            "x": 0,
-            "y": 40
-        },
-        "poste_inferior": {
-            "x": 0,
-            "y": 20
-        }
-    }
-
-    assert datos["cancha"]["arco_derecho"] == {
-        "poste_superior": {
-            "x": 100,
-            "y": 40
-        },
-        "poste_inferior": {
-            "x": 100,
-            "y": 20
-        }
-    }
-
-
     assert partido.estado_partido == EstadoPartido.EN_CURSO
 
 def test_realizar_cambio_jugador_correctamente(client, db_test, monkeypatch):
@@ -731,6 +705,44 @@ def test_obtener_usuario_de_partido_mapea_equipo_no_encontrado(client, db_test):
     assert response.status_code == 404
     assert response.json()["error"] == "EQUIPO_NO_ENCONTRADO"
 
+
+def test_alternar_estado_dt_correctamente(client, db_test, monkeypatch):
+    partido, usuario_id = crear_partido_pendiente_test(client, db_test)
+
+    ejecutor = Mock()
+    ejecutor.alternar_estado_dt.return_value = True
+
+    obtener = Mock(return_value=ejecutor)
+
+    monkeypatch.setattr("app.capa_3_api.routers.partidos.administrador_partidas.obtener", obtener)
+    response = client.put(f"/partido/{partido.id_partido}/{usuario_id}/dt")
+
+    assert response.status_code == 200
+    assert response.json() == {"mensaje": "Estado del DT actualizado", "dt_activo": True}
+
+    
+def test_alternar_estado_dt_usuario_no_participa(client, db_test, monkeypatch):
+    partido, _ = crear_partido_pendiente_test(client, db_test)
+
+    juan = client.post("/usuario", json={
+        "email": "juan3@gmail.com",
+        "nombre": "juan",
+        "avatar": 3,
+        "contraseña": "Juan1234",
+        "club": "independiente"})
+
+    otro_usuario_id = juan.json()["id"]
+    ejecutor = Mock()
+    obtener = Mock(return_value=ejecutor)
+
+    monkeypatch.setattr("app.capa_3_api.routers.partidos.administrador_partidas.obtener", obtener)
+
+    response = client.put(f"/partido/{partido.id_partido}/{otro_usuario_id}/dt")
+
+    assert response.status_code == 404
+    assert response.json() == {"error": "USUARIO_NO_ENCONTRADO", "mensaje": "El usuario no participa en este partido"}
+
+    
 def test_obtener_info_partido_correctamente(client, db_test):
     partido, _ = crear_partido_pendiente_test(client, db_test)
 

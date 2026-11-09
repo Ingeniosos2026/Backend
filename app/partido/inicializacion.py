@@ -212,4 +212,5 @@ def crear_estado_partido(partido) -> EstadoPartido:
         comportamientos=comportamientos,
         pelota=pelota,
         codigo_dt=codigo_dt,
-        dt_activo=dt_activo)
+        dt_activo=dt_activo,
+        equipos_que_cambiaron=set())

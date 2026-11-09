@@ -232,20 +232,63 @@ def asignar_comportamiento_dt(usuario_id: int, comp_id: int, servicio: Servicios
     except UsuarioNoEncontrado:
         return JSONResponse(
             status_code=404,
-            content={"error": "USUARIO_NO_ENCONTRADO", "mensaje": "El usuario no existe"}
+            content={
+              "error": "USUARIO_NO_ENCONTRADO", 
+              "mensaje": "El usuario no existe"}
         )
     except ComportamientoNoEncontrado:
         return JSONResponse(
             status_code=404,
-            content={"error": "COMPORTAMIENTO_NO_ENCONTRADO", "mensaje": "El comportamiento no existe o no pertenece al usuario"}
+            content={
+              "error": "COMPORTAMIENTO_NO_ENCONTRADO", 
+              "mensaje": "El comportamiento no existe o no pertenece al usuario"}
         )
     except ComportamientoYaAsignado:
         return JSONResponse(
             status_code=400,
-            content={"error": "NO_SE_PUEDE_ASIGNAR_COMPORTAMIENTO_DT_DEFAULT", "mensaje": "No se puede asignar el mismo comportamiento que ya tiene asignado el DT"}
+            content={
+              "error": "NO_SE_PUEDE_ASIGNAR_COMPORTAMIENTO_DT_DEFAULT", 
+              "mensaje": "No se puede asignar el mismo comportamiento que ya tiene asignado el DT"}
         )
     except Exception:
         return JSONResponse(
             status_code=500,
-            content={"error": "ERROR_INTERNO", "mensaje": "Ocurrió un error interno del servidor"}
+            content={
+              "error": "ERROR_INTERNO", 
+              "mensaje": "Ocurrió un error interno del servidor"}
         )   
+
+@comportamiento_router.post("/comportamiento_dt/{usuario_id}", status_code=status.HTTP_201_CREATED)
+def crear_comportamiento_dt(usuario_id: int, datos: CrearComportamiento, servicio: Servicios= Depends(obtener_servicio)):
+    try:
+        resultado = servicio.crear_comportamiento_dt(usuario_id=usuario_id, nombre=datos.nombre, codigo=datos.codigo)
+        comp = resultado.comportamiento
+
+        return {
+            "id": comp.id,
+            "id_usuario": comp.id_usuario,
+            "nombre": comp.nombre,
+            "codigo": comp.codigo
+        }
+
+    except DatosInvalidos:
+        return JSONResponse(
+            status_code=400,
+            content={
+                "error": "DATOS_INVALIDOS",
+                "mensaje": "El nombre o los datos del comportamiento no son validos"}
+        )
+    except UsuarioNoEncontrado:
+        return JSONResponse(
+                status_code=404,
+                content={
+                    "error": "USUARIO_NO_ENCONTRADO",
+                    "mensaje": "El usaurio no existe"}
+            )
+    except Exception:
+        return JSONResponse(
+                status_code=500,
+                content={
+                    "error": "ERROR_INTERNO",
+                    "mensaje": "Ocurrio un error interno del servidor"}
+            )

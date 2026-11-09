@@ -61,6 +61,7 @@ def comportamiento(primitivas):
         },
         suplentes={},
         codigo_dt={},
+        equipos_que_cambiaron=set(),
         dt_activo={1: False, 2: False},
         pelota=PelotaEstado(posicion=Coordenada(50, 25), velocidad=Coordenada(0, 0)))
 

@@ -45,3 +45,18 @@ def test_validar_codigo_comportamiento_rechaza_construcciones_no_permitidas(
 ):
     with pytest.raises(CodigoComportamientoInvalido, match=mensaje):
         validar_codigo_comportamiento(codigo)
+
+
+def test_validar_codigo_comportamiento_dt_acepta_primitivas_dt():
+    codigo = """def comportamiento(primitivas):
+    if primitivas.voy_perdiendo():
+        primitivas.cambiar_comportamiento_ataque()"""
+
+    assert validar_codigo_comportamiento_dt(codigo) == codigo
+
+
+def test_validar_codigo_comportamiento_dt_rechaza_primitivas_de_jugador():
+    codigo = """def comportamiento(primitivas): primitivas.correr((1, 2))"""
+
+    with pytest.raises(CodigoComportamientoInvalido, match="Primitiva no permitida"):
+        validar_codigo_comportamiento_dt(codigo)

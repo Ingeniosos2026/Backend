@@ -58,6 +58,7 @@ def crear_estado_partido():
         suplentes={},
         comportamientos={},
         codigo_dt={},
+        equipos_que_cambiaron=set(),
         dt_activo={1: False, 2: False},
         pelota=pelota)
 

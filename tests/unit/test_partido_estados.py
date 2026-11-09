@@ -113,6 +113,7 @@ def test_estado_partido():
         comportamientos={},
         suplentes={},
         codigo_dt={},
+        equipos_que_cambiaron=set(),
         dt_activo={1: False, 2: False},
         pelota=pelota)
 

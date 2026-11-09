@@ -151,3 +151,4 @@ class ListarComportamientosDTResultado:
 class AsignarComportamientoDTResultado:
     usuario: UsuarioModelo
     comportamiento: ComportamientoModelo
+
