@@ -135,6 +135,16 @@ async def unirse_amistoso(partido_id: int, usuario_id: int, datos: UnirseAmistos
             status_code=404,
             content={"error": "COMPORTAMIENTO_NO_ENCONTRADO", "mensaje": "El jugador no tiene un comportamiento válido"},
         )
+    except NoPuedeUnirseASuPropioPartido:
+        return JSONResponse(
+            status_code=400,
+            content={"error": "NO_PUEDE_UNIRSE_A_SU_PROPIO_PARTIDO", "mensaje": "No puede unirse a su propio partido"}
+        )
+    except Exception:
+        return JSONResponse(
+            status_code=500,
+            content={"error": "ERROR_INTERNO", "mensaje": "Ocurrió un error interno del servidor"}
+        )
     
 @partido_router.get("/partidos", status_code=status.HTTP_200_OK)
 def listar_amistosos_disponibles(servicio: Servicios = Depends(obtener_servicio)):
