@@ -41,7 +41,9 @@ class MotorPartido:
         return self.estado, estados_jugadores, eventos
     
     def ejecutar_dt(self) -> None:
+        eventos = []
         for id_usuario, activo in self.estado.dt_activo.items():
             if activo:
                 codigo = self.estado.codigo_dt[id_usuario]
-                ejecutar_comportamiento_dt(estado=self.estado, id_usuario=id_usuario, codigo=codigo, posiciones_iniciales=self.fisica.posiciones_iniciales)
+                ejecutar_comportamiento_dt(estado=self.estado, id_usuario=id_usuario, codigo=codigo, posiciones_iniciales=self.fisica.posiciones_iniciales, eventos=eventos)
+        return eventos

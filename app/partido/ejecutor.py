@@ -101,7 +101,12 @@ class EjecutorPartido:
         
         self.motor.estado.en_pausa = True
         self.motor.estado.pausas_realizadas += 1
-        self.motor.ejecutar_dt()
+        eventos_dt = self.motor.ejecutar_dt()
+        for evento in eventos_dt:
+            await self.admin.emitir_partido(
+                partido_id=self.partido_id,
+                accion=evento["accion"],
+                payload=evento["payload"])
 
         if (self.motor.estado.pausas_realizadas == 2):
             tiempo_espera = self.duracion_pausa_entretiempo

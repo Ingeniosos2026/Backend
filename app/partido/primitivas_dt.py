@@ -6,10 +6,11 @@ import random
 
 class PrimitivasDT:
 
-    def __init__(self, estado: EstadoPartido, id_usuario: int, posiciones_iniciales: dict):
+    def __init__(self, estado: EstadoPartido, id_usuario: int, posiciones_iniciales: dict,  eventos: list):
         self.estado = estado
         self.id_usuario = id_usuario
         self.posiciones_iniciales = posiciones_iniciales
+        self.eventos = eventos
 
     def cambiar_comportamiento_ataque(self) -> None:
         for clave in self.estado.jugadores:
@@ -68,6 +69,17 @@ class PrimitivasDT:
         del self.estado.suplentes[clave_entra]
 
         self.estado.equipos_que_cambiaron.add((self.estado.pausas_realizadas, id_equipo))
+        self.eventos.append({
+            "accion": "cambio_jugador_realizado",
+            "payload": {
+                "id_equipo": id_equipo,
+                "id_usuario": self.id_usuario,
+                "jugador_sale_id": clave_sale[1],
+                "nombre_jugador_sale": jugador_sale.nombre,
+                "jugador_entra_id": clave_entra[1],
+                "nombre_jugador_entra": jugador_entra.nombre
+            }
+        })
     
     def voy_perdiendo(self) -> bool:
         goles_propios, goles_rival = obtener_goles(self.estado, self.id_usuario)
