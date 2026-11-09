@@ -11,6 +11,15 @@ PRIMITIVAS_PERMITIDAS = {
     "direccionArcoPropio",
 }
 
+PRIMITIVAS_DT_PERMITIDAS = {
+    "cambiar_comportamiento_ataque",
+    "cambiar_comportamiento_defensa",
+    "cambiar_jugador",
+    "voy_perdiendo",
+    "voy_ganando",
+    "esta_empatado",
+    "es_pausa"}
+
 ATRIBUTOS_PERMITIDOS = {"x", "y"}
 
 OPERADORES_BINARIOS = (
@@ -40,8 +49,9 @@ class CodigoComportamientoInvalido(ValueError):
 
 
 class ValidadorComportamiento(ast.NodeVisitor):
-    def __init__(self):
+    def __init__(self, primitivas_permitidas=PRIMITIVAS_PERMITIDAS):
         self.variables = {"primitivas"}
+        self.primitivas_permitidas = primitivas_permitidas
 
     def error(self, mensaje: str):
         raise CodigoComportamientoInvalido(mensaje)
@@ -123,7 +133,7 @@ class ValidadorComportamiento(ast.NodeVisitor):
         if node.func.value.id != "primitivas":
             self.error("Solo se permiten llamadas a primitivas")
 
-        if node.func.attr not in PRIMITIVAS_PERMITIDAS:
+        if node.func.attr not in self.primitivas_permitidas:
             self.error(f"Primitiva no permitida: {node.func.attr}")
 
         if node.keywords:
@@ -191,14 +201,22 @@ class ValidadorComportamiento(ast.NodeVisitor):
             self.visit(comparador)
 
 
-def validar_codigo_comportamiento(codigo: str) -> str:
+def _validar_codigo_comportamiento(codigo: str, primitivas_permitidas: set[str]) -> str:
     if not isinstance(codigo, str) or not codigo.strip():
         raise CodigoComportamientoInvalido("El codigo no puede estar vacio")
     try:
         arbol = ast.parse(codigo)
     except (SyntaxError, ValueError, RecursionError) as exc:
         raise CodigoComportamientoInvalido("El codigo python no tiene sintaxis válida") from exc
-    validador = ValidadorComportamiento()
+    validador = ValidadorComportamiento(primitivas_permitidas)
     validador.visit(arbol)
 
     return codigo
+
+
+def validar_codigo_comportamiento(codigo: str) -> str:
+    return _validar_codigo_comportamiento(codigo, PRIMITIVAS_PERMITIDAS)
+
+
+def validar_codigo_comportamiento_dt(codigo: str) -> str:
+    return _validar_codigo_comportamiento(codigo, PRIMITIVAS_DT_PERMITIDAS)
