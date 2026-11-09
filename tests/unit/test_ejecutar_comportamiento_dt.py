@@ -76,6 +76,7 @@ def crear_estado_partido():
             (2, 4): comportamiento_defender,
         },
         codigo_dt={},
+        equipos_que_cambiaron=set(),
         dt_activo={1: False, 2: False},
         pelota=PelotaEstado(
             posicion=Coordenada(50, 25),
@@ -86,6 +87,7 @@ def crear_estado_partido():
 def test_ejecutar_comportamiento_dt_cambia_jugador_con_primitiva(monkeypatch):
     estado = crear_estado_partido()
     estado.en_pausa = True
+    estado.pausas_realizadas = 1
     jugador_que_sale = estado.jugadores[(1, 1)]
     suplente_que_entra = estado.suplentes[(1, 3)]
     codigo = """def comportamiento(primitivas): primitivas.cambiar_jugador()"""
@@ -93,7 +95,8 @@ def test_ejecutar_comportamiento_dt_cambia_jugador_con_primitiva(monkeypatch):
 
     # le decimos que cuadno haga un random devuelva el primer elemento (ya como la eleccion es aleatoria puede ser que cambie al jugador que queremos o no)
     monkeypatch.setattr("app.partido.primitivas_dt.random.choice", lambda elementos: elementos[0])
-    ejecutar_comportamiento_dt(estado, 1, codigo, posiciones_iniciales)    
+    eventos = []
+    ejecutar_comportamiento_dt(estado, 1, codigo, posiciones_iniciales, eventos)    
 
     assert (1, 1) not in estado.jugadores
     assert estado.jugadores[(1, 3)] is suplente_que_entra
@@ -101,6 +104,8 @@ def test_ejecutar_comportamiento_dt_cambia_jugador_con_primitiva(monkeypatch):
     assert suplente_que_entra.posicion == jugador_que_sale.posicion
     assert suplente_que_entra.destino is None
     assert posiciones_iniciales[(1, 3)] == Coordenada(20, 25)
+    assert len(eventos) == 1
+    assert eventos[0]["accion"] == "cambio_jugador_realizado"
 
 
 def test_ejecutar_comportamiento_dt_cambia_comportamiento_con_primitiva():
@@ -108,7 +113,8 @@ def test_ejecutar_comportamiento_dt_cambia_comportamiento_con_primitiva():
     codigo = """def comportamiento(primitivas): primitivas.cambiar_comportamiento_ataque()"""
     posiciones_iniciales = {(1, 1): Coordenada(20, 25), (1, 2): Coordenada(40, 25), (2, 4): Coordenada(80, 25)}
 
-    ejecutar_comportamiento_dt(estado, 1, codigo, posiciones_iniciales)
+    eventos = []
+    ejecutar_comportamiento_dt(estado, 1, codigo, posiciones_iniciales, eventos)
 
     assert estado.comportamientos[(1, 1)] == comportamiento_atacar
     assert estado.comportamientos[(1, 2)] == comportamiento_atacar

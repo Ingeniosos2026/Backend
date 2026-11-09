@@ -66,8 +66,11 @@ class EstadoPartido:
 
     codigo_dt: dict[int, str]  # este va a guardar el comportamiento de dt
     dt_activo: dict[int, bool] # este me sirve para saber si el usuario tiene el dt activo o no
+    equipos_que_cambiaron: set 
     
     tiempo: float = 0.0
     goles_izquierdo: int = 0
     goles_derecho: int = 0
     en_pausa: bool = False
+    pausas_realizadas: int = 0
+    

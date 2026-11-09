@@ -2207,6 +2207,51 @@ def test_cambiar_alineacion_actualiza_comportamientos_sin_cambiar_estados():
     assert resultado.participacion.formacion == Formacion.OFENSIVA
     repo_ligas.actualizar.assert_called_once()
 
+
+def test_validar_usuario_en_partido_correctamente():
+    repo_partidos = Mock()
+    repo_usuarios = Mock()
+    partido = partido = Partido(
+        id_partido=1,
+        id_usuario_1=1,
+        id_usuario_2=2,
+        id_equipo_1=10,
+        id_equipo_2=4,
+        duracion_partido=5,
+        formacion_1=Formacion.OFENSIVA,
+        formacion_2=Formacion.DEFENSIVA,
+        tipo_partido=TipoPartido.AMISTOSO,
+        estado_partido=EstadoPartido.EN_CURSO)
+
+    repo_partidos.obtener_por_id.return_value = partido
+
+    servicio = Servicios(usuarios = repo_usuarios, partidos=repo_partidos)
+    
+    resultado = servicio.validar_usuario_en_partido(partido_id=10, usuario_id=1)
+
+    assert resultado is None
+    repo_partidos.obtener_por_id.assert_called_once_with(10)
+
+    
+def test_validar_usuario_no_participa_en_partido():
+    repo_partidos = Mock()
+    repo_usuarios = Mock()
+
+
+    partido = Mock()
+    partido.id_usuario_1 = 1
+    partido.id_usuario_2 = 2
+
+    repo_partidos.obtener_por_id.return_value = partido
+
+    servicio = Servicios(usuarios=repo_usuarios, partidos=repo_partidos)
+
+    with pytest.raises(UsuarioNoEncontrado):
+        servicio.validar_usuario_en_partido(partido_id=10, usuario_id=3)
+
+    repo_partidos.obtener_por_id.assert_called_once_with(10)
+
+    
 def test_crear_comportamiento_dt_usa_primitivas_dt_y_guarda_tipo_dt():
 
     usuarios = Mock()
@@ -2235,3 +2280,4 @@ def test_crear_comportamiento_dt_rechaza_primitivas_de_jugador():
         servicio.crear_comportamiento_dt(usuario_id=7, nombre="DT", codigo="def comportamiento(primitivas):\n primitivas.correr((1, 2))")
 
     comportamientos.crear.assert_not_called()
+

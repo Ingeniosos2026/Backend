@@ -41,6 +41,7 @@ def crear_motor_prueba() -> MotorPartido:
         },
         suplentes={},
         codigo_dt={},
+        equipos_que_cambiaron=set(),
         dt_activo={1: False, 2: False},
         pelota=PelotaEstado(posicion=Coordenada(50, 25), velocidad=Coordenada(0, 0)),
     )
@@ -53,8 +54,8 @@ def test_configuracion_inicial_de_pausas():
     assert ejecutor.duracion_pausa_entretiempo == DURACION_PAUSA_ENTRETIEMPO
     assert ejecutor.duracion_pausa_cooling_break == DURACION_PAUSA_COOLING_BREAK
     assert ejecutor.tiempos_pausa == [75.0, 150.0, 225.0]
-    assert ejecutor.pausas_realizadas == 0
-    assert ejecutor.pausado is False
+    assert motor.estado.pausas_realizadas == 0
+    assert motor.estado.en_pausa is False
 
 def test_pausar_y_reanudar_emiten_eventos_ws():
     motor = crear_motor_prueba()
@@ -65,7 +66,7 @@ def test_pausar_y_reanudar_emiten_eventos_ws():
 
     # pausamos el partido
     ejecutar(ejecutor.pausar())
-    assert ejecutor.pausado is True
+    assert motor.estado.en_pausa is True
     admin_mock.emitir_partido.assert_awaited_once_with(
         partido_id=10,
         accion="partido_pausado",
@@ -74,7 +75,7 @@ def test_pausar_y_reanudar_emiten_eventos_ws():
 
     # reanudamos el partido
     ejecutar(ejecutor.reanudar())
-    assert ejecutor.pausado is False
+    assert motor.estado.en_pausa is False
     admin_mock.emitir_partido.assert_awaited_with(
         partido_id=10,
         accion="partido_reanudado",
@@ -100,8 +101,8 @@ def test_ejecutor_realiza_exactamente_3_pausas_durante_el_partido(monkeypatch):
 
     ejecutar(ejecutor.ejecutar())
 
-    assert ejecutor.pausas_realizadas == 3
-    assert ejecutor.pausado is False
+    assert motor.estado.pausas_realizadas == 3
+    assert motor.estado.en_pausa is False
 
     acciones_emitidas = [
         llamada.kwargs["accion"]
@@ -119,18 +120,18 @@ def test_puede_realizar_cambio():
 
     assert ejecutor.puede_realizar_cambio(10) is False
 
-    ejecutor.pausado = True
+    motor.estado.en_pausa = True
 
     # no puede cambiar si todavia no hay una pausa
     assert ejecutor.puede_realizar_cambio(10) is False
 
-    ejecutor.pausas_realizadas = 1
+    motor.estado.pausas_realizadas = 1
 
     # puede cambiar durante la primera pausa
     assert ejecutor.puede_realizar_cambio(10) is True
 
     # si ya cambio durante esa pausa, no puede volver a hacerl
-    ejecutor.equipos_que_cambiaron.add((1, 10))
+    motor.estado.equipos_que_cambiaron.add((1, 10))
 
     assert ejecutor.puede_realizar_cambio(10) is False
 
@@ -138,7 +139,7 @@ def test_puede_realizar_cambio():
     assert ejecutor.puede_realizar_cambio(20) is True
 
     # no puede cambiar mas de 3 pausas
-    ejecutor.pausas_realizadas = 4
+    motor.estado.pausas_realizadas = 4
     assert ejecutor.puede_realizar_cambio(10) is False
 
 def test_solicitar_cambio_queda_cambio_pendiente():
@@ -161,7 +162,7 @@ def test_solicitar_cambio_queda_cambio_pendiente():
         resultado=resultado))
 
     assert ejecutor.cambios_pendientes == {10: (1, 1, resultado)}
-    assert ejecutor.equipos_que_cambiaron == set()
+    assert motor.estado.equipos_que_cambiaron == set()
 
 def test_solicitar_otro_cambio_pisa_el_anterior():
     motor = crear_motor_prueba()
@@ -204,7 +205,7 @@ def test_no_permitir_mas_de_tres_cambios_por_equipo():
     motor = crear_motor_prueba()
     ejecutor = EjecutorPartido(partido_id=10, motor=motor, duracion=100)
 
-    ejecutor.equipos_que_cambiaron = {(1, 10), (2, 10), (3, 10)}
+    motor.estado.equipos_que_cambiaron = {(1, 10), (2, 10), (3, 10)}
 
     resultado = CambioJugadorResultado(
         id_jugador=3,
@@ -253,8 +254,8 @@ def test_realizar_cambio_correctamente():
         duracion=100,
         admin=admin_mock)
 
-    ejecutor.pausado = True
-    ejecutor.pausas_realizadas = 1
+    motor.estado.en_pausa = True
+    motor.estado.pausas_realizadas = 1
 
     resultado = CambioJugadorResultado(
         id_jugador=3,
@@ -287,3 +288,32 @@ def test_realizar_cambio_correctamente():
     assert (1, 3) in motor.estado.comportamientos
 
     admin_mock.emitir_partido.assert_awaited_once()
+
+def test_alternar_estado_dt_de_false_a_true():
+    motor = crear_motor_prueba()
+    ejecutor = EjecutorPartido(partido_id=10, motor=motor, duracion=100)
+
+    assert motor.estado.dt_activo[1] is False
+
+    resultado = ejecutor.alternar_estado_dt(usuario_id=1)
+
+    assert resultado is True
+    assert motor.estado.dt_activo[1] is True
+
+    # El estado del otro usuario no se modifica.
+    assert motor.estado.dt_activo[2] is False
+
+
+def test_alternar_estado_dt_de_true_a_false():
+    motor = crear_motor_prueba()
+    ejecutor = EjecutorPartido(partido_id=10, motor=motor, duracion=100)
+
+    motor.estado.dt_activo[1] = True
+
+    resultado = ejecutor.alternar_estado_dt(usuario_id=1)
+
+    assert resultado is False
+    assert motor.estado.dt_activo[1] is False
+
+    # El estado del otro usuario no se modifica.
+    assert motor.estado.dt_activo[2] is False

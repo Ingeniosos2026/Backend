@@ -1006,6 +1006,17 @@ class Servicios:
     def obtener_ranking_usuarios(self) -> list[UsuarioModelo]:
             return self.usuarios.obtener_ranking()
 
+
+    def validar_usuario_en_partido(self, partido_id: int, usuario_id: int) -> None:
+        partido = self.partidos.obtener_por_id(partido_id)
+
+        if partido is None:
+            raise PartidoNoEncontrado()
+
+        if partido.id_usuario_1 != usuario_id and partido.id_usuario_2 != usuario_id:
+            raise UsuarioNoEncontrado()
+            
+
     def obtener_info_partido(self, partido_id: int) -> ObtenerInfoPartidoResultado:
         partido = self.partidos.obtener_por_id(partido_id)
         if partido is None:
@@ -1013,6 +1024,7 @@ class Servicios:
         
         return ObtenerInfoPartidoResultado(partido=partido)
 
+      
     def configurar_penales(self,partido_id: int,usuario_id: int,id_arquero: int,id_comportamiento_arquero: int,pateadores: list[tuple[int, int]]) -> None:
         if usuario_id not in (partido.id_usuario_1, partido.id_usuario_2):
             raise UsuarioNoEncontrado()
@@ -1049,6 +1061,7 @@ class Servicios:
                                             comportamiento_pateadores=comportamientos_pateadores,
                                             estado=ejecutor.motor.estado)
 
+        
     def listar_comportamientos_dt(self, usuario_id: int) -> ListarComportamientosDTResultado:
         comportamientos = self.comportamientos.obtener_comportamientos_dt_usuario(usuario_id)
         comportamiento_actual = self.comportamientos.obtener_comportamiento_dt_actual(usuario_id)
@@ -1058,6 +1071,7 @@ class Servicios:
             
         return ListarComportamientosDTResultado(comportamientos=comportamientos, comportamiento_dt=comportamiento_actual)
 
+      
     def crear_comportamiento_dt(self, usuario_id: int, nombre: str, codigo: str) -> CrearComportamientoResultado:
         if not nombre.strip():
             raise DatosInvalidos()
@@ -1079,3 +1093,4 @@ class Servicios:
         comportamiento = self.comportamientos.crear(nuevo_comportamiento)
 
         return CrearComportamientoResultado(comportamiento=comportamiento)
+
