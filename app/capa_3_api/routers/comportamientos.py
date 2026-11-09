@@ -239,10 +239,10 @@ def asignar_comportamiento_dt(usuario_id: int, comp_id: int, servicio: Servicios
             status_code=404,
             content={"error": "COMPORTAMIENTO_NO_ENCONTRADO", "mensaje": "El comportamiento no existe o no pertenece al usuario"}
         )
-    except NoSePuedeAsignarComportamientoDTDefault:
+    except ComportamientoYaAsignado:
         return JSONResponse(
             status_code=400,
-            content={"error": "NO_SE_PUEDE_ASIGNAR_COMPORTAMIENTO_DT_DEFAULT", "mensaje": "No se puede asignar el comportamiento DT predeterminado"}
+            content={"error": "NO_SE_PUEDE_ASIGNAR_COMPORTAMIENTO_DT_DEFAULT", "mensaje": "No se puede asignar el mismo comportamiento que ya tiene asignado el DT"}
         )
     except Exception:
         return JSONResponse(
