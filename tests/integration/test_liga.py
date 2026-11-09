@@ -127,7 +127,7 @@ def test_servicio_lista_solo_ligas_disponibles(db_test):
     )
     db_test.add_all([liga_disponible, liga_en_juego])
     db_test.commit()
-    resultado = create_servicio(db_test).listar_ligas_disponibles()
+    resultado = create_servicio(db_test).listar_ligas_disponibles(10)
     assert resultado.ligas == [liga_disponible]
 
 def crear_jugadores_bd(db_test, usuario_id, cantidad=6):
