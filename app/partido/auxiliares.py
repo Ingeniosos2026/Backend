@@ -41,14 +41,14 @@ def calcular_potencia(poder: int) -> float:
     # calcula la velocidad inicial de la pelota al patear
     # (queda a definir, puse esto para probar)   
 
-    return 5.0 + poder * 0.05
+    return 10.0 + poder * 0.05
 
 
 def calcular_velocidad(velocidad: int) -> float:
     #(queda a definir, puse esto para probar)
     # calcula la velocidad de movimiento del jugador
 
-    return 2.0 + velocidad / 25
+    return 8.0 + velocidad / 25
 
 
 def obtener_jugador(estado, id_usuario: int, id_jugador: int) -> JugadorEstado:

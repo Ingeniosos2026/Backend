@@ -63,12 +63,19 @@ class EjecutorLiga:
 
                     if penales_izq > penales_der:
                         id_ganador_penales = self.motor.estado.id_equipo_izquierdo
+                        id_usuario_ganador = self.motor.estado.id_usuario_izquierdo
                         motivo_desempate = "penales"
                     elif penales_der > penales_izq:
                         id_ganador_penales = self.motor.estado.id_equipo_derecho
+                        id_usuario_ganador = self.motor.estado.id_usuario_derecho
                         motivo_desempate = "penales"
                     else:
                         id_ganador_penales, motivo_desempate = self.desempatar_por_tabla_o_sorteo(servicio)
+                        if id_ganador_penales == self.motor.estado.id_equipo_izquierdo:
+                            id_usuario_ganador = self.motor.estado.id_usuario_izquierdo
+                        else:
+                            id_usuario_ganador = self.motor.estado.id_usuario_derecho
+
 
                     await admin_conexiones.emitir_partido(
                         partido_id=self.partido_id,
@@ -78,6 +85,7 @@ class EjecutorLiga:
                             "goles": {"izquierdo": goles_izq, "derecho": goles_der},
                             "penales": {"izquierdo": penales_izq, "derecho": penales_der},
                             "ganador_id_equipo": id_ganador_penales,
+                            "ganador_id_usuario": id_usuario_ganador,
                             "motivo_desempate": motivo_desempate
                         }
                     )
@@ -287,6 +295,8 @@ class EjecutorLiga:
     
     async def ejecutar_tanda_penales(self):
         estado = self.motor.estado
+        estado.dt_activo = {estado.id_usuario_izquierdo: False,
+                            estado.id_usuario_derecho: False}
         self.titulares_finales = dict(estado.jugadores)
         comportamientos_finales = dict(estado.comportamientos)
         self.esperando_config_penales = True
