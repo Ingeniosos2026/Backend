@@ -1,5 +1,6 @@
 
 from app.capa_0_definicion_bd.models.comportamientos_modelos import Comportamiento
+from app.capa_0_definicion_bd.models.usuarios_modelos import Usuario
 
 
 def test_crear_usuario(client, db_test):
@@ -26,6 +27,7 @@ def test_crear_usuario(client, db_test):
     assert datos["club"] == "Talleres"
 
     assert "contraseña" not in datos
+    assert db_test.query(Usuario).filter_by(id_usuario=datos["id"]).one().puntos == 0
     comportamientos = (
         db_test.query(Comportamiento)
         .filter(Comportamiento.id_usuario == datos["id"])
@@ -35,6 +37,7 @@ def test_crear_usuario(client, db_test):
         "Defender",
         "Atacar",
         "Pasar compañero",
+        "DT predeterminado"
     }
 
 
@@ -151,3 +154,60 @@ def test_login_usuario_email_inexistente(client):
         "error": "CREDENCIALES_INVALIDAS",
         "mensaje": "El email o la contraseña son incorrectos"
     }
+
+def test_obtener_ranking_usuarios_ordenado_por_puntos(client, db_test):
+    usuarios = [
+        Usuario(
+            email="pepito@gmail.com",
+            nombre="Pepito",
+            id_avatar=3,
+            contraseña="ads123",
+            nombre_club="Boca",
+            puntos=25
+        ),
+        Usuario(
+            email="jorgito@gmail.com",
+            nombre="jorgito",
+            id_avatar=7,
+            contraseña="sdasd123",
+            nombre_club="Boca senior",
+            puntos=80
+        ),
+        Usuario(
+            email="tomas@gmail.com",
+            nombre="tomas",
+            id_avatar=4,
+            contraseña="aslkd1243",
+            nombre_club="Talleres",
+            puntos=25
+        ),
+    ]
+    db_test.add_all(usuarios)
+    db_test.commit()
+
+    response = client.get("/ranking")
+
+    assert response.status_code == 200
+    assert response.json() == [
+        {
+            "id": usuarios[1].id_usuario,
+            "nombre": "jorgito",
+            "avatar": 7,
+            "club": "Boca senior",
+            "puntos": 80
+        },
+        {
+            "id": usuarios[0].id_usuario,
+            "nombre": "Pepito",
+            "avatar": 3,
+            "club": "Boca",
+            "puntos": 25
+        },
+        {
+            "id": usuarios[2].id_usuario,
+            "nombre": "tomas",
+            "avatar": 4,
+            "club": "Talleres",
+            "puntos": 25
+        },
+    ]

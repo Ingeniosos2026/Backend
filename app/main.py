@@ -7,6 +7,9 @@ from app.capa_0_definicion_bd.models.comportamientos_modelos import Comportamien
 from app.capa_0_definicion_bd.models.liga_modelos import Liga
 from app.capa_0_definicion_bd.models.equipo_modelos import Equipo
 from app.capa_0_definicion_bd.models.equipos_jugadores_modelos import EquipoJugador
+from app.capa_0_definicion_bd.models.jugadores_modelos import Jugador
+from app.capa_0_definicion_bd.models.partidos_modelos import Partido
+from app.capa_0_definicion_bd.models.liga_participantes_modelos import LigaParticipante
 from app.capa_3_api.routers.websocket import ws_router
 from app.capa_3_api.api import api_router
 

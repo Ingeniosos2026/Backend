@@ -1,21 +1,76 @@
-from fastapi import APIRouter, WebSocket, WebSocketDisconnect
+from fastapi import APIRouter, Depends, WebSocket, WebSocketDisconnect
 
 from app.capa_3_api.websockets.admin_conexiones import admin_conexiones
+from app.capa_3_api.dependencias import obtener_servicio
+from app.capa_2_logica.servicios import Servicios
 from app.partido.administrar_partidos import administrador_partidas 
-from app.partido.convertidor import estado_a_dict
+from app.partido.convertidor import estado_a_dict, cancha_a_dict
 
 ws_router = APIRouter()
 
 @ws_router.websocket("/ws/amistoso/{partido_id}")
-async def websocket_amistoso(websocket: WebSocket, partido_id: int):
+async def websocket_amistoso(websocket: WebSocket, partido_id: int, servicio: Servicios = Depends(obtener_servicio)):
     await admin_conexiones.conectar_lobby(websocket, partido_id)
-
     try:
+        partido = servicio.partidos.obtener_por_id(partido_id)
+        if partido is not None:
+            competidores = [
+                {
+                    "id": partido.usuario_1.id_usuario,
+                    "nombre": partido.usuario_1.nombre,
+                    "club": partido.usuario_1.nombre_club}]
+            if partido.usuario_2 is not None:
+                competidores.append({
+                    "id": partido.usuario_2.id_usuario,
+                    "nombre": partido.usuario_2.nombre,
+                    "club": partido.usuario_2.nombre_club})
+
+            try:
+                await websocket.send_json({
+                    "action": "estado_inicial_lobby",
+                    "payload": {"competidores": competidores}})
+            except RuntimeError:
+                return
+
         while True:
             await websocket.receive_text()
 
     except WebSocketDisconnect:
+        pass
+    finally:
         admin_conexiones.desconectar_lobby(websocket, partido_id)
+
+@ws_router.websocket("/ws/liga/{liga_id}")
+async def websocket_liga(websocket: WebSocket, liga_id: int, servicio: Servicios = Depends(obtener_servicio)):
+    await admin_conexiones.conectar_lobby_liga(websocket, liga_id)
+
+    try:
+        liga = servicio.ligas.obtener_por_id(liga_id)
+        if liga is not None:
+            for participante in liga.participantes:
+                try:
+                    await websocket.send_json({
+                        "action": "usuario_unido_liga",
+                        "payload": {
+                            "usuario_unido": {
+                                "id": participante.usuario.id_usuario,
+                                "nombre": participante.usuario.nombre,
+                                "club": participante.usuario.nombre_club,
+                                "id_equipo": participante.id_equipo,
+                                "formacion": participante.formacion.value
+                                }
+                        }
+                    })
+                except RuntimeError:
+                    return
+
+        while True:
+            await websocket.receive_text()
+
+    except WebSocketDisconnect:
+        pass
+    finally:
+        admin_conexiones.desconectar_lobby_liga(websocket, liga_id)
 
 @ws_router.websocket("/ws/partido/{partido_id}")
 async def websocket_endpoint(websocket: WebSocket, partido_id: int):
@@ -42,18 +97,28 @@ async def websocket_partido(websocket: WebSocket, partido_id: int):
     await admin_conexiones.conectar(websocket, partido_id)
 
     try:
-        motor = administrador_partidas.obtener(partido_id)
+        ejecutor = administrador_partidas.obtener(partido_id)
 
         # si el partido ya comenzo, mandamos inmediatamente su estado actual
-        if motor is not None:
-            await websocket.send_json({"action": "estado_partido", "payload": estado_a_dict(motor.estado)})
+        if ejecutor is not None:
+            motor = ejecutor.motor
+            await websocket.send_json({"action": "reconexion_partido", "payload": {
+                    **estado_a_dict(motor.estado),
+                    "estados_jugadores": [],
+                    "acciones": [],
+                    "cancha": cancha_a_dict(motor.estado.cancha)
+                }
+            })
 
         # si todavia no comenzo, mantenemos la conexion abierta
         while True:
             await websocket.receive_text()
 
     except WebSocketDisconnect:
-        admin_conexiones.desconectar(websocket, partido_id)
+        pass
 
     except RuntimeError:
+        pass
+
+    finally:
         admin_conexiones.desconectar(websocket, partido_id)

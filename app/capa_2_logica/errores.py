@@ -8,6 +8,9 @@ class EmailRegistrado(Exception):
 class DatosInvalidos(Exception):
     pass
 
+class DatosLigaInvalidos(DatosInvalidos):
+    pass
+
 class CredencialesInvalidas(Exception):
     pass
 
@@ -42,4 +45,61 @@ class IniciarNoPermitido(Exception):
     pass
 
 class AmistosoNoPuedeIniciar(Exception):
+    pass
+
+class LigaNoEncontrada(Exception): 
+    pass
+
+class LigaNoDisponible(Exception): 
+    pass
+
+class LigaLlena(Exception): 
+    pass
+
+class ContraseñaLigaIncorrecta(Exception): 
+    pass
+
+class UsuarioYaEnLiga(Exception): 
+    pass
+
+class UsuarioEsCreadorDeLiga(Exception): 
+    pass
+
+class LigaIniciada (Exception): 
+    pass
+
+class UsuarioNoExisteEnLiga(Exception): 
+    pass
+
+class NoEsPosibleIniciarLiga (Exception): 
+    pass
+
+class NoSeEncontraronLasTablas (Exception):
+    pass
+  
+class ComportamientoNoEditable(Exception):
+    pass
+
+class ComportamientoEnUso(Exception):
+    pass
+
+class NoEsPosibleVerElFixture(Exception):
+    pass
+
+class NoEsPosibleVerLaTabla(Exception):
+    pass
+
+class NoSePuedeCambiarJugador(Exception):
+    pass
+
+class ComportamientoYaAsignado(Exception):
+    pass
+  
+class NoPuedeUnirseASuPropioPartido(Exception):
+    pass
+
+class NoSePuedeElegirComoArquero(Exception):
+    pass
+  
+class SoloPuedenPatearLosTitulares(Exception):
     pass

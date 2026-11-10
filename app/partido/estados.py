@@ -29,6 +29,7 @@ class JugadorEstado:
     id_jugador: int
     id_equipo: int
     id_usuario: int
+    nombre: str
 
     posicion: Coordenada
     # atributos del jugador
@@ -49,6 +50,7 @@ class PelotaEstado:
     # se tendra que ver el tema de la friccion para que reduzca el la velocidad de pateo hasta que no avance mas
     velocidad: Coordenada
 
+
 @dataclass
 class EstadoPartido:
     id_usuario_izquierdo: int
@@ -56,15 +58,19 @@ class EstadoPartido:
     id_equipo_izquierdo: int
     id_equipo_derecho: int
     cancha: Cancha
-    jugadores: dict[tuple[int, int], JugadorEstado]
+
+    jugadores: dict[tuple[int, int], JugadorEstado]  # este va a representar a los jugadores que estan en la cancha
+    suplentes: dict[tuple[int, int], JugadorEstado]  # este va a representar los jugadores que no estan en la cancha
     comportamientos: dict[tuple[int, int], str] 
     pelota: PelotaEstado
+
+    codigo_dt: dict[int, str]  # este va a guardar el comportamiento de dt
+    dt_activo: dict[int, bool] # este me sirve para saber si el usuario tiene el dt activo o no
+    equipos_que_cambiaron: set 
+    
     tiempo: float = 0.0
     goles_izquierdo: int = 0
     goles_derecho: int = 0
-
-
-
-
-
-
+    en_pausa: bool = False
+    pausas_realizadas: int = 0
+    

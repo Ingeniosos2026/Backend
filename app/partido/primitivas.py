@@ -13,11 +13,14 @@ class Primitivas:
     def correr(self, destino: Coordenada) -> None:
        # el jugador actual se mueve al destino indicado
        if not posicion_valida(destino, self.estado.cancha):
-        raise ValueError("El destino esta fuera de la cancha")
+           raise ValueError("El destino esta fuera de la cancha")
        
        jugador = obtener_jugador(self.estado, self.id_usuario, self.id_jugador)
        
-       # las fisicas (cuando las implementemos) se encargara de moverlo progresivamente
+       if (jugador.posicion.x == destino.x and jugador.posicion.y == destino.y): 
+            jugador.destino = None
+            return
+       
        jugador.destino = destino
 
 
@@ -106,11 +109,13 @@ class Primitivas:
 
 
     def direccionArcoPropio(self) -> Coordenada: 
+        distancia_arco = 1
         if (self.id_usuario == self.estado.id_usuario_izquierdo):
-            return self.estado.cancha.arco_izquierdo.centro
+            return Coordenada(x=distancia_arco, y=self.estado.cancha.alto / 2)
 
+        
         if (self.id_usuario == self.estado.id_usuario_derecho):
-            return self.estado.cancha.arco_derecho.centro
+            return Coordenada(x=self.estado.cancha.ancho - distancia_arco, y=self.estado.cancha.alto / 2)
 
         raise ValueError("El usuario no pertenece al partido")
 

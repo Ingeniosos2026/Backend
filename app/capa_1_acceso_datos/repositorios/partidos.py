@@ -12,12 +12,13 @@ class PartidoRepositorio:
         self.db.refresh(partido)
         return partido
     
-    def obtener_partidos_amistosos_disponibles(self) -> List[PartidoModelo] | None:
+    def obtener_partidos_amistosos_disponibles(self, usuario_id: int) -> List[PartidoModelo] | None:
         return (
             self.db.query(PartidoModelo) 
             .filter (
                 PartidoModelo.tipo_partido == TipoPartido.AMISTOSO,
-                PartidoModelo.estado_partido == EstadoPartido.DISPONIBLE
+                PartidoModelo.estado_partido == EstadoPartido.DISPONIBLE,
+                PartidoModelo.id_usuario_1 != usuario_id 
             )
             .all()
         )

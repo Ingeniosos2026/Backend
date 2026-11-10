@@ -14,6 +14,7 @@ def crear_estado_partido():
         id_jugador=1,
         id_equipo=10,
         id_usuario=1,
+        nombre="Lean",
         posicion=Coordenada(49, 25),
         control=50,
         agilidad=60,
@@ -25,6 +26,7 @@ def crear_estado_partido():
         id_jugador=2,
         id_equipo=10,
         id_usuario=1,
+        nombre="Lean2",
         posicion=Coordenada(30, 25),
         control=60,
         agilidad=50,
@@ -36,6 +38,7 @@ def crear_estado_partido():
         id_jugador=3,
         id_equipo=20,
         id_usuario=2,
+        nombre="Lean3",
         posicion=Coordenada(80, 25),
         control=70,
         agilidad=40,
@@ -52,7 +55,11 @@ def crear_estado_partido():
         id_equipo_derecho=20,
         cancha=cancha,
         jugadores={(1, 1): jugador_1, (1, 2): jugador_2, (2, 3): jugador_3},
+        suplentes={},
         comportamientos={},
+        codigo_dt={},
+        equipos_que_cambiaron=set(),
+        dt_activo={1: False, 2: False},
         pelota=pelota)
 
 
@@ -194,7 +201,7 @@ def test_direccion_arco_propio():
 
     resultado = primitivas.direccionArcoPropio()
 
-    assert resultado == Coordenada(0, 25)
+    assert resultado == Coordenada(1, 25)
 
 
 def test_direccion_arco_rival_usuario_derecho():
@@ -214,4 +221,4 @@ def test_direccion_arco_propio_usuario_derecho():
 
     resultado = primitivas.direccionArcoPropio()
 
-    assert resultado == Coordenada(100, 25)
+    assert resultado == Coordenada(99, 25)

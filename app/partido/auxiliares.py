@@ -41,14 +41,14 @@ def calcular_potencia(poder: int) -> float:
     # calcula la velocidad inicial de la pelota al patear
     # (queda a definir, puse esto para probar)   
 
-    return 5.0 + poder * 0.05
+    return 10.0 + poder * 0.05
 
 
 def calcular_velocidad(velocidad: int) -> float:
     #(queda a definir, puse esto para probar)
     # calcula la velocidad de movimiento del jugador
 
-    return 2.0 + velocidad / 25
+    return 8.0 + velocidad / 25
 
 
 def obtener_jugador(estado, id_usuario: int, id_jugador: int) -> JugadorEstado:
@@ -67,3 +67,12 @@ def posicion_valida(posicion: Coordenada, cancha: Cancha) -> bool:
     return (0 <= posicion.x <= cancha.ancho and 0 <= posicion.y <= cancha.alto)
 
 
+def obtener_goles(estado, id_usuario: int) -> tuple[int, int]:
+
+    if id_usuario == estado.id_usuario_izquierdo:
+        return (estado.goles_izquierdo, estado.goles_derecho)
+
+    if id_usuario == estado.id_usuario_derecho:
+        return (estado.goles_derecho, estado.goles_izquierdo)
+
+    raise ValueError("El usuario no pertenece al partido")

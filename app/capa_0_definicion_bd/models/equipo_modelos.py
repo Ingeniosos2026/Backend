@@ -15,11 +15,6 @@ class Equipo(Base):
         back_populates="equipos"
     )
 
-    jugadores = relationship(
-        "Jugador",
-        back_populates="equipo"
-    )
-
     partido_1 = relationship(
         "Partido",
         foreign_keys="[Partido.id_equipo_1]",
@@ -32,8 +27,7 @@ class Equipo(Base):
         back_populates="equipo_2"
     )
 
-    jugadores_amistosos = relationship(
-        "Jugador",
-        secondary="equipo_jugadores",
-        back_populates="equipos_amistosos"
+    jugadores = relationship(
+        "EquipoJugador",
+        back_populates="equipo"
     )

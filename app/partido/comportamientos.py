@@ -15,7 +15,6 @@ comportamiento_atacar = """
 def comportamiento(primitivas):
     if primitivas.pelotaCerca():
         primitivas.patear(primitivas.direccionArcoRival())
-        primitivas.correr(primitivas.direccionPelota())
     else:
         primitivas.correr(primitivas.direccionPelota())
 """
@@ -34,8 +33,28 @@ def comportamiento(primitivas):
 """
 
 
+comportamiento_dt_predeterminado = """
+def comportamiento(primitivas):
+    if primitivas.es_pausa():
+        primitivas.cambiar_jugador()
+
+    if primitivas.voy_perdiendo():
+        primitivas.cambiar_comportamiento_ataque()
+
+    if primitivas.voy_ganando():
+        primitivas.cambiar_comportamiento_defensa()
+"""
+
+
+
 COMPORTAMIENTOS_PREDETERMINADOS = (
     ("Defender", comportamiento_defender),
     ("Atacar", comportamiento_atacar),
     ("Pasar compañero", comportamiento_pasar_compañero),
+)
+
+
+COMPORTAMIENTO_DT_PREDETERMINADO = (
+    "DT predeterminado",
+    comportamiento_dt_predeterminado
 )

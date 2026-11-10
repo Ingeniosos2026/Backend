@@ -17,6 +17,7 @@ def crear_estado():
             id_jugador=1,
             id_equipo=1,
             id_usuario=1,
+            nombre="Lean",
             posicion=Coordenada(10, 30),
             control=60,
             agilidad=60,
@@ -27,6 +28,7 @@ def crear_estado():
             id_jugador=2,
             id_equipo=2,
             id_usuario=2,
+            nombre="Lean2",
             posicion=Coordenada(90, 30),
             control=60,
             agilidad=60,
@@ -44,6 +46,10 @@ def crear_estado():
         cancha=cancha,
         jugadores=jugadores,
         comportamientos={},
+        suplentes={},
+        codigo_dt={},
+        equipos_que_cambiaron=set(),
+        dt_activo={1: False, 2: False},
         pelota=pelota)
 
 
